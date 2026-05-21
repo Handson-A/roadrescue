@@ -1,78 +1,63 @@
-/**
- * Supabase Migration: Seed Sample Data
- * Populate database with test data for development
- * Timestamp: 2026-05-21 00:00:08
- */
+-- supabase/migrations/20260521000008_geospatial_functions.sql
 
--- Insert sample profiles (drivers)
-INSERT INTO public.profiles (id, email, full_name, phone, role, status)
-VALUES
-  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 'driver1@example.com', 'Alice Johnson', '555-0111', 'driver', 'active'),
-  ('550e8400-e29b-41d4-a716-446655440002'::uuid, 'driver2@example.com', 'Bob Wilson', '555-0112', 'driver', 'active')
-ON CONFLICT DO NOTHING;
+-- This function is the geospatial core of the platform.
+-- When a driver creates a request, we call this to find
+-- which mechanics to notify.
+--
+-- It takes the incident location and a search radius (in km),
+-- and returns all verified, available mechanics within that radius,
+-- ordered by distance (closest first).
+--
+-- ST_DWithin: returns true if two geography points are within X metres
+-- ST_Distance: returns the distance in metres between two points
+-- We expose distance_km in the result so the frontend can display
+-- "2.4 km away" on each mechanic card.
 
--- Insert sample profiles (mechanics)
-INSERT INTO public.profiles (id, email, full_name, phone, role, status)
-VALUES
-  ('550e8400-e29b-41d4-a716-446655440010'::uuid, 'mechanic1@example.com', 'John Smith', '555-0121', 'mechanic', 'active'),
-  ('550e8400-e29b-41d4-a716-446655440011'::uuid, 'mechanic2@example.com', 'Maria Garcia', '555-0122', 'mechanic', 'active')
-ON CONFLICT DO NOTHING;
-
--- Insert sample mechanic profiles
-INSERT INTO public.mechanic_profiles (
-  user_id, license_number, verification_status, verified_at,
-  years_experience, hourly_rate, service_area_lat, service_area_lon,
-  current_status, total_jobs_completed
+create or replace function find_nearby_mechanics(
+  incident_lat float,
+  incident_lng float,
+  radius_km float default 10
 )
-VALUES
-  (
-    '550e8400-e29b-41d4-a716-446655440010'::uuid,
-    'LIC-001',
-    'verified',
-    CURRENT_TIMESTAMP,
-    8,
-    75.00,
-    40.7128,
-    -74.0060,
-    'online',
-    45
-  ),
-  (
-    '550e8400-e29b-41d4-a716-446655440011'::uuid,
-    'LIC-002',
-    'verified',
-    CURRENT_TIMESTAMP,
-    12,
-    85.00,
-    40.7489,
-    -73.9680,
-    'online',
-    127
-  )
-ON CONFLICT DO NOTHING;
-
--- Sample rescue requests
-INSERT INTO public.rescue_requests (
-  driver_id, issue_description, vehicle_details,
-  latitude, longitude, status
-)
-VALUES
-  (
-    '550e8400-e29b-41d4-a716-446655440001'::uuid,
-    'Flat tire on highway',
-    '2022 Toyota Camry',
-    40.7128,
-    -74.0060,
-    'PENDING'
-  ),
-  (
-    '550e8400-e29b-41d4-a716-446655440002'::uuid,
-    'Engine overheating',
-    '2019 Honda Civic',
-    40.7489,
-    -73.9680,
-    'ASSIGNED'
-  )
-ON CONFLICT DO NOTHING;
-
-COMMIT;
+returns table (
+  user_id uuid,
+  full_name text,
+  rating_avg numeric,
+  specializations text[],
+  distance_km float,
+  location_label text
+) as $$
+begin
+  return query
+  select
+    mp.user_id,
+    p.full_name,
+    mp.rating_avg,
+    mp.specializations,
+    -- convert metres to km, round to 1 decimal
+    round(
+      st_distance(
+        mp.current_location,
+        st_point(incident_lng, incident_lat)::geography
+      )::numeric / 1000,
+      1
+    )::float as distance_km,
+    mp.location_label
+  from mechanic_profiles mp
+  join profiles p on p.id = mp.user_id
+  where
+    -- only verified mechanics
+    mp.verification_status = 'verified'
+    -- only mechanics who are online and available
+    and mp.is_available = true
+    -- only mechanics with a recent location update (within last 30 minutes)
+    -- avoids matching mechanics whose GPS is stale
+    and mp.location_updated_at > now() - interval '30 minutes'
+    -- the actual spatial filter — radius_km converted to metres
+    and st_dwithin(
+      mp.current_location,
+      st_point(incident_lng, incident_lat)::geography,
+      radius_km * 1000
+    )
+  order by distance_km asc;
+end;
+$$ language plpgsql stable;
