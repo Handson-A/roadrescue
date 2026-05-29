@@ -42,13 +42,13 @@ import { createClient } from '@/lib/supabase/client'
 // config       → { event, schema, table, filter } — what to listen to
 // onEvent      → callback fired when the event occurs
 export function useRealtime(channelName, config, onEvent) {
-  const supabase = createClient()
-
   // store channel in a ref so we can clean it up on unmount
   const channelRef = useRef(null)
 
   useEffect(() => {
     if (!channelName || !config || !onEvent) return
+
+    const supabase = createClient()
 
     // create the channel
     const channel = supabase.channel(channelName)
@@ -79,5 +79,5 @@ export function useRealtime(channelName, config, onEvent) {
         supabase.removeChannel(channelRef.current)
       }
     }
-  }, [channelName])
+  }, [channelName, config, onEvent])
 }

@@ -60,10 +60,10 @@ export function useRequestStatus(requestId) {
   const [request, setRequest] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient()
-
   useEffect(() => {
     if (!requestId) return
+
+    const supabase = createClient()
 
     // initial fetch — load current state before realtime kicks in
     async function fetchRequest() {

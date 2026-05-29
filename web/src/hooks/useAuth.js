@@ -38,51 +38,20 @@
 // }
 // web/src/hooks/useAuth.js
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { getCurrentUser } from '@/lib/auth'
+import { useAuthStore } from '@/store/authStore'
 
-// Central auth hook. Every component that needs the current user calls this.
-// It also listens for auth state changes (login, logout, token refresh)
-// so the UI always reflects the real session state.
 export function useAuth() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    // initial load — fetch user on mount
-    getCurrentUser().then(currentUser => {
-      setUser(currentUser)
-      setLoading(false)
-    })
-
-    // subscribe to auth state changes
-    // this fires on: sign in, sign out, token refresh
-    const supabase = createClient()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session) {
-          // session exists — re-fetch full profile
-          const currentUser = await getCurrentUser()
-          setUser(currentUser)
-        } else {
-          // signed out
-          setUser(null)
-        }
-        setLoading(false)
-      }
-    )
-
-    // cleanup subscription on unmount
-    return () => subscription.unsubscribe()
-  }, [])
+  const { user, profile, loading } = useAuthStore()
+  const role = profile?.role || user?.role || null
 
   return {
-    user,          // null if not logged in, full user+profile object if logged in
-    loading,       // true while initial auth check is running
-    isDriver: user?.role === 'driver',
-    isMechanic: user?.role === 'mechanic',
-    isAdmin: user?.role === 'admin',
+    user,
+    profile,
+    loading,
+    role,
+    isDriver: role === 'driver',
+    isMechanic: role === 'mechanic',
+    isAdmin: role === 'admin',
     isLoggedIn: !!user,
   }
 }

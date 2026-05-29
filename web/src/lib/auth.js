@@ -1,7 +1,3 @@
-// web/src/lib/auth.js
-// Pure functions — no React, no hooks.
-// Called from form handlers and API routes.
-
 import { createClient } from '@/lib/supabase/client'
 
 // SIGNUP
@@ -66,15 +62,59 @@ export async function getCurrentUser() {
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (profileError) return null
+
+  const extendedProfile = profile ? { ...profile } : {}
+
+  const role = profile?.role
+
+  if (role === 'mechanic') {
+    const { data: mechanicProfile } = await supabase
+      .from('mechanic_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (mechanicProfile) {
+      extendedProfile.mechanic_profile = mechanicProfile
+    }
+  }
+
+  if (role === 'driver') {
+    const { data: driverProfile } = await supabase
+      .from('driver_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (driverProfile) {
+      extendedProfile.driver_profile = driverProfile
+    }
+  }
 
   // merge auth user and profile into one object
   // this is what the rest of the app uses as "the current user"
   return {
     id: user.id,
     email: user.email,
-    ...profile  // full_name, phone, role, avatar_url, etc.
+    ...extendedProfile  // full_name, phone, role, avatar_url, plus role-specific profile
   }
+}
+
+
+export async function getSession() {
+  const supabase = createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  return session
+}
+
+
+export async function getUserRole() {
+  const currentUser = await getCurrentUser()
+  return currentUser?.role || null
 }

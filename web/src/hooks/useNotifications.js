@@ -10,10 +10,10 @@ export function useNotifications(userId) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
 
-  const supabase = createClient()
-
   useEffect(() => {
     if (!userId) return
+
+    const supabase = createClient()
 
     // load existing unread notifications on mount
     async function fetchNotifications() {
@@ -57,6 +57,7 @@ export function useNotifications(userId) {
 
   // mark a notification as read
   async function markAsRead(notificationId) {
+    const supabase = createClient()
     await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -69,6 +70,7 @@ export function useNotifications(userId) {
   }
 
   async function markAllAsRead() {
+    const supabase = createClient()
     await supabase
       .from('notifications')
       .update({ is_read: true })

@@ -11,12 +11,12 @@ import { useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export function useMechanicPresence(mechanicId) {
-  const supabase = createClient()
   const channelRef = useRef(null)
 
   useEffect(() => {
     if (!mechanicId) return
 
+    const supabase = createClient()
     const channel = supabase.channel('mechanic-presence', {
       config: { presence: { key: mechanicId } }
     })

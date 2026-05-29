@@ -11,10 +11,10 @@ export function useIncomingJobs(mechanicId) {
   const [pendingJobs, setPendingJobs] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient()
-
   useEffect(() => {
     if (!mechanicId) return
+
+    const supabase = createClient()
 
     // load any currently pending requests on mount
     async function fetchPendingJobs() {
