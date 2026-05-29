@@ -92,7 +92,7 @@
 // web/src/app/api/requests/rate/route.js
 
 import { createClient } from '@/lib/supabase/server'
-import { submitRating } from '@/lib/requests'
+import { submitRating } from '@/lib/request'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req) {
