@@ -1,77 +1,68 @@
-'use client';
+'use client'
 
-/**
- * LoginForm Component
- * User login form with email and password
- */
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
+import Input from '@/components/ui/Input'
+import Button from '@/components/ui/Button'
+import { getCurrentUser, signIn } from '@/lib/auth'
 
-import { useState } from 'react';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Spinner from '@/components/ui/Spinner';
+export default function LoginForm() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  })
 
-export default function LoginForm({ onSuccess, onError, isLoading, setIsLoading }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({});
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrors({});
-    setIsLoading(true);
+  async function handleSubmit(e) {
+    e.preventDefault()
 
     try {
-      // In production, call your Supabase/auth API
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      setLoading(true)
+      const data = await signIn(formData)
 
-      if (response.ok) {
-        const data = await response.json();
-        sessionStorage.setItem('auth_token', data.token);
-        onSuccess?.();
-      } else {
-        onError?.('Invalid email or password');
-      }
-    } catch (error) {
-      onError?.('An error occurred. Please try again.');
+      const currentUser = await getCurrentUser()
+      toast.success('Login successful')
+
+      const resolvedRole = currentUser?.role || data?.user?.user_metadata?.role || 'driver'
+      router.push(`/dashboard/${resolvedRole}`)
+    } catch (err) {
+      toast.error(err?.message || 'Unable to login')
     } finally {
-      setIsLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="Email"
-        type="email"
-        placeholder="you@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        error={errors.email}
-        required
-      />
+      <div>
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
+          Email
+        </label>
+        <Input
+          type="email"
+          placeholder="you@example.com"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
+      </div>
 
-      <Input
-        label="Password"
-        type="password"
-        placeholder="••••••••"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        error={errors.password}
-        required
-      />
+      <div>
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
+          Password
+        </label>
+        <Input
+          type="password"
+          placeholder="••••••••"
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+        />
+      </div>
 
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        disabled={isLoading || !email || !password}
-      >
-        {isLoading ? <Spinner size="sm" /> : 'Sign In'}
+      <Button type="submit" className="w-full bg-slate-900 text-xs font-black uppercase tracking-wider hover:bg-slate-800" disabled={loading}>
+        {loading ? 'Signing in...' : 'Sign In'}
       </Button>
     </form>
-  );
+  )
 }
