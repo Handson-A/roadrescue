@@ -1,81 +1,111 @@
-'use client';
+'use client'
 
-/**
- * Mechanic Job History Page
- * Historical view of all completed jobs
- * Includes earnings, ratings received, and performance stats
- */
-
-import { useRequest } from '@/hooks/useRequest';
+import { useState, useEffect } from 'react'
+import PageWrapper from '@/components/layout/PageWrapper'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Spinner from '@/components/ui/Spinner'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
+import { timeAgo } from '@/lib/utils'
 
 export default function MechanicHistoryPage() {
-  const { requests } = useRequest();
-  const completedJobs = requests.filter((r) => r.status === 'COMPLETED');
+  const { user } = useAuth()
+  const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(false)
+  
 
-  const totalEarnings = completedJobs.reduce((sum, job) => sum + (job.earnings || 0), 0);
-  const averageRating = completedJobs.length > 0
-    ? (completedJobs.reduce((sum, job) => sum + (job.rating || 0), 0) / completedJobs.length).toFixed(1)
-    : 0;
+  useEffect(() => {
+    if (!user?.id) return
+    let mounted = true
+    async function loadHistory() {
+      const supabase = createClient()
+      if (mounted) setLoading(true)
+      const { data, error } = await supabase
+        .from('rescue_requests')
+        .select(`
+          id,
+          status,
+          service_type,
+          problem_description,
+          completed_at,
+          driver_rating,
+          driver_review,
+          created_at,
+          driver:driver_id (id, full_name)
+        `)
+        .eq('mechanic_id', user.id)
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+
+      if (!error && mounted) {
+        setJobs(data || [])
+      }
+      if (mounted) setLoading(false)
+    }
+
+    loadHistory()
+    return () => {
+      mounted = false
+    }
+  }, [user?.id])
+
+  const avgRating = jobs.length > 0
+    ? (jobs.reduce((sum, j) => sum + (j.driver_rating || 0), 0) / jobs.length).toFixed(1)
+    : 0
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Job History</h1>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600 text-sm">Completed Jobs</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{completedJobs.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600 text-sm">Total Earnings</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">${totalEarnings.toFixed(2)}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-gray-600 text-sm">Average Rating</p>
-          <p className="text-3xl font-bold text-yellow-600 mt-2">⭐ {averageRating}</p>
-        </div>
+    <PageWrapper title="Job history" description="Review completed rescues and customer feedback.">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-8">
+        <Card>
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted">Completed jobs</p>
+            <p className="mt-2 text-3xl font-semibold">{jobs.length}</p>
+          </div>
+        </Card>
+        <Card>
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted">Average rating</p>
+            <p className="mt-2 text-3xl font-semibold">⭐ {avgRating}</p>
+          </div>
+        </Card>
+        <Card>
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted">This month</p>
+            <p className="mt-2 text-3xl font-semibold">{jobs.filter((j) => new Date(j.completed_at).getMonth() === new Date().getMonth()).length}</p>
+          </div>
+        </Card>
       </div>
 
-      {/* Jobs Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {completedJobs.length > 0 ? (
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Job ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Driver</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Issue</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Date</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Earnings</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Rating</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {completedJobs.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-mono text-gray-700">#{job.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{job.driver?.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{job.issue}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(job.completedAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-green-600">
-                    ${job.earnings?.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-yellow-600">
-                    ⭐ {job.rating?.toFixed(1)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <Card>
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <Spinner />
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted">No completed jobs yet.</div>
         ) : (
-          <div className="p-6 text-center text-gray-600">
-            No completed jobs yet
+          <div className="space-y-3">
+            {jobs.map((job) => (
+              <Card key={job.id} className="hover:-translate-y-0.5 hover:shadow-lift transition">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge label={job.service_type} variant="completed" dot />
+                      <span className="text-xs text-muted">{timeAgo(job.completed_at)}</span>
+                    </div>
+                    <p className="mt-3 text-lg font-semibold truncate">{job.driver?.full_name}</p>
+                    <p className="mt-1 text-sm text-muted truncate">{job.driver_review || 'No review left'}</p>
+                  </div>
+                  <div className="text-sm text-muted lg:text-right">
+                    <p>{job.driver_rating ? `⭐ ${job.driver_rating}/5` : 'Unrated'}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
         )}
-      </div>
-    </div>
-  );
+      </Card>
+    </PageWrapper>
+  )
 }

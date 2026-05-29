@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+:root {
+  --color-background: 253 251 247;
+  --color-foreground: 15 23 42;
+  --color-surface: 255 255 255;
+  --color-surface-alt: 241 245 249;
+  --color-muted: 100 116 139;
+  --color-border: 229 231 235;
+  --color-primary: 245 158 11;
+  --color-primary-dark: 217 119 6;
+  --color-accent: 15 23 42;
+  --color-accent-soft: 243 244 246;
+  --color-success: 22 163 74;
+  --color-warning: 245 158 11;
+  --color-danger: 220 38 38;
+
+  --background: rgb(var(--color-background));
+  --foreground: rgb(var(--color-foreground));
+  --font-body: var(--font-inter), sans-serif;
+  --font-display: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.1), transparent 24%),
+    radial-gradient(circle at top right, rgba(15, 23, 42, 0.06), transparent 28%),
+    linear-gradient(180deg, rgb(253 251 247) 0%, rgb(253 251 247) 100%);
+}
+
+body {
+  min-height: 100vh;
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgb(var(--color-primary) / 0.2);
+  color: rgb(var(--color-accent));
+}
+
+input,
+textarea,
+select {
+  outline: none;
+}
+
+button,
+a {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease;
+}
+
+button:active,
+a:active {
+  transform: translateY(1px);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border));
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  ring-width: 2px;
+  ring-color: rgb(var(--color-primary) / 0.3);
+  ring-offset-width: 2px;
+  ring-offset-color: rgb(var(--color-background));
+  box-shadow: 
+    0 0 0 2px rgb(var(--color-background)),
+    0 0 0 4px rgb(var(--color-primary) / 0.3);
+}
+
+.glass-panel {
+  border: 1px solid rgb(var(--color-border) / 0.7);
+  background: rgb(255 255 255 / 0.85);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 18px 40px rgb(15 23 42 / 0.08);
+}
+
+.noise-overlay {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.safe-bottom-padding {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+}
+
+.safe-top-padding {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
+}
+
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+.bento-card {
+  background: #fff;
+  border: 1px solid rgb(var(--color-border));
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.bento-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.grid-pattern {
+  background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pulse-amber {
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+}

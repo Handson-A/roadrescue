@@ -18,6 +18,9 @@ create table profiles (
   -- phone is critical in Ghana — most users identify and communicate by phone
   phone text unique not null,
 
+  -- keep a copy of the user's email for convenience (copied from auth.users.email)
+  email text unique not null,
+
   -- role controls everything: what pages they see, what data they can access
   -- 'driver'   → creates emergency requests
   -- 'mechanic' → receives and responds to requests
@@ -54,14 +57,13 @@ create trigger profiles_updated_at
 -- automatically creates their profile row. This means we never
 -- have to manually insert into profiles from the frontend —
 -- it happens the moment auth.users gets a new record.
-create or replace function handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into profiles (id, full_name, phone, role)
+  insert into public.profiles (id, email, full_name, phone, role)
   values (
     new.id,
-    -- we pass full_name, phone, role as metadata during signup
-    -- they come through in raw_user_meta_data
+    new.email,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'phone',
     new.raw_user_meta_data->>'role'
@@ -70,6 +72,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
+-- trigger the function every time a user is created
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute function handle_new_user();
+  for each row execute function public.handle_new_user();

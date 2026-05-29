@@ -1,108 +1,95 @@
-'use client';
+'use client'
 
-/**
- * Admin Mechanics Verification Page
- * Queue of mechanic applications awaiting verification
- * Allows admin to approve/reject with documentation review
- */
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react'
+import PageWrapper from '@/components/layout/PageWrapper'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Spinner from '@/components/ui/Spinner'
+import Button from '@/components/ui/Button'
 
 export default function MechanicsVerificationPage() {
-  const [mechanics, setMechanics] = useState([
-    {
-      id: 1,
-      name: 'John Smith',
-      email: 'john@example.com',
-      phone: '555-0101',
-      license: 'Certified ASE',
-      yearsExperience: 8,
-      status: 'PENDING',
-      documents: ['license.pdf', 'insurance.pdf', 'certifications.pdf'],
-    },
-    {
-      id: 2,
-      name: 'Maria Garcia',
-      email: 'maria@example.com',
-      phone: '555-0102',
-      license: 'Master Technician',
-      yearsExperience: 12,
-      status: 'PENDING',
-      documents: ['license.pdf', 'insurance.pdf'],
-    },
-  ]);
+  const [mechanics, setMechanics] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  const handleApprove = (id) => {
-    setMechanics(mechanics.map((m) => (m.id === id ? { ...m, status: 'APPROVED' } : m)));
-  };
+  useEffect(() => {
+    let mounted = true
 
-  const handleReject = (id) => {
-    setMechanics(mechanics.map((m) => (m.id === id ? { ...m, status: 'REJECTED' } : m)));
-  };
+    async function loadMechanics() {
+      if (mounted) setLoading(true)
+      const response = await fetch('/api/admin/mechanics?status=pending', { cache: 'no-store' })
+      const payload = await response.json()
 
-  const pendingMechanics = mechanics.filter((m) => m.status === 'PENDING');
+      if (response.ok && mounted) {
+        setMechanics(payload.mechanics || [])
+      }
+      if (mounted) setLoading(false)
+    }
+
+    loadMechanics()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const handleApprove = async (mechanicUserId) => {
+    await fetch('/api/admin/mechanics', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mechanicUserId, newStatus: 'verified' }),
+    })
+    setMechanics((current) => current.filter((mechanic) => mechanic.user_id !== mechanicUserId))
+  }
+
+  const handleReject = async (mechanicUserId) => {
+    await fetch('/api/admin/mechanics', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mechanicUserId, newStatus: 'rejected' }),
+    })
+    setMechanics((current) => current.filter((mechanic) => mechanic.user_id !== mechanicUserId))
+  }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Mechanic Verification</h1>
-
-      <div className="space-y-6">
-        {pendingMechanics.length > 0 ? (
-          pendingMechanics.map((mechanic) => (
-            <div key={mechanic.id} className="bg-white rounded-lg shadow p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <PageWrapper title="Mechanic verification" description="Approve verified professionals before they enter the dispatch pool.">
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <Spinner />
+        </div>
+      ) : mechanics.length === 0 ? (
+        <Card>
+          <div className="py-12 text-center text-sm text-muted">No mechanics waiting for verification.</div>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {mechanics.map((mech) => (
+            <Card key={mech.id}>
+              <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1fr] lg:items-center">
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-lg">{mechanic.name}</h3>
-                  <p className="text-sm text-gray-600">{mechanic.email}</p>
-                  <p className="text-sm text-gray-600">{mechanic.phone}</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted">Mechanic</p>
+                  <p className="mt-2 text-base font-semibold">{mech.user?.full_name}</p>
+                  <p className="text-sm text-muted">{mech.user?.email}</p>
+                  <p className="text-sm text-muted">{mech.user?.phone || 'Phone pending'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">
-                    <strong>License:</strong> {mechanic.license}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <strong>Experience:</strong> {mechanic.yearsExperience} years
-                  </p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted">Business</p>
+                  <p className="mt-2 text-sm font-medium">{mech.business_name || 'Not set'}</p>
+                  <p className="text-sm text-muted">{mech.rating_avg ? `Rating ${Number(mech.rating_avg).toFixed(1)}` : 'No ratings yet'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    <strong>Documents:</strong>
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {mechanic.documents.map((doc) => (
-                      <button
-                        key={doc}
-                        className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
-                      >
-                        📄 {doc}
-                      </button>
-                    ))}
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted">Specializations</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(mech.specializations || []).slice(0, 3).map((spec) => <Badge key={spec} label={spec} variant="default" />)}
                   </div>
                 </div>
+                <div className="flex gap-2 lg:justify-end">
+                  <Button onClick={() => handleApprove(mech.user_id)}>Approve</Button>
+                  <Button variant="outline" onClick={() => handleReject(mech.user_id)}>Reject</Button>
+                </div>
               </div>
-
-              <div className="flex gap-3 border-t pt-4">
-                <button
-                  onClick={() => handleApprove(mechanic.id)}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition"
-                >
-                  ✓ Approve
-                </button>
-                <button
-                  onClick={() => handleReject(mechanic.id)}
-                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold transition"
-                >
-                  ✕ Reject
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="bg-white rounded-lg shadow p-6 text-center text-gray-600">
-            No pending mechanic verifications
-          </div>
-        )}
-      </div>
-    </div>
-  );
+            </Card>
+          ))}
+        </div>
+      )}
+    </PageWrapper>
+  )
 }

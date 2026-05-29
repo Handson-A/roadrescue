@@ -1,68 +1,49 @@
-/**
- * Create Rescue Request Endpoint
- * Handles creation of new rescue requests from drivers
- * Stores location, vehicle info, and initiates mechanic matching
- */
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createRescueRequest } from '@/lib/requests'
+import { NextResponse } from 'next/server'
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-
-export async function POST(request) {
+export async function POST(req) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      {
-        cookies: {
-          get: (name) => cookieStore.get(name)?.value,
-          set: (name, value, options) => cookieStore.set(name, value, options),
-          remove: (name, options) => cookieStore.delete(name),
-        },
-      }
-    );
+    const supabase = await createClient()
+    const serviceSupabase = await createServiceClient()
 
-    const {
-      driverId,
-      latitude,
-      longitude,
-      vehicleDetails,
-      issue,
-      diagnostics,
-    } = await request.json();
-
-    if (!driverId || !latitude || !longitude || !vehicleDetails || !issue) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400 }
-      );
+    // verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Create rescue request
-    const { data, error } = await supabase
-      .from('rescue_requests')
-      .insert({
-        driver_id: driverId,
-        latitude,
-        longitude,
-        vehicle_details: vehicleDetails,
-        issue,
-        diagnostics,
-        status: 'PENDING',
-        created_at: new Date().toISOString(),
-      })
-      .select();
+    // verify user is a driver
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-    if (error) throw error;
+    if (profile?.role !== 'driver') {
+      return NextResponse.json({ error: 'Only drivers can create requests' }, { status: 403 })
+    }
 
-    return new Response(JSON.stringify({ request: data[0] }), {
-      status: 201,
-    });
-  } catch (error) {
-    console.error('Request creation error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to create request' }),
-      { status: 500 }
-    );
+    const body = await req.json()
+
+    // basic input validation
+    const { incidentLat, incidentLng, serviceType } = body
+    if (!incidentLat || !incidentLng || !serviceType) {
+      return NextResponse.json(
+        { error: 'incidentLat, incidentLng, and serviceType are required' },
+        { status: 400 }
+      )
+    }
+
+    const result = await createRescueRequest(supabase, serviceSupabase, {
+      driverId: user.id,
+      ...body,
+    })
+
+    return NextResponse.json(result, { status: 201 })
+
+  } catch (err) {
+    console.error('[POST /api/requests]', err.message)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

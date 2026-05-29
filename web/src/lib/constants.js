@@ -1,65 +1,54 @@
-/**
- * App-wide Constants
- */
+export const REQUEST_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  EN_ROUTE: 'en_route',
+  ARRIVED: 'arrived',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+}
 
-// Request statuses (state machine)
-export const REQUEST_STATUSES = {
-  PENDING: 'PENDING',
-  ASSIGNED: 'ASSIGNED',
-  IN_PROGRESS: 'IN_PROGRESS',
-  COMPLETED: 'COMPLETED',
-  CANCELLED: 'CANCELLED',
-};
+export const SERVICE_TYPE = {
+  REPAIR: 'repair',
+  TOWING: 'towing',
+  TYRE_CHANGE: 'tyre_change',
+  BATTERY_JUMP: 'battery_jump',
+  FUEL_DELIVERY: 'fuel_delivery',
+  OTHER: 'other',
+}
 
-// User roles
-export const USER_ROLES = {
+export const USER_ROLE = {
   DRIVER: 'driver',
   MECHANIC: 'mechanic',
   ADMIN: 'admin',
-};
+}
 
-// Request priority levels
-export const PRIORITY_LEVELS = {
-  LOW: 'LOW',
-  MEDIUM: 'MEDIUM',
-  HIGH: 'HIGH',
-  CRITICAL: 'CRITICAL',
-};
+export const VERIFICATION_STATUS = {
+  PENDING: 'pending',
+  VERIFIED: 'verified',
+  REJECTED: 'rejected',
+}
 
-// Map constants
-export const MAP_CONFIG = {
-  DEFAULT_CENTER: [40.7128, -74.006], // New York City
-  DEFAULT_ZOOM: 13,
-  MECHANIC_SEARCH_RADIUS_KM: 10,
-};
+export const NOTIFICATION_TYPE = {
+  NEW_REQUEST: 'new_request',
+  MECHANIC_BID: 'mechanic_bid',
+  BID_ACCEPTED: 'bid_accepted',
+  BID_MISSED: 'bid_missed',
+  MECHANIC_EN_ROUTE: 'mechanic_en_route',
+  MECHANIC_ARRIVED: 'mechanic_arrived',
+  JOB_COMPLETED: 'job_completed',
+  REQUEST_CANCELLED: 'request_cancelled',
+  SYSTEM_ALERT: 'system_alert',
+}
 
-// API endpoints
-export const API_ENDPOINTS = {
-  DIAGNOSE: '/api/ai/diagnose',
-  REQUESTS: '/api/requests',
-  WEBHOOKS: '/api/webhooks',
-};
+export const BID_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  MISSED: 'missed',
+  WITHDRAWN: 'withdrawn',
+}
 
-// Toast notification durations (ms)
-export const TOAST_DURATIONS = {
-  SHORT: 3000,
-  DEFAULT: 5000,
-  LONG: 8000,
-};
+// how far we search for mechanics by default
+export const DEFAULT_SEARCH_RADIUS_KM = 10
 
-// Common error messages
-export const ERROR_MESSAGES = {
-  LOCATION_REQUIRED: 'Location access is required',
-  INVALID_CREDENTIALS: 'Invalid email or password',
-  NETWORK_ERROR: 'Network error occurred',
-  SERVER_ERROR: 'Server error occurred',
-  PERMISSION_DENIED: 'Permission denied',
-};
-
-// Success messages
-export const SUCCESS_MESSAGES = {
-  REQUEST_CREATED: 'Rescue request created successfully',
-  REQUEST_CANCELLED: 'Request cancelled',
-  BID_PLACED: 'Bid placed successfully',
-  JOB_COMPLETED: 'Job marked as completed',
-};
+// how many minutes before a mechanic location is

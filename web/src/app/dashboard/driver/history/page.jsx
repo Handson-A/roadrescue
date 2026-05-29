@@ -1,111 +1,110 @@
-'use client';
+'use client'
 
-/**
- * Driver Request History Page
- * Historical view of all past rescue requests
- * Includes completion details and ratings
- */
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
 
-import { useState, useEffect } from 'react';
-import { useRequest } from '@/hooks/useRequest';
+import PageWrapper from '@/components/layout/PageWrapper'
+import Badge from '@/components/ui/Badge'
+import Card from '@/components/ui/Card'
+import Spinner from '@/components/ui/Spinner'
+import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/lib/supabase/client'
+import { timeAgo } from '@/lib/utils'
+
+const filters = ['all', 'completed', 'cancelled']
 
 export default function DriverHistoryPage() {
-  const { requests } = useRequest();
-  const [filter, setFilter] = useState('all');
+  const { user } = useAuth()
+  const supabase = useMemo(() => createClient(), [])
+  const [filter, setFilter] = useState('all')
+  const [requests, setRequests] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  const filteredRequests = requests.filter((req) => {
-    if (filter === 'completed') return req.status === 'COMPLETED';
-    if (filter === 'cancelled') return req.status === 'CANCELLED';
-    return true;
-  });
+  useEffect(() => {
+    if (!user?.id) return
+
+    let mounted = true
+
+    async function loadHistory() {
+      setLoading(true)
+      const { data } = await supabase
+        .from('rescue_requests')
+        .select('id, status, service_type, problem_description, incident_address, created_at')
+        .eq('driver_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (mounted) {
+        setRequests(data || [])
+        setLoading(false)
+      }
+    }
+
+    loadHistory()
+
+    return () => {
+      mounted = false
+    }
+  }, [user?.id, supabase])
+
+  const rows = useMemo(() => {
+    if (filter === 'all') return requests
+    return requests.filter((request) => request.status === filter)
+  }, [requests, filter])
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Request History</h1>
-
-      {/* Filter */}
-      <div className="mb-6 flex gap-3">
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg font-semibold transition ${
-            filter === 'all'
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilter('completed')}
-          className={`px-4 py-2 rounded-lg font-semibold transition ${
-            filter === 'completed'
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Completed
-        </button>
-        <button
-          onClick={() => setFilter('cancelled')}
-          className={`px-4 py-2 rounded-lg font-semibold transition ${
-            filter === 'cancelled'
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Cancelled
-        </button>
-      </div>
-
-      {/* Requests Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {filteredRequests.length > 0 ? (
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Vehicle</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Issue</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Mechanic</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Date</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-6 py-4 text-sm font-mono text-gray-700">#{req.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{req.vehicleDetails}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{req.issue}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {req.assignedMechanic?.name || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(req.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        req.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-800'
-                          : req.status === 'CANCELLED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="p-6 text-center text-gray-600">
-            No requests found
+    <PageWrapper title="Request history" description="Review completed and cancelled rescue dispatches.">
+      <Card className="mb-4 bg-[#F3F4F6]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-[#7C7767]">Rescue archive</p>
+            <h2 className="mt-1 text-xl font-semibold">Past dispatches</h2>
           </div>
-        )}
-      </div>
-    </div>
-  );
+          <div className="flex flex-wrap gap-2">
+            {filters.map((key) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={[
+                  'rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition',
+                  filter === key ? 'bg-[#111827] text-[#F3F4F6] shadow-soft' : 'bg-[#F3F4F6] text-[#7C7767] hover:bg-[#111827]/5',
+                ].join(' ')}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {loading ? (
+        <Card className="bg-[#F3F4F6]">
+          <div className="py-12 flex justify-center"><Spinner /></div>
+        </Card>
+      ) : rows.length === 0 ? (
+        <Card className="bg-[#F3F4F6]">
+          <div className="py-12 text-center text-sm text-[#7C7767]">No requests in this filter.</div>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {rows.map((request) => (
+            <Link key={request.id} href={`/dashboard/driver/request/${request.id}`}>
+              <Card className="cursor-pointer bg-[#F3F4F6] hover:-translate-y-0.5 hover:shadow-lift transition">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#111827]">{request.service_type?.replace('_', ' ')}</p>
+                    <p className="mt-1 truncate text-sm text-[#7C7767]">{request.problem_description}</p>
+                    <p className="mt-2 truncate text-xs text-[#7C7767]">{request.incident_address || 'Address pending'}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <Badge label={request.status} variant={request.status} dot />
+                    <p className="mt-2 text-[11px] text-[#7C7767]">{timeAgo(request.created_at)}</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </PageWrapper>
+  )
 }

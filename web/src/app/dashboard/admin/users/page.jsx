@@ -1,86 +1,65 @@
-'use client';
+'use client'
 
-/**
- * Admin User Management Page
- * Manage user accounts, roles, permissions
- * Disable/enable accounts, view user details
- */
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react'
+import PageWrapper from '@/components/layout/PageWrapper'
+import Card from '@/components/ui/Card'
+import Spinner from '@/components/ui/Spinner'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState([
-    { id: 1, name: 'Alice Johnson', email: 'alice@example.com', role: 'driver', status: 'active' },
-    { id: 2, name: 'John Smith', email: 'john@example.com', role: 'mechanic', status: 'active' },
-    { id: 3, name: 'Admin User', email: 'admin@example.com', role: 'admin', status: 'active' },
-    { id: 4, name: 'Bob Wilson', email: 'bob@example.com', role: 'driver', status: 'inactive' },
-  ]);
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  const toggleUserStatus = (id) => {
-    setUsers(
-      users.map((u) =>
-        u.id === id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u
-      )
-    );
-  };
+  useEffect(() => {
+    let mounted = true
+
+    async function loadUsers() {
+      if (mounted) setLoading(true)
+      const response = await fetch('/api/admin/users', { cache: 'no-store' })
+      const payload = await response.json()
+
+      if (response.ok && mounted) {
+        setUsers(payload.users || [])
+      }
+      if (mounted) setLoading(false)
+    }
+
+    loadUsers()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">User Management</h1>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Role</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
+    <PageWrapper title="User management" description="Track accounts, roles, and access across the RoadRescue platform.">
+      <Card>
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <Spinner />
+          </div>
+        ) : users.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted">No users found.</div>
+        ) : (
+          <div className="space-y-3">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.name}</td>
-                <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
-                <td className="px-6 py-4 text-sm">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${
-                      user.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800'
-                        : user.role === 'mechanic'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}
-                  >
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      user.status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <button
-                    onClick={() => toggleUserStatus(user.id)}
-                    className="text-red-600 hover:text-red-700 font-semibold text-sm"
-                  >
-                    {user.status === 'active' ? 'Disable' : 'Enable'}
-                  </button>
-                </td>
-              </tr>
+              <Card key={user.id} className="transition hover:-translate-y-0.5 hover:shadow-lift">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-base font-semibold">{user.full_name || 'Unnamed user'}</p>
+                    <p className="text-sm text-muted">{user.email}</p>
+                    <p className="text-sm text-muted">{user.phone || 'Phone not provided'}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge label={user.role} variant={user.role} dot />
+                    <Button variant="outline">Inspect</Button>
+                  </div>
+                </div>
+              </Card>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+          </div>
+        )}
+      </Card>
+    </PageWrapper>
+  )
 }
