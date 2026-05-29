@@ -1,93 +1,87 @@
-'use client';
+'use client'
 
-/**
- * Admin Requests Management Page
- * Overview and management of all rescue requests in the system
- * Filter by status, location, mechanic
- */
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react'
+import PageWrapper from '@/components/layout/PageWrapper'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import Spinner from '@/components/ui/Spinner'
+import { timeAgo } from '@/lib/utils'
+import Button from '@/components/ui/Button'
 
 export default function AdminRequestsPage() {
-  const [filter, setFilter] = useState('all');
+  const [requests, setRequests] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [loading, setLoading] = useState(false)
 
-  const requests = [
-    { id: 101, driver: 'Alice Johnson', issue: 'Flat Tire', location: 'Downtown', status: 'COMPLETED', mechanic: 'John Smith' },
-    { id: 102, driver: 'Bob Wilson', issue: 'Engine Trouble', location: 'Highway', status: 'ASSIGNED', mechanic: 'Maria Garcia' },
-    { id: 103, driver: 'Carol Davis', issue: 'Battery Dead', location: 'Mall Parking', status: 'PENDING', mechanic: '-' },
-  ];
+  useEffect(() => {
+    let mounted = true
 
-  const filteredRequests = requests.filter((r) => {
-    if (filter === 'pending') return r.status === 'PENDING';
-    if (filter === 'assigned') return r.status === 'ASSIGNED';
-    if (filter === 'completed') return r.status === 'COMPLETED';
-    return true;
-  });
+    async function loadRequests() {
+      if (mounted) setLoading(true)
+      const url = filter === 'all'
+        ? '/api/admin/requests'
+        : `/api/admin/requests?status=${filter}`
+
+      const response = await fetch(url, { cache: 'no-store' })
+      const payload = await response.json()
+
+      if (response.ok && mounted) {
+        setRequests(payload.requests || [])
+      }
+      if (mounted) setLoading(false)
+    }
+
+    loadRequests()
+    return () => {
+      mounted = false
+    }
+  }, [filter])
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">All Rescue Requests</h1>
-
-      {/* Filters */}
-      <div className="mb-6 flex gap-3">
-        {['all', 'pending', 'assigned', 'completed'].map((status) => (
+    <PageWrapper title="All rescue requests" description="Monitor the full dispatch queue and filter by lifecycle status.">
+      <div className="mb-6 flex flex-wrap gap-2">
+        {['all', 'pending', 'accepted', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled'].map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg font-semibold transition capitalize ${
-              filter === status
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition ${filter === status ? 'bg-primary text-white shadow-soft' : 'bg-white text-muted hover:bg-surfaceAlt'}`}
           >
-            {status}
+            {status.toUpperCase()}
           </button>
         ))}
       </div>
 
-      {/* Requests Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {filteredRequests.length > 0 ? (
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">ID</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Driver</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Issue</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Location</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Mechanic</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {filteredRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-mono text-gray-700">#{req.id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{req.driver}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{req.issue}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{req.location}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{req.mechanic}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        req.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-800'
-                          : req.status === 'ASSIGNED'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <Card>
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <Spinner />
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="py-12 text-center text-sm text-muted">No requests found for the selected status.</div>
         ) : (
-          <div className="p-6 text-center text-gray-600">No requests found</div>
+          <div className="space-y-3">
+            {requests.map((request) => (
+              <Card key={request.id} className="hover:-translate-y-0.5 hover:shadow-lift transition">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge label={request.status} variant={request.status} dot />
+                      <span className="text-xs text-muted">{timeAgo(request.created_at)}</span>
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">{request.problem_description}</p>
+                    <p className="mt-1 text-sm text-muted">{request.incident_address || 'Location pending'}</p>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
+                      <span>Driver: {request.driver?.full_name || 'Unknown'}</span>
+                      <span>Mechanic: {request.mechanic?.full_name || 'Unassigned'}</span>
+                    </div>
+                  </div>
+                  <Button variant="outline">Open record</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
-      </div>
-    </div>
-  );
+      </Card>
+    </PageWrapper>
+  )
 }
