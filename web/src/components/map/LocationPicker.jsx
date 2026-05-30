@@ -46,7 +46,8 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
         AdvancedMarkerRef.current = AdvancedMarkerElement
         geocoder.current = new Geocoder()
 
-        // Default to Accra, Ghana or user's current location
+        // Default to Accra, Ghana or user's current location.
+        // The selected point is reverse-geocoded into a human-readable place label when possible.
         const defaultLat = 5.6037
         const defaultLng = -0.1870
 

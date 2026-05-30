@@ -107,13 +107,15 @@ export default function RequestForm() {
   }
 
   return (
-    <div className="space-y-4 lg:space-y-5">
-      <Card className="overflow-hidden p-0">
-        <div className="border-b border-border bg-surfaceAlt px-4 py-3 lg:px-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted">Step 1</p>
-          <h2 className="mt-1 font-semibold">Pickup point</h2>
+    <div className="space-y-5">
+      
+      {/* STEP 1: LOCATION HARNESS CARD */}
+      <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+        <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7C6B44]">Step 1</p>
+          <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Pickup Point</h3>
         </div>
-        <div className="p-4 lg:p-6">
+        <div className="p-4">
           <LocationPicker
             onSelect={({ lat, lng, address }) => {
               updateField('incidentLat', lat)
@@ -122,66 +124,84 @@ export default function RequestForm() {
             }}
           />
           {form.incidentAddress && (
-            <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-foreground">
-              Selected location: <span className="font-semibold">{form.incidentAddress}</span>
+            <div className="mt-4 rounded-xl border border-amber-200 bg-[#FFF9EF] px-4 py-3 text-xs font-bold text-slate-700 leading-relaxed">
+              📍 Selected Coordinate Asset: <span className="text-[#1F1B10] font-mono">{form.incidentAddress}</span>
             </div>
           )}
         </div>
-      </Card>
+      </div>
 
-      <Card className="p-0 overflow-hidden">
-        <div className="border-b border-border bg-surfaceAlt px-4 py-3 lg:px-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted">Step 2</p>
-          <h2 className="mt-1 font-semibold">Vehicle snapshot</h2>
+      {/* STEP 2: VEHICLE INFORMATION CARD */}
+      <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+        <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7C6B44]">Step 2</p>
+          <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Vehicle Snapshot</h3>
         </div>
-        <div className="grid gap-3 p-4 lg:grid-cols-2 lg:gap-4 lg:p-6">
+        <div className="grid gap-4 p-4 sm:grid-cols-2">
           <Input label="Make" value={form.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} placeholder="Toyota" />
           <Input label="Model" value={form.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} placeholder="Corolla" />
           <Input label="Year" type="number" value={form.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} placeholder="2018" />
           <Input label="Color" value={form.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} placeholder="Silver" />
-          <div className="lg:col-span-2">
-            <Input label="Plate number" value={form.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} placeholder="GR-1234-24" />
+          <div className="sm:col-span-2">
+            <Input label="Plate Number" value={form.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} placeholder="GR-1234-24" />
           </div>
         </div>
-      </Card>
+      </div>
 
-      <Card className="p-0 overflow-hidden">
-        <div className="border-b border-border bg-surfaceAlt px-4 py-3 lg:px-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-muted">Step 3</p>
-          <h2 className="mt-1 font-semibold">Incident details</h2>
+      {/* STEP 3: INCIDENT DISPATCH CORE CARD */}
+      <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+        <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7C6B44]">Step 3</p>
+          <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Incident Details</h3>
         </div>
-        <div className="space-y-4 p-4 lg:p-6">
+        <div className="space-y-4 p-4">
           <Textarea
             label="What is happening?"
             value={form.problemDescription}
             onChange={(e) => updateField('problemDescription', e.target.value)}
-            placeholder="Describe the symptoms, warning lights, sounds, smoke, tyre damage, or anything unusual."
-            hint="The more specific the report, the better the AI diagnosis and mechanic match."
+            placeholder="Describe any warning lights, sounds, or sudden component failures..."
+            hint="Detailed descriptions improve the precision of the AI diagnostic engine."
           />
 
           <Select
-            label="Service type"
+            label="Service Type"
             value={form.serviceType}
             onChange={(e) => updateField('serviceType', e.target.value)}
             options={serviceOptions}
           />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="outline" onClick={runDiagnostic} loading={diagnosing}>
-              Run AI diagnosis
-            </Button>
-            <span className="text-xs text-muted">{diagnosis ? `Suggested service: ${formatStatus(diagnosis.recommended_service || form.serviceType)}` : 'Optional, but recommended'}</span>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={runDiagnostic}
+              disabled={diagnosing}
+              className="rounded-xl border border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-900 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              {diagnosing ? 'Analyzing parameters...' : 'Run AI Diagnosis'}
+            </button>
+            <span className="text-[11px] font-bold text-[#7C6B44]">
+              {diagnosis ? `Suggested Node: ${formatStatus(diagnosis.recommended_service || form.serviceType)}` : 'Recommended baseline scan'}
+            </span>
           </div>
 
           {diagnosis && <DiagnosticResult diagnosis={diagnosis} isFallback={isFallback} />}
         </div>
-      </Card>
+      </div>
 
-      <div className="sticky bottom-3 z-20 lg:static">
-        <Button fullWidth size="lg" onClick={submitRequest} loading={submitting} disabled={!canSubmit}>
-          Send emergency dispatch
+      {/* EMERGENCY PRIMARY ACTION DISPATCH TRIGGER BUTTON */}
+      <div className="pt-2">
+        <Button 
+          fullWidth 
+          size="lg" 
+          onClick={submitRequest} 
+          loading={submitting} 
+          disabled={!canSubmit}
+          className="bg-slate-900 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 rounded-xl py-3.5 shadow-md disabled:opacity-40"
+        >
+          {submitting ? 'Initializing Dispatch Gateway...' : 'Send Emergency Dispatch'}
         </Button>
       </div>
+      
     </div>
   )
 }

@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Current App Behavior
+
+- Location picker inputs are reverse-geocoded when Google Maps is available, so users usually see a place name or address instead of raw coordinates. If geocoding fails, the app falls back to latitude/longitude.
+- Mechanic availability is real and persisted through Supabase presence plus the `mechanic_profiles.is_available` flag. The mechanic dashboard `Go online` action updates the live dispatch pool.
+- The mechanic quick action in the desktop sidebar uses a bulb icon now, matching the current online-state behavior.

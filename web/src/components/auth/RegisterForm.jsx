@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Input from '@/components/ui/Input'
@@ -13,6 +13,9 @@ import { createClient } from '@/lib/supabase/client'
 export default function RegisterForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState('')
+  const [consentAccepted, setConsentAccepted] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -36,6 +39,14 @@ export default function RegisterForm() {
   const isDriver = formData.role === USER_ROLE.DRIVER
   const [showOptionalDetails, setShowOptionalDetails] = useState(false)
 
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview)
+      }
+    }
+  }, [avatarPreview])
+
   // Modified to handle structural side effects safely during the user interaction event
   function updateField(field, value) {
     setFormData((current) => ({ ...current, [field]: value }))
@@ -51,6 +62,18 @@ export default function RegisterForm() {
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean)
+  }
+
+  function handleAvatarChange(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (avatarPreview) {
+      URL.revokeObjectURL(avatarPreview)
+    }
+
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
   }
 
   async function saveMechanicProfile(userId) {
@@ -151,6 +174,11 @@ export default function RegisterForm() {
         return
       }
 
+      if (!consentAccepted) {
+        toast.error('Please accept the consent terms to continue.')
+        return
+      }
+
       const data = await signUp({
         email,
         password: formData.password,
@@ -175,7 +203,63 @@ export default function RegisterForm() {
         }
       }
 
-      toast.success('Account created')
+      if (avatarFile) {
+        const supabase = createClient()
+        const userId = currentUser?.id || data?.user?.id || data?.session?.user?.id
+
+        if (userId) {
+          const fileExtension = avatarFile.name.split('.').pop() || 'jpg'
+          const filePath = `avatars/${userId}/${Date.now()}.${fileExtension}`
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, avatarFile, {
+              upsert: true,
+              contentType: avatarFile.type,
+            })
+
+          if (uploadError) {
+            toast.error(uploadError.message || 'Avatar upload failed, you can add it later from your profile.')
+          } else {
+            const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
+
+            await supabase
+              .from('profiles')
+              .update({ avatar_url: publicUrlData.publicUrl })
+              .eq('id', userId)
+          }
+        }
+      }
+
+      const roleLabel = formData.role.toLowerCase()
+      const dynamicMessage =
+        roleLabel === 'mechanic'
+          ? 'Thank you for partnering with us to keep our community safe and moving.'
+          : 'Your safety is our top priority, and we\'re here to ensure help is always within reach.'
+
+      const emailBody = `
+        <p>Hi ${fullName},</p>
+        <p>Welcome to RoadRescue as a <strong>${formData.role}</strong>.</p>
+        <p>${dynamicMessage} We are built to ensure every roadside connection is secure, reliable, and seamless.</p>
+        <br/>
+        <p>To get started, please confirm your email with the Supabase authentication link sent together with this mail and log in to your account.</p>
+        <p>Once logged in, you can update your profile picture and complete your profile details. This will help us connect you with the right matches when you need assistance or when drivers are looking for trusted professionals.</p>
+        <p>Thank you for joining the RoadRescue community. We look forward to supporting you on every journey ahead.</p>
+        <p>Best regards,<br/>The RoadRescue Team</p>
+      `
+
+      await fetch('/api/notifications/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: email,
+          subject: `Welcome to RoadRescue — ${formData.role}`,
+          htmlContent: emailBody,
+        }),
+      })
+
+      toast.success('Account created, check your email and activate within the next(48hrs)')
 
       if (currentUser?.role) {
         router.push(`/dashboard/${currentUser.role}`)
@@ -382,6 +466,28 @@ export default function RegisterForm() {
 
       <div>
         <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
+          Profile Photo
+        </label>
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wider file:text-white hover:file:bg-slate-800"
+          />
+          {avatarPreview ? (
+            <div className="flex items-center gap-3">
+              <img src={avatarPreview} alt="Avatar preview" className="h-14 w-14 rounded-full object-cover" />
+              <p className="text-xs text-slate-500">Preview ready. This will be uploaded after signup.</p>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Optional. Add a profile photo now or later from your account.</p>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
           Password
         </label>
         <Input
@@ -392,10 +498,22 @@ export default function RegisterForm() {
         />
       </div>
 
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <input
+          type="checkbox"
+          checked={consentAccepted}
+          onChange={(e) => setConsentAccepted(e.target.checked)}
+          className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+        />
+        <span className="text-sm leading-6 text-slate-600">
+          I consent to RoadRescue using my account details, location, and rescue activity to provide roadside assistance, notifications, and support.
+        </span>
+      </label>
+
       <Button
         type="submit"
         className="w-full bg-slate-900 text-xs font-black uppercase tracking-wider hover:bg-slate-800"
-        disabled={loading}
+        disabled={loading || !consentAccepted}
       >
         {loading ? 'Creating account...' : isMechanic ? 'Submit Mechanic Registration' : 'Submit Driver Registration'}
       </Button>

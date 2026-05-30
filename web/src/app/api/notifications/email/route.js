@@ -1,6 +1,17 @@
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+const primaryFromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@roadrescue.com'
+const fallbackFromEmail = 'RoadRescue <onboarding@resend.dev>'
+
+async function sendEmail({ to, subject, html }) {
+  return resend.emails.send({
+    from: primaryFromEmail,
+    to,
+    subject,
+    html,
+  })
+}
 
 export async function POST(request) {
   try {
@@ -18,12 +29,19 @@ export async function POST(request) {
       return Response.json({ error: 'Missing email body (message or htmlContent)' }, { status: 400 })
     }
 
-    const result = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'noreply@roadrescue.com',
-      to,
-      subject,
-      html: htmlContent || `<p>${message}</p>`,
-    })
+    const html = htmlContent || `<p>${message}</p>`
+
+    let result = await sendEmail({ to, subject, html })
+
+    if (result.error?.statusCode === 403 || result.error?.name === 'validation_error') {
+      console.warn('Primary Resend sender rejected, retrying with fallback onboarding sender')
+      result = await resend.emails.send({
+        from: fallbackFromEmail,
+        to,
+        subject,
+        html,
+      })
+    }
 
     if (result.error) {
       console.error('Resend error:', result.error)

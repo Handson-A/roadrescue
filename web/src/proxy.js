@@ -50,7 +50,7 @@ export async function proxy(request) {
       .eq('id', user.id)
       .maybeSingle()
 
-    const userRole = profile?.role
+    const userRole = profile?.role || user.user_metadata?.role || null
     const homePath = userRole ? roleRoutes[userRole] : '/auth/login'
 
     if (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) {
@@ -65,7 +65,7 @@ export async function proxy(request) {
               `[SECURITY] Cross-role access attempt: User ${user.id} (${userRole}) tried to access ${requiredRole} dashboard at ${pathname}`
             )
           }
-          return NextResponse.redirect(new URL('/404', request.url))
+          return NextResponse.redirect(new URL(homePath, request.url))
         }
         break
       }
@@ -73,7 +73,7 @@ export async function proxy(request) {
 
     if (protectedPaths.some((path) => pathname.startsWith(path))) {
       if (!userRole || !pathname.startsWith(roleRoutes[userRole])) {
-        return NextResponse.redirect(new URL('/404', request.url))
+        return NextResponse.redirect(new URL(homePath, request.url))
       }
     }
   }
