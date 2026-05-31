@@ -1,7 +1,7 @@
 // web/src/app/api/requests/status/route.js
 
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { updateRequestStatus } from '@/lib/requests'
+import { updateRequestStatus } from '@/lib/request'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req) {

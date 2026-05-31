@@ -8,19 +8,21 @@ import Spinner from '@/components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { timeAgo } from '@/lib/utils'
+import { CheckCircle2, Star, Calendar, MessageSquare, HardHat } from 'lucide-react'
 
 export default function MechanicHistoryPage() {
   const { user } = useAuth()
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
-  
 
   useEffect(() => {
     if (!user?.id) return
     let mounted = true
+    
     async function loadHistory() {
       const supabase = createClient()
       if (mounted) setLoading(true)
+      
       const { data, error } = await supabase
         .from('rescue_requests')
         .select(`
@@ -50,62 +52,114 @@ export default function MechanicHistoryPage() {
     }
   }, [user?.id])
 
+  // Compute stats safely
   const avgRating = jobs.length > 0
     ? (jobs.reduce((sum, j) => sum + (j.driver_rating || 0), 0) / jobs.length).toFixed(1)
-    : 0
+    : '0.0'
+
+  const currentMonthJobs = jobs.filter((j) => {
+    if (!j.completed_at) return false
+    const compDate = new Date(j.completed_at)
+    const now = new Date()
+    return compDate.getMonth() === now.getMonth() && compDate.getFullYear() === now.getFullYear()
+  }).length
 
   return (
-    <PageWrapper title="Job history" description="Review completed rescues and customer feedback.">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-8">
-        <Card>
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-muted">Completed jobs</p>
-            <p className="mt-2 text-3xl font-semibold">{jobs.length}</p>
-          </div>
-        </Card>
-        <Card>
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-muted">Average rating</p>
-            <p className="mt-2 text-3xl font-semibold">⭐ {avgRating}</p>
-          </div>
-        </Card>
-        <Card>
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-muted">This month</p>
-            <p className="mt-2 text-3xl font-semibold">{jobs.filter((j) => new Date(j.completed_at).getMonth() === new Date().getMonth()).length}</p>
-          </div>
-        </Card>
-      </div>
+    <PageWrapper 
+      title="Performance Log" 
+      description="Review archived rescue dispatch completions, client rating metrics, and historical feed reviews."
+    >
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
+        
+        {/* ================= METRICS STATS SUMMARY HEADER ================= */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Rescues</span>
+              <CheckCircle2 size={16} className="text-emerald-500" />
+            </div>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{jobs.length}</p>
+            <p className="mt-1 text-xs text-slate-500 font-medium">Lifetime closed service calls</p>
+          </Card>
 
-      <Card>
-        {loading ? (
-          <div className="py-12 flex justify-center">
-            <Spinner />
-          </div>
-        ) : jobs.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted">No completed jobs yet.</div>
-        ) : (
-          <div className="space-y-3">
-            {jobs.map((job) => (
-              <Card key={job.id} className="hover:-translate-y-0.5 hover:shadow-lift transition">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge label={job.service_type} variant="completed" dot />
-                      <span className="text-xs text-muted">{timeAgo(job.completed_at)}</span>
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Average Rating</span>
+              <Star size={16} className="text-[#FFD700] fill-[#FFD700]" />
+            </div>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{avgRating} <span className="text-sm font-bold text-slate-400">/ 5.0</span></p>
+            <p className="mt-1 text-xs text-slate-500 font-medium">Driver feedback satisfaction index</p>
+          </Card>
+
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Monthly Volume</span>
+              <Calendar size={16} className="text-slate-400" />
+            </div>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{currentMonthJobs}</p>
+            <p className="mt-1 text-xs text-slate-500 font-medium">Resolved within current cycle</p>
+          </Card>
+        </div>
+
+        {/* ================= MAIN HISTORICAL FEED AREA ================= */}
+        <div className="w-full">
+          {loading ? (
+            <Card className="rounded-2xl border-slate-200 bg-white py-16 flex justify-center shadow-sm">
+              <Spinner />
+            </Card>
+          ) : jobs.length === 0 ? (
+            /* Premium design placeholder empty-state setup */
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-xl mx-auto mt-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-4">
+                <HardHat size={22} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">No Historical Records Found</h3>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
+                When you toggle online and complete incoming breakdown requests, your full dispatch logs will display here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Archived Dispatch History</h3>
+              {jobs.map((job) => (
+                <Card key={job.id} className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 transition-all">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge label={job.service_type} variant="completed" dot />
+                        <span className="text-[11px] font-medium text-slate-400">{timeAgo(job.completed_at)}</span>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-base font-bold text-slate-900 tracking-tight">
+                          {job.driver?.full_name || 'Anonymous Client'}
+                        </h4>
+                        <p className="mt-1 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-start gap-2 max-w-3xl">
+                          <MessageSquare size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                          <span className="italic">
+                            {job.driver_review ? `"${job.driver_review}"` : 'No text feedback logged for this session.'}
+                          </span>
+                        </p>
+                      </div>
                     </div>
-                    <p className="mt-3 text-lg font-semibold truncate">{job.driver?.full_name}</p>
-                    <p className="mt-1 text-sm text-muted truncate">{job.driver_review || 'No review left'}</p>
+
+                    {/* Clean structural rating alignment badge */}
+                    <div className="shrink-0 self-start sm:self-auto bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                      <Star size={14} className={job.driver_rating ? 'text-[#FFD700] fill-[#FFD700]' : 'text-slate-300'} />
+                      <span className="text-xs font-bold text-slate-800">
+                        {job.driver_rating ? `${job.driver_rating}.0` : 'Unrated'}
+                      </span>
+                    </div>
+
                   </div>
-                  <div className="text-sm text-muted lg:text-right">
-                    <p>{job.driver_rating ? `⭐ ${job.driver_rating}/5` : 'Unrated'}</p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Card>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
     </PageWrapper>
   )
 }

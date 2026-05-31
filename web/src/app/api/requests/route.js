@@ -1,5 +1,5 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { createRescueRequest } from '@/lib/requests'
+import { createRescueRequest } from '@/lib/request'
 import { NextResponse } from 'next/server'
 
 export async function POST(req) {

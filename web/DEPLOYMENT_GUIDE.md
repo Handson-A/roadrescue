@@ -170,13 +170,13 @@ Related: Request lifecycle management"
 ```bash
 git commit -m "chore(config): prepare for Vercel deployment
 
-- Added vercel.json with Next.js 20.x runtime config
+- Added a minimal vercel.json for Next.js deployment compatibility
 - Updated .env.example with comprehensive documentation
 - Updated .gitignore for production security
   - Added .env.local, .env.production exclusions
   - Added IDE files (.vscode, .idea)
   - Comprehensive OS file ignores
-- Enabled security headers in vercel.json
+- Keep deployment settings in Vercel project config; avoid unsupported fields like nodeVersion in vercel.json
   - X-Content-Type-Options: nosniff
   - X-Frame-Options: DENY
   - X-XSS-Protection: 1; mode=block

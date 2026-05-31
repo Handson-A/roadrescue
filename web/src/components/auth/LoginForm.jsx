@@ -1,5 +1,4 @@
 'use client'
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -23,10 +22,14 @@ export default function LoginForm() {
       const data = await signIn(formData)
 
       const currentUser = await getCurrentUser()
-      toast.success('Login successful')
+      if (!currentUser?.role) {
+        toast.error('Your account is not ready yet. Please confirm your email or try again after your profile syncs.')
+        router.replace('/auth/login')
+        return
+      }
 
-      const resolvedRole = currentUser?.role || data?.user?.user_metadata?.role || 'driver'
-      router.push(`/dashboard/${resolvedRole}`)
+      toast.success('Login successful')
+      router.replace(`/dashboard/${currentUser.role}`)
     } catch (err) {
       toast.error(err?.message || 'Unable to login')
     } finally {

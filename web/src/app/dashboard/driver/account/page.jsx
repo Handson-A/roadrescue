@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
-import Badge from '@/components/ui/Badge'
 import toast from 'react-hot-toast'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, CarFront, BadgeCheck, Shield, MapPin } from 'lucide-react'
+import { User, Mail, Phone, CarFront, BadgeCheck, Shield, ArrowLeft } from 'lucide-react'
 
 export default function DriverAccountPage() {
   const { user, profile } = useAuth()
   const [driverProfile, setDriverProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [dataInitialized, setDataInitialized] = useState(false)
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -32,47 +33,43 @@ export default function DriverAccountPage() {
   })
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id || !profile || dataInitialized) return
 
     let mounted = true
 
-    async function loadDriverProfile() {
+    async function loadFullProfile() {
       const supabase = createClient()
       const { data } = await supabase
         .from('driver_profiles')
         .select('vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, emergency_contact_name, emergency_contact_phone, home_area')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       if (mounted) {
         setDriverProfile(data || null)
+        setFormData({
+          fullName: profile?.full_name || '',
+          email: profile?.email || '',
+          phone: profile?.phone || '',
+          vehicleMake: data?.vehicle_make || '',
+          vehicleModel: data?.vehicle_model || '',
+          vehicleYear: data?.vehicle_year || '',
+          vehicleColor: data?.vehicle_color || '',
+          vehiclePlate: data?.vehicle_plate || '',
+          emergencyContactName: data?.emergency_contact_name || '',
+          emergencyContactPhone: data?.emergency_contact_phone || '',
+          homeArea: data?.home_area || '',
+        })
+        setDataInitialized(true)
       }
     }
 
-    loadDriverProfile()
+    loadFullProfile()
 
     return () => {
       mounted = false
     }
-  }, [user?.id])
-
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        fullName: profile?.full_name || '',
-        email: profile?.email || '',
-        phone: profile?.phone || '',
-        vehicleMake: driverProfile?.vehicle_make || '',
-        vehicleModel: driverProfile?.vehicle_model || '',
-        vehicleYear: driverProfile?.vehicle_year || '',
-        vehicleColor: driverProfile?.vehicle_color || '',
-        vehiclePlate: driverProfile?.vehicle_plate || '',
-        emergencyContactName: driverProfile?.emergency_contact_name || '',
-        emergencyContactPhone: driverProfile?.emergency_contact_phone || '',
-        homeArea: driverProfile?.home_area || '',
-      })
-    }
-  }, [profile, driverProfile])
+  }, [user?.id, profile, dataInitialized])
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -108,9 +105,9 @@ export default function DriverAccountPage() {
         .from('driver_profiles')
         .select('user_id')
         .eq('user_id', user?.id)
-        .single()
+        .maybeSingle()
 
-      if (readError && readError.code !== 'PGRST116') throw readError
+      if (readError) throw readError
 
       if (existingDriver) {
         const { error: updateError } = await supabase
@@ -137,163 +134,153 @@ export default function DriverAccountPage() {
     }
   }
 
-  if (!profile) {
-    return <PageWrapper title="Driver Profile"><div className="flex items-center justify-center py-12"><Spinner /></div></PageWrapper>
+  if (!profile || !dataInitialized) {
+    return (
+      <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
+        <div className="text-center space-y-3">
+          <Spinner />
+          <p className="text-xs font-bold text-[#7C6B44] uppercase tracking-widest animate-pulse">Synchronizing Security Records...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <PageWrapper title="Driver Profile" description="Editable personal details, verification-gated vehicle records, and locked trust data.">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <User size={20} className="text-[#FFD700]" />
-              Fully Editable Now
+    // FIXED: Added lg:pl-64 layout alignment constraint configuration
+    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 lg:pl-64 flex justify-center items-start pb-24 lg:pb-8">
+      <div className="w-full max-w-2xl flex flex-col gap-5">
+        
+        <div className="flex items-center gap-3 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
+          <div>
+            <h1 className="text-lg font-black tracking-tight text-[#1F1B10]">My Profile</h1>
+            <p className="text-xs text-[#7C6B44] font-medium">Manage verification data and emergency links</p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+            <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
+              <User size={16} className="text-[#F5D108]" />
+              Personal Details
             </h2>
             {!isEditing ? (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+              <button onClick={() => setIsEditing(true)} className="rounded-xl border border-[#DCCDA9] bg-white px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#1F1B10] shadow-sm hover:bg-slate-50">
                 Edit
-              </Button>
+              </button>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                <button onClick={() => setIsEditing(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500">
                   Cancel
-                </Button>
-                <Button size="sm" loading={loading} onClick={handleSave}>
-                  Save
-                </Button>
+                </button>
+                <button onClick={handleSave} disabled={loading} className="rounded-xl bg-slate-900 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:bg-slate-800">
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
               </div>
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="p-4 space-y-4">
             <div>
-              <label className="mb-2 block text-xs font-mono font-black uppercase tracking-[0.18em] text-[#7C7767]">Display Name</label>
+              <label className="mb-1.5 block text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">Full Display Name</label>
               {isEditing ? (
                 <Input value={formData.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Your full name" />
               ) : (
-                <p className="font-medium text-[#111827]">{formData.fullName || 'Not set'}</p>
+                <p className="text-sm font-bold text-[#1F1B10]">{formData.fullName || 'Not configured'}</p>
               )}
             </div>
 
             <div>
-              <label className="mb-2 flex items-center gap-2 text-xs font-mono font-black uppercase tracking-[0.18em] text-[#7C7767]">
-                <Mail size={14} /> Email
+              <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">
+                <Mail size={12} /> Registered Email Address
               </label>
-              <p className="font-medium text-[#111827]">{formData.email || 'Not set'}</p>
-              <p className="mt-1 text-xs text-[#7C7767]">Email cannot be changed</p>
+              <p className="text-sm font-bold text-slate-500">{formData.email || 'Not configured'}</p>
+              <p className="mt-1 text-[10px] font-medium text-slate-400">Security parameter locked to session configuration</p>
             </div>
 
             <div>
-              <label className="mb-2 flex items-center gap-2 text-xs font-mono font-black uppercase tracking-[0.18em] text-[#7C7767]">
-                <Phone size={14} /> Phone Number
+              <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">
+                <Phone size={12} /> Contact Phone Number
               </label>
               {isEditing ? (
                 <Input value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="+233..." />
               ) : (
-                <p className="font-medium text-[#111827]">{formData.phone || 'Not set'}</p>
+                <p className="text-sm font-bold text-[#1F1B10]">{formData.phone || 'Not configured'}</p>
               )}
-              <p className="mt-1 text-xs text-[#7C7767]">Requires OTP if changed</p>
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-mono font-black uppercase tracking-[0.18em] text-[#7C7767]">Home / Work Location</label>
+              <label className="mb-1.5 block text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">Primary Operation Base Area</label>
               {isEditing ? (
-                <Input value={formData.homeArea} onChange={(e) => handleChange('homeArea', e.target.value)} placeholder="Accra, Tema, Kumasi..." />
+                <Input value={formData.homeArea} onChange={(e) => handleChange('homeArea', e.target.value)} placeholder="Accra, East Legon, Tema..." />
               ) : (
-                <p className="font-medium text-[#111827]">{formData.homeArea || 'Not set'}</p>
+                <p className="text-sm font-bold text-[#1F1B10]">{formData.homeArea || 'Not configured'}</p>
               )}
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-6">
-          <h2 className="mb-6 flex items-center gap-2 text-xl font-bold">
-            <CarFront size={20} className="text-[#FFD700]" />
-            Editable but Requires Verification
-          </h2>
+        <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+          <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+            <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
+              <CarFront size={16} className="text-[#F5D108]" />
+              Vehicle Snapshot Profile
+            </h2>
+          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 p-4 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Make</label>
-              {isEditing ? <Input value={formData.vehicleMake} onChange={(e) => handleChange('vehicleMake', e.target.value)} placeholder="Toyota" /> : <p className="font-medium text-[#111827]">{formData.vehicleMake || 'Not set'}</p>}
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Vehicle Make</label>
+              {isEditing ? <Input value={formData.vehicleMake} onChange={(e) => handleChange('vehicleMake', e.target.value)} placeholder="Toyota" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleMake || '—'}</p>}
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Model</label>
-              {isEditing ? <Input value={formData.vehicleModel} onChange={(e) => handleChange('vehicleModel', e.target.value)} placeholder="Camry" /> : <p className="font-medium text-[#111827]">{formData.vehicleModel || 'Not set'}</p>}
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Vehicle Model</label>
+              {isEditing ? <Input value={formData.vehicleModel} onChange={(e) => handleChange('vehicleModel', e.target.value)} placeholder="Camry" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleModel || '—'}</p>}
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Year</label>
-              {isEditing ? <Input type="number" value={formData.vehicleYear} onChange={(e) => handleChange('vehicleYear', e.target.value)} placeholder="2020" /> : <p className="font-medium text-[#111827]">{formData.vehicleYear || 'Not set'}</p>}
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Production Year</label>
+              {isEditing ? <Input type="number" value={formData.vehicleYear} onChange={(e) => handleChange('vehicleYear', e.target.value)} placeholder="2020" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleYear || '—'}</p>}
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Color</label>
-              {isEditing ? <Input value={formData.vehicleColor} onChange={(e) => handleChange('vehicleColor', e.target.value)} placeholder="White" /> : <p className="font-medium text-[#111827]">{formData.vehicleColor || 'Not set'}</p>}
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Chassis Color</label>
+              {isEditing ? <Input value={formData.vehicleColor} onChange={(e) => handleChange('vehicleColor', e.target.value)} placeholder="White" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleColor || '—'}</p>}
             </div>
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Plate Number</label>
-              {isEditing ? <Input value={formData.vehiclePlate} onChange={(e) => handleChange('vehiclePlate', e.target.value)} placeholder="GR-2847-21" /> : <p className="font-medium text-[#111827]">{formData.vehiclePlate || 'Not set'}</p>}
-              <p className="mt-1 text-xs text-[#7C7767]">Changes may be flagged for review</p>
-            </div>
-            <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Vehicle fingerprint</label>
-              <p className="font-medium text-[#111827]">Make, model, year, color, and plate are used for dispatch matching.</p>
+            <div className="sm:col-span-2 border-t border-slate-100 pt-3">
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">License Plate Number</label>
+              {isEditing ? <Input value={formData.vehiclePlate} onChange={(e) => handleChange('vehiclePlate', e.target.value)} placeholder="GR-2847-21" /> : <p className="text-sm font-mono font-bold text-slate-800">{formData.vehiclePlate || '—'}</p>}
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-6">
-          <h2 className="mb-6 flex items-center gap-2 text-xl font-bold">
-            <Shield size={20} className="text-[#FFD700]" />
-            Fully Editable Contact Details
-          </h2>
+        <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+          <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+            <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
+              <Shield size={16} className="text-[#F5D108]" />
+              Emergency Contact (SOS Link)
+            </h2>
+          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 p-4 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Contact Name</label>
-              {isEditing ? <Input value={formData.emergencyContactName} onChange={(e) => handleChange('emergencyContactName', e.target.value)} placeholder="Jane Doe" /> : <p className="font-medium text-[#111827]">{formData.emergencyContactName || 'Not set'}</p>}
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Next of Kin Name</label>
+              {isEditing ? <Input value={formData.emergencyContactName} onChange={(e) => handleChange('emergencyContactName', e.target.value)} placeholder="Jane Doe" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.emergencyContactName || '—'}</p>}
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Contact Phone</label>
-              {isEditing ? <Input value={formData.emergencyContactPhone} onChange={(e) => handleChange('emergencyContactPhone', e.target.value)} placeholder="+233..." /> : <p className="font-medium text-[#111827]">{formData.emergencyContactPhone || 'Not set'}</p>}
+              <label className="mb-1 block text-xs font-bold text-[#7C6B44]">SOS Phone Number</label>
+              {isEditing ? <Input value={formData.emergencyContactPhone} onChange={(e) => handleChange('emergencyContactPhone', e.target.value)} placeholder="+233..." /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.emergencyContactPhone || '—'}</p>}
             </div>
           </div>
 
           {driverProfile?.vehicle_plate && (
-            <div className="mt-5 rounded-2xl border border-[#7C7767]/25 bg-[#F3F4F6] px-4 py-3">
-              <p className="flex items-center gap-2 text-sm font-semibold text-[#111827]">
-                <BadgeCheck size={16} /> Saved vehicle profile
+            <div className="m-4 mt-0 rounded-xl border border-amber-200 bg-[#FFF9EF] p-3 flex items-start gap-2.5">
+              <BadgeCheck size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+              <p className="text-[11px] font-medium text-slate-600 leading-relaxed">
+                <span className="font-bold text-slate-900">Verified System Ledger:</span> Your default vehicle parameters are active and will prefill future assistance dispatches.
               </p>
-              <p className="mt-1 text-xs text-[#7C7767]">Your default vehicle details will prefill future rescue requests.</p>
             </div>
           )}
-        </Card>
+        </div>
 
-        <Card className="p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
-            <Shield size={20} className="text-[#FFD700]" />
-            Locked Trust Records
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">User ID</label>
-              <p className="mt-1 text-sm text-[#2D271C]">{profile?.id || '—'}</p>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Account status</label>
-              <p className="mt-1 text-sm text-[#2D271C]">{profile?.status || 'active'}</p>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Registered at</label>
-              <p className="mt-1 text-sm text-[#2D271C]">{profile?.created_at ? new Date(profile.created_at).toLocaleString() : '—'}</p>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6E634B]">Incident history</label>
-              <p className="mt-1 text-sm text-[#2D271C]">Immutable operational history lives in rescue_requests.</p>
-            </div>
-          </div>
-        </Card>
       </div>
-    </PageWrapper>
+    </div>
   )
 }

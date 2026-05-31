@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# RoadRescue — Web app (Developer README)
 
-## Getting Started
+This README covers local development and a few recent developer-facing changes specific to the web application.
 
-First, run the development server:
+Quick start
 
+1. Install dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd web
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Add environment variables
+Create `.env.local` in `web/` with the following values:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_key
+OPENAI_API_KEY=your_openai_key
+```
+If the Supabase envs are missing the app falls back to a mock Supabase client (useful for offline UI work). To force mock behavior set `NEXT_PUBLIC_USE_MOCK_AUTH=true`.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+3. Run locally
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Build
+```bash
+npm run build
+```
 
-## Learn More
+Developer notes (recent)
+- Auth merging: `AuthProvider` now fetches and flattens `driver_profiles` and `mechanic_profiles` into the shared `profile` returned to the UI. This avoids missing fields on dashboards.
+- Login/Register gating: login and register flows now require a DB-backed role before auto-routing into role dashboards. This prevents accidental auto-login as the mock 'driver'.
+- Sign-out: uses client-side navigation (`router.replace('/auth/login')`) to avoid full reloads.
+- Mechanic earnings: removed from sidebar; earnings shown on `dashboard/mechanic/account` as an earnings card with edit actions.
+- Responsive sidebar: breakpoint moved from `lg` to `md`.
+- Notifications: outside-click and Escape close the dropdown; items navigate to the related pages.
 
-To learn more about Next.js, take a look at the following resources:
+Files to check when changing behavior
+- `src/providers/AuthProvider.jsx`
+- `src/lib/auth.js`
+- `src/components/layout/Navbar.jsx`
+- `src/components/layout/Sidebar.jsx`
+- `src/components/layout/Notifications.jsx`
+- `src/app/dashboard/mechanic/account/page.jsx`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you change any of the above flows, please update this README and [docs/DEVELOPER_NOTES.md](../docs/DEVELOPER_NOTES.md).

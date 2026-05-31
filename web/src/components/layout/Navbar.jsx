@@ -1,153 +1,9 @@
-// 'use client';
-
-// /**
-//  * Navbar Component
-//  * Top navigation bar with user profile and controls
-//  */
-
-// import { useState } from 'react';
-// import { useRouter } from 'next/navigation';
-// import Avatar from '@/components/ui/Avatar';
-
-// export default function Navbar({ user, role }) {
-//   const router = useRouter();
-//   const [showMenu, setShowMenu] = useState(false);
-
-//   const handleLogout = () => {
-//     // Clear auth and redirect to login
-//     sessionStorage.removeItem('auth_token');
-//     router.push('/login');
-//   };
-
-//   return (
-//     <nav className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
-//       <div>
-//         <h1 className="text-xl font-bold text-gray-900">
-//           {role === 'driver' && 'Driver Dashboard'}
-//           {role === 'mechanic' && 'Mechanic Dashboard'}
-//           {role === 'admin' && 'Admin Dashboard'}
-//         </h1>
-//       </div>
-
-//       {/* User Menu */}
-//       <div className="relative">
-//         <button
-//           onClick={() => setShowMenu(!showMenu)}
-//           className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition"
-//         >
-//           <Avatar src={user?.avatar} alt={user?.name} size="sm" />
-//           <span className="text-sm font-semibold text-gray-900">{user?.name}</span>
-//         </button>
-
-//         {showMenu && (
-//           <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-//             <a
-//               href="/profile"
-//               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-//             >
-//               Profile
-//             </a>
-//             <a href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-//               Settings
-//             </a>
-//             <hr className="my-2" />
-//             <button
-//               onClick={handleLogout}
-//               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-//             >
-//               Logout
-//             </button>
-//           </div>
-//         )}
-//       </div>
-//     </nav>
-//   );
-// }
-
-// web/src/components/layout/Navbar.jsx
-// Top bar — shows page title + notification bell
-
-// 'use client'
-
-// import { useNotifications } from '@/hooks/useNotifications'
-// import { useAuth } from '@/hooks/useAuth'
-// import { useState } from 'react'
-// import { timeAgo } from '@/lib/utils'
-
-// export default function Navbar({ title }) {
-//   const { user } = useAuth()
-//   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(user?.id)
-//   const [open, setOpen] = useState(false)
-
-//   return (
-//     <header className="h-14 border-b border-surface-border bg-surface-card/80 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-30">
-//       <h1 className="text-sm font-semibold text-text-primary">{title}</h1>
-
-//       {/* notification bell */}
-//       <div className="relative">
-//         <button
-//           onClick={() => setOpen(!open)}
-//           className="relative p-2 text-text-secondary hover:text-text-primary transition-colors"
-//         >
-//           {/* bell icon */}
-//           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-//             <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-//           </svg>
-//           {unreadCount > 0 && (
-//             <span className="absolute top-1 right-1 w-4 h-4 bg-amber text-black text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse-amber">
-//               {unreadCount > 9 ? '9+' : unreadCount}
-//             </span>
-//           )}
-//         </button>
-
-//         {/* dropdown */}
-//         {open && (
-//           <div className="absolute right-0 top-10 w-80 card shadow-card z-50 animate-slide-up">
-//             <div className="flex items-center justify-between mb-3">
-//               <span className="text-sm font-semibold">Notifications</span>
-//               {unreadCount > 0 && (
-//                 <button
-//                   onClick={markAllAsRead}
-//                   className="text-xs text-amber hover:text-amber-light transition-colors"
-//                 >
-//                   Mark all read
-//                 </button>
-//               )}
-//             </div>
-
-//             <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
-//               {notifications.length === 0 && (
-//                 <p className="text-sm text-text-muted text-center py-6">No notifications</p>
-//               )}
-//               {notifications.map(n => (
-//                 <button
-//                   key={n.id}
-//                   onClick={() => markAsRead(n.id)}
-//                   className={[
-//                     'w-full text-left px-3 py-2.5 rounded-btn transition-colors text-sm',
-//                     n.is_read
-//                       ? 'text-text-muted hover:bg-surface-raised'
-//                       : 'bg-amber/5 border border-amber/10 text-text-primary',
-//                   ].join(' ')}
-//                 >
-//                   <p className="leading-snug">{n.message}</p>
-//                   <p className="text-xs text-text-muted mt-0.5">{timeAgo(n.created_at)}</p>
-//                 </button>
-//               ))}
-//             </div>
-//           </div>
-//         )}
-//       </div>
-//     </header>
-//   )
-// }
-
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-
-import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, Settings, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
+import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, Volume2, VolumeX, X } from 'lucide-react'
+import Link from 'next/link'
 
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
@@ -160,20 +16,49 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(true)
+  const notificationRef = useRef(null)
+
   const pathname = usePathname()
+  const hrs = new Date().getHours()
+  const greeting = hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
   const router = useRouter()
-  const { profile } = useAuth()
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(profile?.id)
+  
+  // Destructure BOTH user (Supabase Auth Core) and profile (Public Database Row Table)
+  const { user, profile } = useAuth()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!notificationRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+  
   const role = profile?.role || 'driver'
   const roleBase = `/dashboard/${role}`
   const isDashboardRoot = pathname === roleBase || pathname === `${roleBase}/`
-  const firstName = profile?.full_name?.split(' ')?.[0] || 'RoadRescue'
+  const firstName = profile?.full_name?.split(' ')?.[0] || 'member'
 
   const activeRescueCount = notifications.filter((n) => !n.is_read).length
 
   async function handleSignOut() {
     await signOut()
-    window.location.href = '/auth/login'
+    router.replace('/auth/login')
   }
 
   const handleProfileClick = () => {
@@ -185,63 +70,72 @@ export default function Navbar() {
       router.back()
       return
     }
-
     router.push(roleBase)
   }
 
+  const getRoleLabel = () => {
+    if (role === 'admin') return 'Admin Portal'
+    if (role === 'mechanic') return 'Mechanic Console'
+    return 'Driver Panel'
+  }
+
   const getMobileTitle = () => {
-    if (isDashboardRoot) {
-      return role === 'admin' ? 'Admin dashboard' : role === 'mechanic' ? 'Mechanic dashboard' : 'Driver dashboard'
-    }
-
+    if (isDashboardRoot) return `${getRoleLabel()}`
     if (pathname.includes('/request/')) return 'Live tracking'
-    if (pathname.includes('/activity')) return 'Activity'
-    if (pathname.includes('/history')) return 'History'
-    if (pathname.includes('/account')) return 'Profile'
-    if (pathname.includes('/settings')) return 'Settings'
-    if (pathname.includes('/reports')) return 'Reports'
-    if (pathname.includes('/mechanics')) return 'Mechanics'
-    if (pathname.includes('/requests')) return 'Requests'
+    if (pathname.includes('/activity')) return 'Activity Log'
+    if (pathname.includes('/history')) return 'Job History'
+    if (pathname.includes('/account')) return 'My Profile'
+    if (pathname.includes('/reports')) return 'Incident Reports'
+    if (pathname.includes('/mechanics')) return 'Verified Mechanics'
+    if (pathname.includes('/requests')) return 'Active Dispatch'
 
-    return role === 'admin' ? 'Admin panel' : role === 'mechanic' ? 'Mechanic panel' : 'Driver panel'
+    return `${getRoleLabel()}`
   }
 
   const mobileSubtitle = isDashboardRoot
-    ? 'Ready for dispatch'
+    ? 'System online & ready'
     : pathname.includes('/request/')
-      ? 'Track the assignment in real time'
-      : pathname.includes('/activity')
-        ? 'Recent activity and operational updates'
-      : pathname.includes('/history')
-        ? 'Recent activity and completed jobs'
-        : pathname.includes('/account')
-          ? 'Profile and security settings'
-          : 'Secure RoadRescue session'
+      ? 'Track responder deployment coordinates'
+      : pathname.includes('/account')
+        ? `${profile?.full_name || 'Secure account session'}`
+        : 'Secure RoadRescue session'
+
+  // Safety Extraction Check: Prioritize live database field string, fallback directly onto active login context parameters
+  const authenticatedEmail = profile?.email || user?.email || 'authenticated@roadrescue.gh'
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
-      <div className="md:hidden border-b border-[#3A3428] bg-[#2A261C] text-[#EFE8D4]">
+    <header className="sticky top-0 z-40 md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl">
+      
+      {/* ==================================================================== */}
+      {/* MODERNIZED MOBILE HEADER DISPLAY GRID                               */}
+      {/* ==================================================================== */}
+      <div className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-lg transition-all duration-300">
         {isDashboardRoot ? (
-          <div className="px-4 pb-5 pt-4">
-            <div className="flex items-start justify-between gap-3">
+          <div className="px-5 pb-6 pt-5">
+            {/* Top row: Greeting & Profile/Notification Toggles */}
+            <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm text-[#7C7767]">Good morning.</p>
-                <h1 className="mt-1 truncate font-black text-2xl text-[#EFE8D4]">{firstName}</h1>
+                <h1 className="text-lg font-bold text-[#FFD700]">{greeting}, {firstName}</h1>
+                <p className="text-[11px] font-medium text-[#A29A84] truncate mt-0.5 opacity-85">
+                  {authenticatedEmail}
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setOpen((prev) => !prev)}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[#3A3428]/10 bg-[#EFE8D4]/5 text-[#EFE8D4] shadow-lg shadow-black/20"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10 active:scale-95 transition-transform"
                   aria-label="Open notifications"
                 >
-                  <Bell size={18} strokeWidth={2} />
-                  {unreadCount > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#FFD700' }} />}
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FFD700] ring-4 ring-[#1E1B15]" />
+                  )}
                 </button>
 
                 <button
                   onClick={handleProfileClick}
-                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-[#FFD700]/30 bg-[#FFD700] text-[#111827] shadow-lg shadow-[#00000026]"
+                  className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[#FFD700] active:scale-95 transition-transform shadow-md shadow-[#FFD700]/10"
                   aria-label="Open profile"
                 >
                   <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
@@ -249,107 +143,137 @@ export default function Navbar() {
               </div>
             </div>
 
+            {/* Premium, sleek Search form input */}
             <form
-              className="mt-4 flex items-center gap-3 rounded-3xl bg-[#F3F4F6]/10 px-4 py-3 ring-1 ring-[#7C7767]/10"
+              className="mt-5 flex items-center gap-2.5 rounded-xl bg-white/[0.04] px-3.5 py-2 border border-white/[0.08] focus-within:border-[#FFD700]/40 focus-within:bg-white/[0.06] transition-all duration-200"
               onSubmit={(event) => event.preventDefault()}
             >
-              <Search size={16} className="shrink-0 text-[#7C7767]" />
+              <Search size={16} className="shrink-0 text-[#A29A84]" />
               <input
                 type="search"
-                placeholder="Search location or service..."
-                className="min-w-0 flex-1 bg-transparent text-sm text-[#EFE8D4] placeholder:text-[#7C7767] outline-none"
+                placeholder={role === 'mechanic' ? "Search service logs..." : "Search locations or garages..."}
+                className="min-w-0 flex-1 bg-transparent text-sm text-[#EFE8D4] placeholder:text-[#6C6552] outline-none"
               />
               <button
                 type="submit"
-                className="flex h-10 min-w-10 items-center justify-center rounded-full bg-[#FFD700] px-3 text-[11px] font-black uppercase tracking-[0.18em] text-[#111827]"
+                className="flex h-7 items-center justify-center rounded-lg bg-[#FFD700] px-3.5 text-xs font-bold uppercase tracking-wider text-[#1E1B15] active:scale-95 transition-transform"
               >
                 Go
               </button>
             </form>
 
-            <div className="mt-3 flex items-center gap-2">
-              <span className="rounded-full border border-[#7C7767]/20 bg-[#F3F4F6]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#7C7767]">
-                Secure session
-              </span>
-              <span className="rounded-full border border-[#FFD700]/20 bg-[#FFD700]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#FFD700]">
-                {activeRescueCount} incidents
-              </span>
-            </div>
           </div>
         ) : (
-              <div className="relative px-4 pb-4 pt-4">
-            <div className="flex items-center gap-3">
+          /* Sub-route / Inner Page Header context */
+          <div className="relative px-5 py-4 flex items-center justify-between gap-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={handleBack}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EFE8D4] text-[#2A261C] shadow-lg shadow-black/15"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFE8D4] text-[#1E1B15] shadow-sm active:scale-95 transition-transform"
                 aria-label="Go back"
               >
-                <ArrowLeft size={18} strokeWidth={2.2} />
+                <ArrowLeft size={16} strokeWidth={2.5} />
               </button>
 
-              <div className="min-w-0 flex-1">
-                <div className="inline-flex max-w-full items-center rounded-full bg-[#EFE8D4] px-4 py-2 shadow-lg shadow-black/10 ring-1" style={{ ringColor: '#D8CCAE' }}>
-                  <span className="truncate text-sm font-semibold text-[#2A261C]">{getMobileTitle()}</span>
-                </div>
-                <p className="mt-2 truncate text-xs text-[#7C7767]">{mobileSubtitle}</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setOpen((prev) => !prev)}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-full bg-[#EFE8D4] text-[#2A261C] shadow-lg shadow-black/10"
-                  aria-label="Open notifications"
-                >
-                  <Bell size={17} strokeWidth={2} />
-                  {unreadCount > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#FFD700' }} />}
-                </button>
-
-                <button
-                  onClick={() => setMobileMenuOpen((prev) => !prev)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#3A3428] text-[#EFE8D4] shadow-lg shadow-black/10"
-                  aria-label="Open menu"
-                >
-                  <Menu size={18} strokeWidth={2} />
-                </button>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#FFD700] block">{getMobileTitle()}</span>
+                <p className="mt-0.5 truncate text-xs text-[#A29A84] font-medium">{mobileSubtitle}</p>
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOpen((prev) => !prev)}
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
+                aria-label="Open notifications"
+              >
+                <Bell size={16} />
+                {unreadCount > 0 && <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[#FFD700]" />}
+              </button>
+
+              <button
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
+                aria-label="Open menu"
+              >
+                {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+              </button>
+            </div>
+
+            {/* Mobile Context Dropdown menu */}
             {mobileMenuOpen && (
-              <div className="absolute right-4 top-19 z-50 w-56 overflow-hidden rounded-3xl border" style={{ borderColor: '#D8CCAE', backgroundColor: '#EFE6D1', color: '#2A261C' }}>
+              <div className="absolute right-5 top-[60px] z-50 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#26221A] p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false)
                     handleProfileClick()
                   }}
-                  className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold hover:bg-[#EFE6D1]/80"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-[#EFE8D4] hover:bg-white/5"
                 >
-                  <span>Profile</span>
-                  <ShieldCheck size={14} className="text-emerald-500" />
+                  <span>My Profile</span>
+                  <ShieldCheck size={14} className="text-emerald-400" />
                 </button>
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false)
                     handleSignOut()
                   }}
-                  className="mt-1 flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/10"
                 >
-                  <span>Sign out</span>
+                  <span>Sign Out</span>
                   <LogOut size={14} />
                 </button>
               </div>
             )}
           </div>
         )}
+
+        {/* Universal Mobile Notification Pull-down Layer */}
+        {open && (
+          <div className="border-t border-white/[0.06] bg-[#1A1813] max-h-72 overflow-y-auto animate-in slide-in-from-top duration-200">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
+              <span className="text-xs font-bold text-[#A29A84]">Active Updates ({unreadCount})</span>
+              {unreadCount > 0 && (
+                <button onClick={markAllAsRead} className="text-[11px] font-bold text-[#FFD700] hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </div>
+            {notifications.length === 0 ? (
+              <div className="px-5 py-6 text-center text-xs text-[#6C6552]">No new dispatch feeds</div>
+            ) : (
+              notifications.map((n) => (
+                <Link
+                  key={n.id}
+                  href={getNotificationHref(n, profile?.role) || '#'}
+                  onClick={async (e) => {
+                    if (!getNotificationHref(n, profile?.role)) e.preventDefault()
+                    await markAsRead(n.id)
+                    setOpen(false)
+                  }}
+                  className={`block px-5 py-3 border-b border-white/[0.02] active:bg-white/[0.02] ${n.is_read ? 'opacity-40' : 'bg-[#FFD700]/[0.02]'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-[#EFE8D4] truncate">{n.title || 'Update'}</p>
+                    <Badge label={n.type} variant={n.type} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-[#A29A84] line-clamp-2">{n.message}</p>
+                </Link>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
+      {/* ==================================================================== */}
+      {/* DESKTOP HEADER DISPLAY GRID                                         */}
+      {/* ==================================================================== */}
       <div className="hidden items-center justify-between gap-4 border-b border-[#D8CCAE] bg-[#F5F0E2] px-4 py-3 md:flex lg:px-6">
         <div className="min-w-0 flex items-center gap-4">
-          <h1 className="truncate text-[2.8rem] leading-none font-black text-[#6A5A10]">RoadRescue</h1>
-          {(role === 'admin' || role === 'mechanic') && (
-            <span className="rounded-full border border-[#C8BC9E] bg-[#EFE6D1] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6F654D]">
-              {role === 'admin' ? 'Operations' : 'Field Ops'}
-            </span>
-          )}
+          <h1 className="truncate text-3xl font-black text-[#6A5A10] tracking-tight">RoadRescue</h1>
+          <span className="rounded-full border border-[#C8BC9E] bg-[#EFE6D1] px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#6F654D]">
+            {role === 'admin' ? 'Operations' : role === 'mechanic' ? 'Field Service' : 'Client System'}
+          </span>
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
@@ -364,48 +288,53 @@ export default function Navbar() {
 
           <button
             onClick={() => setAudioEnabled((prev) => !prev)}
-            className={`rounded-xl border p-2 ${audioEnabled ? 'border-[#C8BC9E] bg-[#EDE2CA] text-[#6A5A10]' : 'border-[#D7CCAD] bg-[#F8F4EA] text-[#7A7058]'}`}
+            className={`rounded-xl border p-2 transition ${audioEnabled ? 'border-[#C8BC9E] bg-[#EDE2CA] text-[#6A5A10]' : 'border-[#D7CCAD] bg-[#F8F4EA] text-[#7A7058]'}`}
             title={audioEnabled ? 'Mute alerts' : 'Unmute alerts'}
           >
             {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
 
-          <div className="relative">
-            <button onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm">
-              <Bell size={18} strokeWidth={2} />
-              {unreadCount > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-danger" />}
+          <div ref={notificationRef} className="relative">
+            <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm">
+              <Bell size={18} />
+              {unreadCount > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
             </button>
 
             {open && (
-              <div className="absolute right-0 mt-3 w-[min(92vw,24rem)] overflow-hidden rounded-3xl border border-border bg-white shadow-lift">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-xl z-50">
+                <div className="flex items-center justify-between border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3">
                   <div>
-                    <p className="text-sm font-semibold">Notifications</p>
-                    <p className="text-xs text-muted">Live dispatch updates</p>
+                    <p className="text-sm font-black text-slate-900">Notifications</p>
+                    <p className="text-[11px] text-slate-500">Live dispatch updates</p>
                   </div>
-                  {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs font-semibold text-primary">Mark all read</button>}
+                  {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs font-bold text-amber-600 hover:underline">Mark all read</button>}
                 </div>
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-sm text-muted">No notifications yet</div>
+                    <div className="px-4 py-8 text-center text-xs text-slate-400 font-medium">No active alerts recorded</div>
                   ) : (
                     notifications.map((notification) => (
-                      <button
+                      <Link
                         key={notification.id}
-                        onClick={() => markAsRead(notification.id)}
-                        className={`block w-full border-b border-border px-4 py-3 text-left transition hover:bg-surfaceAlt ${notification.is_read ? 'opacity-70' : 'bg-primary/5'}`}
+                        href={getNotificationHref(notification, profile?.role) || '#'}
+                        aria-disabled={!getNotificationHref(notification, profile?.role)}
+                        onClick={async (event) => {
+                          const href = getNotificationHref(notification, profile?.role)
+                          if (!href) {
+                            event.preventDefault()
+                          }
+                          await markAsRead(notification.id)
+                          setOpen(false)
+                        }}
+                        className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-[#FFF9EF] ${notification.is_read ? 'opacity-60' : 'bg-amber-50/40'}`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium">{notification.title || 'Dispatch update'}</p>
-                              <Badge label={notification.type} variant={notification.type} />
-                            </div>
-                            <p className="mt-1 text-sm text-muted">{truncate(notification.message, 110)}</p>
-                            <p className="mt-2 text-[11px] text-muted">{timeAgo(notification.created_at)}</p>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-black text-slate-900">{notification.title || 'Dispatch Update'}</p>
+                          <Badge label={notification.type} variant={notification.type} />
                         </div>
-                      </button>
+                        <p className="mt-1 text-xs text-slate-600 leading-relaxed">{truncate(notification.message, 90)}</p>
+                        <p className="mt-2 text-[10px] font-medium text-slate-400">{timeAgo(notification.created_at)}</p>
+                      </Link>
                     ))
                   )}
                 </div>
@@ -413,77 +342,28 @@ export default function Navbar() {
             )}
           </div>
 
-          <button className="hidden h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#5A513C] lg:inline-flex" aria-label="Settings">
-            <Settings size={17} />
-          </button>
-
-          <button className="hidden h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#5A513C] lg:inline-flex" aria-label="Help">
-            <CircleHelp size={17} />
-          </button>
-
           <button
             onClick={handleProfileClick}
-            className="hidden items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] px-2.5 py-1.5 transition hover:bg-[#EFE6D1] sm:flex"
-            title="Account settings"
+            className="hidden items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] px-3 py-1.5 transition hover:bg-[#EFE6D1] sm:flex"
           >
             <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online />
-            <div className="leading-tight">
-              <p className="text-xs font-black text-[#2D271C]">{profile?.full_name || 'RoadRescue User'}</p>
-              <p className="flex items-center gap-1 text-[10px] text-[#6E634B]">
-                {profile?.email || 'profile@roadrescue.gh'}
-                <ShieldCheck size={12} className="text-emerald-500" />
-              </p>
+            <div className="leading-tight text-left">
+              <p className="text-xs font-black text-[#2D271C]">{profile?.full_name || 'Rescue Driver'}</p>
+              {/* Prioritized live data stream binding rule */}
+              <p className="text-[10px] text-[#6E634B] font-medium">{authenticatedEmail}</p>
             </div>
           </button>
 
           <button
             onClick={handleSignOut}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-black uppercase tracking-wide text-red-700 transition hover:bg-red-100"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-black uppercase tracking-wider text-red-700 transition hover:bg-red-100"
           >
-            <LogOut size={14} strokeWidth={2} />
-            <span className="hidden sm:inline">Sign out</span>
+            <LogOut size={14} />
+            <span>Logout</span>
           </button>
         </div>
       </div>
 
-      {open && (
-        <div className="md:hidden">
-          <div className="fixed inset-0 z-40" style={{ backgroundColor: 'rgba(42,38,28,0.12)' }} onClick={() => setOpen(false)} />
-          <div className="absolute right-4 top-29 z-50 w-[min(92vw,24rem)] overflow-hidden rounded-3xl" style={{ borderColor: '#D8CCAE', backgroundColor: '#EFE6D1', color: '#2A261C' }}>
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold">Notifications</p>
-                <p className="text-xs text-muted">Live dispatch updates</p>
-              </div>
-              {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs font-semibold text-primary">Mark all read</button>}
-            </div>
-            <div className="max-h-96 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="px-4 py-8 text-center text-sm text-muted">No notifications yet</div>
-              ) : (
-                notifications.map((notification) => (
-                  <button
-                    key={notification.id}
-                    onClick={() => markAsRead(notification.id)}
-                    className={`block w-full border-b border-border px-4 py-3 text-left transition hover:bg-surfaceAlt ${notification.is_read ? 'opacity-70' : 'bg-primary/5'}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium">{notification.title || 'Dispatch update'}</p>
-                          <Badge label={notification.type} variant={notification.type} />
-                        </div>
-                        <p className="mt-1 text-sm text-muted">{truncate(notification.message, 110)}</p>
-                        <p className="mt-2 text-[11px] text-muted">{timeAgo(notification.created_at)}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   )
 }

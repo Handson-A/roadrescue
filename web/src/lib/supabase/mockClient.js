@@ -61,13 +61,18 @@ function saveDb(db) {
 
 function getDefaultSession() {
   const db = loadDb()
+  
+  // Find out if the browser expects a specific role, otherwise default to driver
+  const targetRole = (hasWindow() && window.localStorage.getItem('mock_role')) || 'driver'
+  
   const profile =
-    db.profiles.find((row) => row.role === 'mechanic') ||
+    db.profiles.find((row) => row.role === targetRole) ||
+    db.profiles.find((row) => row.role === 'driver') || 
     ensureUser(db, {
-      email: 'mechanic@roadrescue.gh',
-      full_name: 'Demo Mechanic',
-      phone: '+233 000 000 002',
-      role: 'mechanic',
+      email: 'driver@roadrescue.gh',
+      full_name: 'Demo Driver',
+      phone: '+233 000 000 001',
+      role: 'driver',
     })
 
   return { user: profile }
@@ -170,9 +175,11 @@ function buildQuery(db, tableName) {
     return { data: rows, error: null }
   }
 
-  const applySingle = async () => {
+ const applySingle = async () => {
     const rows = resolveRows()
-    return rows[0] ? { data: rows[0], error: null } : { data: null, error: { message: 'No rows found' } }
+    // Modified: Return standard structural nulls instead of throwing hard error items 
+    // which causes the data hook loaders to halt into permanent error/loading states.
+    return rows[0] ? { data: rows[0], error: null } : { data: null, error: null }
   }
 
   const applyInsert = async () => {

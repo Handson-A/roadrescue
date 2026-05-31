@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
@@ -10,7 +10,7 @@ import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, Shield, Lock } from 'lucide-react'
+import { User, Mail, Phone, Shield, Lock, ShieldCheck, KeyRound } from 'lucide-react'
 
 export default function AdminAccountPage() {
   const { user, profile } = useAuth()
@@ -22,26 +22,28 @@ export default function AdminAccountPage() {
     phone: '',
   })
 
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        fullName: profile?.full_name || '',
-        email: profile?.email || '',
-        phone: profile?.phone || '',
-      })
-    }
-  }, [profile])
+  const resolvedFormData = {
+    fullName: profile?.full_name || '',
+    email: profile?.email || user?.email || '',
+    phone: profile?.phone || '',
+  }
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleStartEditing = () => {
+    setFormData(resolvedFormData)
+    setIsEditing(true)
   }
 
   const handleSave = async () => {
     setLoading(true)
     try {
       const supabase = createClient()
+      // Fixed: Targeted the unified 'profiles' table to prevent query execution breaks
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           full_name: formData.fullName,
           phone: formData.phone,
@@ -50,50 +52,60 @@ export default function AdminAccountPage() {
 
       if (error) throw error
       
-      toast.success('Profile updated successfully')
+      toast.success('Administrative credentials updated successfully')
       setIsEditing(false)
     } catch (error) {
-      toast.error(error.message || 'Failed to update profile')
+      toast.error(error.message || 'Failed to sync administrative parameters')
     } finally {
       setLoading(false)
     }
   }
 
   if (!profile) {
-    return <PageWrapper title="Admin Account"><div className="flex items-center justify-center py-12"><Spinner /></div></PageWrapper>
+    return (
+      <PageWrapper title="Operations Node">
+        <div className="flex items-center justify-center py-12"><Spinner /></div>
+      </PageWrapper>
+    )
   }
 
   return (
     <PageWrapper 
-      title="Admin Account" 
-      description="Manage your administrator profile and access permissions."
+      title="Account Settings" 
+      description="Configure administrative profile parameters, inspect root infrastructure scopes, and manage terminal security."
     >
-      <div className="mx-auto max-w-2xl space-y-6">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Shield size={20} className="text-[#FFD700]" />
-              Administrator Profile
+      <div className="mx-auto max-w-2xl space-y-5 pb-12">
+        
+        {/* ================= PRIMARY PROFILE DATA PARAMETERS ================= */}
+        <Card className="rounded-2xl border-slate-200 bg-white p-6 shadow-sm relative">
+          <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <Shield size={16} className="text-[#FFD700]" />
+              Operations Registry Profile
             </h2>
             {!isEditing ? (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                Edit
+              <Button 
+                variant="outline" 
+                className="h-8 rounded-lg px-3.5 text-xs font-bold uppercase tracking-wider border-slate-200 text-slate-700 bg-white"
+                onClick={handleStartEditing}
+              >
+                Edit Parameters
               </Button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <Button 
                   variant="outline" 
-                  size="sm" 
+                  className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wider border-slate-200 text-slate-400 bg-white"
                   onClick={() => setIsEditing(false)}
                 >
                   Cancel
                 </Button>
                 <Button 
-                  size="sm" 
+                  className="h-8 rounded-lg px-3 text-xs font-bold uppercase tracking-wider bg-slate-900 text-white hover:bg-slate-800"
                   loading={loading}
                   onClick={handleSave}
                 >
-                  Save
+                  Save Sync
                 </Button>
               </div>
             )}
@@ -101,31 +113,31 @@ export default function AdminAccountPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-mono uppercase tracking-[0.18em] text-[#7C7767] mb-2 flex items-center gap-2">
-                <User size={14} /> Full Name
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1.5">
+                <User size={13} className="text-slate-400" /> Administrative User String
               </label>
               {isEditing ? (
                 <Input
                   value={formData.fullName}
                   onChange={(e) => handleChange('fullName', e.target.value)}
-                  placeholder="Your full name"
+                  placeholder="Full name string parameters"
                 />
               ) : (
-                <p className="font-medium text-[#111827]">{formData.fullName || 'Not set'}</p>
+                <p className="text-sm font-bold text-slate-900">{resolvedFormData.fullName || 'Unconfigured Node Name'}</p>
               )}
             </div>
 
             <div>
-              <label className="text-xs font-mono uppercase tracking-[0.18em] text-[#7C7767] mb-2 flex items-center gap-2">
-                <Mail size={14} /> Email
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1.5">
+                <Mail size={13} className="text-slate-400" /> Core System Routing Email
               </label>
-              <p className="font-medium text-[#111827]">{formData.email || 'Not set'}</p>
-              <p className="mt-1 text-xs text-[#7C7767]">Email cannot be changed</p>
+              <p className="text-sm font-semibold text-slate-500 flex items-center gap-1.5">{resolvedFormData.email || 'N/A'}</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">Locked infrastructure variables cannot be altered inline.</p>
             </div>
 
             <div>
-              <label className="text-xs font-mono uppercase tracking-[0.18em] text-[#7C7767] mb-2 flex items-center gap-2">
-                <Phone size={14} /> Phone Number
+              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1.5">
+                <Phone size={13} className="text-slate-400" /> Dispatch Comms Line
               </label>
               {isEditing ? (
                 <Input
@@ -134,46 +146,51 @@ export default function AdminAccountPage() {
                   placeholder="+233..."
                 />
               ) : (
-                <p className="font-medium text-[#111827]">{formData.phone || 'Not set'}</p>
+                <p className="text-sm font-bold text-slate-900">{resolvedFormData.phone || 'Comms unconfigured'}</p>
               )}
             </div>
 
             <div>
-              <label className="mb-2 flex items-center gap-2 text-xs font-mono uppercase tracking-[0.18em] text-[#7C7767]">
-                <Lock size={14} /> Role
+              <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <Lock size={13} className="text-slate-400" /> Operational Security Group
               </label>
-              <Badge label="Administrator" variant="primary" />
+              <Badge label="System Administrator" variant="primary" />
             </div>
           </div>
         </Card>
 
-        <Card className="border border-[#7C7767]/25 bg-[#F3F4F6] p-6">
-          <h3 className="mb-3 flex items-center gap-2 font-bold text-[#111827]">
-            <Shield size={18} />
-            Administrator Privileges
+        {/* ================= AUTHORITY CLEARANCES BLOCK ================= */}
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm space-y-3.5">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2 border-b border-slate-50 pb-2">
+            <ShieldCheck size={16} className="text-slate-500" />
+            System Control Parameters
           </h3>
-          <p className="mb-3 text-sm text-[#7C7767]">
-            You have full access to the RoadRescue platform administration panel, including:
+          <p className="text-xs font-medium leading-relaxed text-slate-500">
+            Your identity maintains complete access clearance matrices across the global backend architecture, including:
           </p>
-          <ul className="ml-4 space-y-2 text-sm text-[#111827]">
-            <li>✓ User management and account verification</li>
-            <li>✓ Mechanic credential review and verification</li>
-            <li>✓ Incident monitoring and escalation</li>
-            <li>✓ Platform analytics and reporting</li>
-            <li>✓ System settings and configuration</li>
+          <ul className="grid gap-2 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-100 p-4 rounded-xl">
+            <li className="flex items-center gap-2">✓ User framework management and validation vectors</li>
+            <li className="flex items-center gap-2">✓ Emergency field technician credential moderation</li>
+            <li className="flex items-center gap-2">✓ Realtime transit dispatch tracking & escalation channels</li>
+            <li className="flex items-center gap-2">✓ Comprehensive platform analytics documentation</li>
           </ul>
         </Card>
 
-        <Card className="border border-[#7C7767]/25 bg-[#F3F4F6] p-6">
-          <h3 className="mb-3 flex items-center gap-2 font-bold text-[#111827]">
-            <Lock size={18} />
-            Account Security
+        {/* ================= CRITICAL ACCOUNT SECURITY GATEWAY ================= */}
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm space-y-3">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <KeyRound size={16} className="text-slate-400" />
+            Account Token Cryptography
           </h3>
-          <p className="mb-4 text-sm text-[#7C7767]">
-            Your account is protected with enterprise-grade security measures.
+          <p className="text-xs font-medium leading-relaxed text-slate-500">
+            This administrative node session is isolated with enterprise-grade system tokens.
           </p>
-          <Button variant="outline" fullWidth>
-            Change Password
+          <Button 
+            variant="outline" 
+            fullWidth
+            className="h-10 rounded-xl text-xs font-bold uppercase tracking-wider bg-white border-slate-200 hover:bg-slate-50 text-slate-700 mt-2"
+          >
+            Modify Password Matrix
           </Button>
         </Card>
       </div>

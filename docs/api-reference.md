@@ -266,9 +266,47 @@ Response (200 OK):
 
 ## Admin Endpoints
 
+### Get Platform Statistics
+```
+GET /api/admin/stats
+Authorization: Bearer <admin_token>
+
+Response (200 OK):
+{
+  "total_users": 1250,
+  "active_requests": 45,
+  "completed_requests": 892,
+  "verified_mechanics": 312,
+  "average_response_time": "4.2 minutes",
+  "total_revenue": 45230.50,
+  "platform_rating": 4.6
+}
+```
+
+### Get All Users
+```
+GET /api/admin/users?role=mechanic&limit=20&offset=0
+Authorization: Bearer <admin_token>
+
+Response (200 OK):
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "full_name": "John Doe",
+      "role": "mechanic",
+      "status": "active",
+      "created_at": "2026-05-21T10:00:00Z"
+    }
+  ],
+  "total": 312
+}
+```
+
 ### Get All Requests
 ```
-GET /api/admin/requests?status=PENDING&page=1&limit=20
+GET /api/admin/requests?status=PENDING&limit=20&offset=0
 Authorization: Bearer <admin_token>
 
 Response (200 OK):
@@ -282,13 +320,36 @@ Response (200 OK):
       "created_at": "2026-05-21T10:00:00Z"
     }
   ],
-  "total": 25
+  "total": 245
 }
 ```
 
-### Verify Mechanic
+### Get All Mechanics
 ```
-POST /api/admin/mechanics/:id/verify
+GET /api/admin/mechanics?verification_status=pending&limit=20&offset=0
+Authorization: Bearer <admin_token>
+
+Response (200 OK):
+{
+  "mechanics": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "full_name": "Jane Smith",
+      "license_number": "DRV-2026-00123",
+      "years_experience": 8,
+      "verification_status": "pending",
+      "total_jobs": 45,
+      "average_rating": 4.8
+    }
+  ],
+  "total": 12
+}
+```
+
+### Approve or Reject Mechanic Profile
+```
+PATCH /api/admin/mechanics/:id
 Authorization: Bearer <admin_token>
 Content-Type: application/json
 
@@ -298,6 +359,137 @@ Body:
 }
 
 Response (200 OK):
+{
+  "message": "Mechanic profile updated successfully",
+  "mechanic": {
+    "id": "uuid",
+    "verification_status": "verified",
+    "verified_at": "2026-05-21T10:00:00Z"
+  }
+}
+
+Use `verification_status: "rejected"` to reject an application.
+```
+
+### Escalate User to Admin
+```
+POST /api/admin/escalate
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+Body:
+{
+  "email": "user@example.com"
+}
+
+Response (200 OK):
+{
+  "message": "User promoted to admin successfully",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "role": "admin",
+    "updated_at": "2026-05-21T10:00:00Z"
+  }
+}
+```
+
+### Suspend/Unsuspend User
+```
+PATCH /api/admin/users/:id/status
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+Body:
+{
+  "status": "suspended"
+}
+
+Response (200 OK):
+{
+  "message": "User status updated",
+  "user": {
+    "id": "uuid",
+    "status": "suspended",
+    "updated_at": "2026-05-21T10:00:00Z"
+  }
+}
+```
+
+---
+
+## Webhook Endpoints
+
+### Handle Third-Party Webhooks
+```
+POST /api/webhooks
+Content-Type: application/json
+
+Body (varies by service):
+{
+  "event": "payment_completed|notification|etc",
+  "data": { ... }
+}
+
+Response (200 OK):
+{
+  "message": "Webhook processed"
+}
+```
+
+---
+
+## Error Responses
+
+All errors return JSON with status code:
+
+### 400 Bad Request
+```json
+{
+  "error": "Invalid request parameters",
+  "details": "Field 'email' is required"
+}
+```
+
+### 401 Unauthorized
+```json
+{
+  "error": "Authentication required",
+  "message": "Missing or invalid authorization token"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "error": "Insufficient permissions",
+  "message": "Only admins can access this endpoint"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "error": "Resource not found",
+  "message": "Request with ID 'xyz' does not exist"
+}
+```
+
+### 429 Too Many Requests
+```json
+{
+  "error": "Rate limit exceeded",
+  "message": "Too many requests. Please try again later."
+}
+```
+
+### 500 Internal Server Error
+```json
+{
+  "error": "Internal server error",
+  "message": "An unexpected error occurred"
+}
+```
 {
   "message": "Mechanic verified successfully"
 }

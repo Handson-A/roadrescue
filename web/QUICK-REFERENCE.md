@@ -1,6 +1,6 @@
 # Quick Reference: RBAC & Navigation Setup
 
-## 🔐 Your New RBAC System
+## New RBAC System
 
 ### Three Layers of Protection
 

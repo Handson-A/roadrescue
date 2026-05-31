@@ -112,12 +112,87 @@ Main endpoints:
 - HTTPS-only communication
 - Input validation and sanitization
 - CORS configuration
-- Rate limiting on API endpoints (future)
+- Rate limiting on API endpoints
+- Admin role escalation only through verified admin portals
+
+## User Interfaces
+
+### Onboarding
+- 3-step carousel introducing platform features
+- Consent requirement before authentication
+- Responsive mobile-first design
+- Redirect to `/auth/login` after completion
+
+### Authentication Pages
+- Login form with email/password
+- Register form with role selection (Driver/Mechanic only - no public admin registration)
+- Role-based access control at form level
+- Responsive auth layout with rotating tips/quotes
+
+### Driver Dashboard
+- Create rescue request with vehicle and issue details
+- View active and past requests
+- Track assigned mechanic location on map
+- Chat with assigned mechanic
+- Rate mechanic after completion
+- View request history and statistics
+
+### Mechanic Dashboard
+- Receive alerts for nearby requests
+- Browse and place bids on pending requests
+- Accept approved bids
+- Update job status (en route, arrived, completed)
+- Track earnings and completed jobs
+- Rate drivers after completion
+- View service area configuration
+
+### Admin Dashboard
+- View platform statistics (total users, active requests, revenue)
+- Monitor all requests and mechanics
+- Manage user accounts and profiles
+- Verify upcoming mechanic profiles
+- Access secret admin escalation portal for user role promotion
+- View system activity and logs
+
+### Settings & Account Pages
+- Update profile information
+- Change password
+- Manage service preferences (mechanics only)
+- View payment history
+- Privacy and notification settings
+
+## Key Features Implemented
+
+1. **User Authentication**: Email/password with Supabase Auth
+2. **Role-Based Access**: Driver, Mechanic, Admin with RLS enforcement
+3. **Request Management**: Full lifecycle from creation to completion
+4. **Mechanic Bidding**: Real-time bid placement and acceptance
+5. **AI Diagnostics**: OpenAI-powered vehicle issue analysis
+6. **Real-time Updates**: Supabase Realtime WebSocket subscriptions
+7. **Location Tracking**: Live mechanic location on request map
+8. **Admin Escalation**: Secret portal for existing admins to promote users
+9. **Onboarding Flow**: Introduction carousel before authentication
+10. **Ratings & Reviews**: Driver-mechanic mutual rating system
+11. **Notifications**: In-app notifications for key events
+12. **Rate Limiting**: API request rate limiting and validation
+
+## Features Deferred (Future Implementation)
+
+- Email notifications (integration with SendGrid/Mailgun)
+- Google Maps API for enhanced mapping features
+- Two-factor authentication
+- Push notifications (mobile)
+- Payment processing integration
+- Mobile app (React Native)
+- Advanced analytics and reporting
 
 ## Deployment
 
 1. **Local Development**: `npm run dev`
-2. **Production**: Deploy to Vercel with environment variables
+2. **Production Build**: `npm run build`
+3. **Deploy Frontend**: Push to GitHub → Vercel auto-deploys
+4. **Deploy Database**: Supabase handles all PostgreSQL operations
+5. **Environment Secrets**: Store in Vercel Settings and Supabase Project Settings
 3. **Database**: Supabase hosted PostgreSQL
 4. **CI/CD**: GitHub Actions workflow
 
