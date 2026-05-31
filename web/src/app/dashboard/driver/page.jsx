@@ -82,7 +82,7 @@ export default function DriverDashboard() {
         <div className="rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
           <h2 className="text-xl font-black tracking-tight text-[#1F1B10]">Dashboard</h2>
           <p className="mt-1 text-xs leading-relaxed text-[#7C6B44]">
-           Request emergency vehicle assistance and monitor your technician&#39;s arrival coordinates in real time.
+           Request emergency vehicle assistance and monitor your Mechanics&#39;s arrival coordinates in real time.
           </p>
         </div>
 

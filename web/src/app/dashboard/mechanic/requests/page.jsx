@@ -95,7 +95,7 @@ export default function MechanicRequestsPage() {
               </div>
               <h3 className="text-sm font-bold text-slate-900">Clear Broadcast Horizon</h3>
               <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
-                There are currently no open roadside breakdown tickets requiring technician deployment. Keep this console open to capture live tracking signals.
+                There are currently no open roadside breakdown tickets requiring Mechanics deployment. Keep this console open to capture live tracking signals.
               </p>
             </div>
           ) : (
