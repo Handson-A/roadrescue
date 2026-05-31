@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, Settings, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
+import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, Volume2, VolumeX, X } from 'lucide-react'
+import Link from 'next/link'
 
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
@@ -15,24 +16,49 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(true)
-  
+  const notificationRef = useRef(null)
+
   const pathname = usePathname()
   const hrs = new Date().getHours()
   const greeting = hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
   const router = useRouter()
-  const { profile } = useAuth()
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(profile?.id)
+  
+  // Destructure BOTH user (Supabase Auth Core) and profile (Public Database Row Table)
+  const { user, profile } = useAuth()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
+
+  useEffect(() => {
+    function handlePointerDown(event) {
+      if (!notificationRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
   
   const role = profile?.role || 'driver'
   const roleBase = `/dashboard/${role}`
   const isDashboardRoot = pathname === roleBase || pathname === `${roleBase}/`
-  const firstName = profile?.full_name?.split(' ')?.[0] || 'Member'
+  const firstName = profile?.full_name?.split(' ')?.[0] || 'member'
 
   const activeRescueCount = notifications.filter((n) => !n.is_read).length
 
   async function handleSignOut() {
     await signOut()
-    window.location.href = '/auth/login'
+    router.replace('/auth/login')
   }
 
   const handleProfileClick = () => {
@@ -47,7 +73,6 @@ export default function Navbar() {
     router.push(roleBase)
   }
 
-  // Dynamic role-based label computation instead of hardcoded panels
   const getRoleLabel = () => {
     if (role === 'admin') return 'Admin Portal'
     if (role === 'mechanic') return 'Mechanic Console'
@@ -60,7 +85,6 @@ export default function Navbar() {
     if (pathname.includes('/activity')) return 'Activity Log'
     if (pathname.includes('/history')) return 'Job History'
     if (pathname.includes('/account')) return 'My Profile'
-    if (pathname.includes('/settings')) return 'System Settings'
     if (pathname.includes('/reports')) return 'Incident Reports'
     if (pathname.includes('/mechanics')) return 'Verified Mechanics'
     if (pathname.includes('/requests')) return 'Active Dispatch'
@@ -76,35 +100,42 @@ export default function Navbar() {
         ? `${profile?.full_name || 'Secure account session'}`
         : 'Secure RoadRescue session'
 
+  // Safety Extraction Check: Prioritize live database field string, fallback directly onto active login context parameters
+  const authenticatedEmail = profile?.email || user?.email || 'authenticated@roadrescue.gh'
+
   return (
-    // Fixed: Wrapper is now transparent on mobile so it doesn't leave a ghost white bar above your dark banner
     <header className="sticky top-0 z-40 md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl">
       
       {/* ==================================================================== */}
-      {/* MOBILE HEADER DISPLAY GRID (Visible exclusively on mobile screens)    */}
+      {/* MODERNIZED MOBILE HEADER DISPLAY GRID                               */}
       {/* ==================================================================== */}
-      <div className="md:hidden border-b border-[#3A3428] bg-[#2A261C] text-[#EFE8D4]">
+      <div className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-lg transition-all duration-300">
         {isDashboardRoot ? (
-          <div className="px-4 pb-5 pt-4">
-            <div className="flex items-start justify-between gap-3">
+          <div className="px-5 pb-6 pt-5">
+            {/* Top row: Greeting & Profile/Notification Toggles */}
+            <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wider text-[#7C7767]">{greeting}.</p>
-                <h1 className="mt-1 truncate font-black text-2xl text-[#FFD700]">{firstName}</h1>
+                <h1 className="text-lg font-bold text-[#FFD700]">{greeting}, {firstName}</h1>
+                <p className="text-[11px] font-medium text-[#A29A84] truncate mt-0.5 opacity-85">
+                  {authenticatedEmail}
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setOpen((prev) => !prev)}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[#3A3428] bg-white/5 text-[#EFE8D4] shadow-md"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10 active:scale-95 transition-transform"
                   aria-label="Open notifications"
                 >
                   <Bell size={18} />
-                  {unreadCount > 0 && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[#FFD700]" />}
+                  {unreadCount > 0 && (
+                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FFD700] ring-4 ring-[#1E1B15]" />
+                  )}
                 </button>
 
                 <button
                   onClick={handleProfileClick}
-                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-[#FFD700]/30 bg-[#FFD700] text-[#111827] shadow-md"
+                  className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[#FFD700] active:scale-95 transition-transform shadow-md shadow-[#FFD700]/10"
                   aria-label="Open profile"
                 >
                   <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
@@ -112,79 +143,72 @@ export default function Navbar() {
               </div>
             </div>
 
+            {/* Premium, sleek Search form input */}
             <form
-              className="mt-4 flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-2.5 border border-white/10"
+              className="mt-5 flex items-center gap-2.5 rounded-xl bg-white/[0.04] px-3.5 py-2 border border-white/[0.08] focus-within:border-[#FFD700]/40 focus-within:bg-white/[0.06] transition-all duration-200"
               onSubmit={(event) => event.preventDefault()}
             >
-              <Search size={16} className="shrink-0 text-[#7C7767]" />
+              <Search size={16} className="shrink-0 text-[#A29A84]" />
               <input
                 type="search"
                 placeholder={role === 'mechanic' ? "Search service logs..." : "Search locations or garages..."}
-                className="min-w-0 flex-1 bg-transparent text-sm text-[#EFE8D4] placeholder:text-[#7C7767] outline-none"
+                className="min-w-0 flex-1 bg-transparent text-sm text-[#EFE8D4] placeholder:text-[#6C6552] outline-none"
               />
               <button
                 type="submit"
-                className="flex h-8 items-center justify-center rounded-xl bg-[#FFD700] px-4 text-xs font-black uppercase tracking-wider text-[#111827]"
+                className="flex h-7 items-center justify-center rounded-lg bg-[#FFD700] px-3.5 text-xs font-bold uppercase tracking-wider text-[#1E1B15] active:scale-95 transition-transform"
               >
                 Go
               </button>
             </form>
 
-            <div className="mt-3 flex items-center gap-2">
-              <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#7C7767]">
-                Active Terminal
-              </span>
-              <span className="rounded-full bg-[#FFD700]/10 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#FFD700]">
-                {activeRescueCount} alerts
-              </span>
-            </div>
           </div>
         ) : (
-          <div className="relative px-4 pb-4 pt-4">
-            <div className="flex items-center gap-3">
+          /* Sub-route / Inner Page Header context */
+          <div className="relative px-5 py-4 flex items-center justify-between gap-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={handleBack}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EFE8D4] text-[#2A261C] shadow-md"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFE8D4] text-[#1E1B15] shadow-sm active:scale-95 transition-transform"
                 aria-label="Go back"
               >
-                <ArrowLeft size={18} strokeWidth={2.5} />
+                <ArrowLeft size={16} strokeWidth={2.5} />
               </button>
 
-              <div className="min-w-0 flex-1">
-                <div className="inline-flex max-w-full items-center rounded-full bg-[#3A3428] px-3.5 py-1.5 border border-white/5">
-                  <span className="truncate text-xs font-black uppercase tracking-wider text-[#FFD700]">{getMobileTitle()}</span>
-                </div>
-                <p className="mt-1.5 truncate text-xs text-[#7C7767] font-medium">{mobileSubtitle}</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setOpen((prev) => !prev)}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/5 text-[#EFE8D4]"
-                  aria-label="Open notifications"
-                >
-                  <Bell size={17} />
-                  {unreadCount > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#FFD700]" />}
-                </button>
-
-                <button
-                  onClick={() => setMobileMenuOpen((prev) => !prev)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#3A3428] text-[#EFE8D4]"
-                  aria-label="Open menu"
-                >
-                  <Menu size={18} />
-                </button>
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#FFD700] block">{getMobileTitle()}</span>
+                <p className="mt-0.5 truncate text-xs text-[#A29A84] font-medium">{mobileSubtitle}</p>
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setOpen((prev) => !prev)}
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
+                aria-label="Open notifications"
+              >
+                <Bell size={16} />
+                {unreadCount > 0 && <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[#FFD700]" />}
+              </button>
+
+              <button
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
+                aria-label="Open menu"
+              >
+                {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+              </button>
+            </div>
+
+            {/* Mobile Context Dropdown menu */}
             {mobileMenuOpen && (
-              <div className="absolute right-4 top-16 z-50 w-52 overflow-hidden rounded-2xl border border-[#3A3428] bg-[#2A261C] p-1.5 shadow-xl">
+              <div className="absolute right-5 top-[60px] z-50 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#26221A] p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false)
                     handleProfileClick()
                   }}
-                  className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm font-bold text-[#EFE8D4] hover:bg-white/5"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-[#EFE8D4] hover:bg-white/5"
                 >
                   <span>My Profile</span>
                   <ShieldCheck size={14} className="text-emerald-400" />
@@ -194,7 +218,7 @@ export default function Navbar() {
                     setMobileMenuOpen(false)
                     handleSignOut()
                   }}
-                  className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm font-bold text-red-400 hover:bg-red-950/30"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/10"
                 >
                   <span>Sign Out</span>
                   <LogOut size={14} />
@@ -203,10 +227,46 @@ export default function Navbar() {
             )}
           </div>
         )}
+
+        {/* Universal Mobile Notification Pull-down Layer */}
+        {open && (
+          <div className="border-t border-white/[0.06] bg-[#1A1813] max-h-72 overflow-y-auto animate-in slide-in-from-top duration-200">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
+              <span className="text-xs font-bold text-[#A29A84]">Active Updates ({unreadCount})</span>
+              {unreadCount > 0 && (
+                <button onClick={markAllAsRead} className="text-[11px] font-bold text-[#FFD700] hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </div>
+            {notifications.length === 0 ? (
+              <div className="px-5 py-6 text-center text-xs text-[#6C6552]">No new dispatch feeds</div>
+            ) : (
+              notifications.map((n) => (
+                <Link
+                  key={n.id}
+                  href={getNotificationHref(n, profile?.role) || '#'}
+                  onClick={async (e) => {
+                    if (!getNotificationHref(n, profile?.role)) e.preventDefault()
+                    await markAsRead(n.id)
+                    setOpen(false)
+                  }}
+                  className={`block px-5 py-3 border-b border-white/[0.02] active:bg-white/[0.02] ${n.is_read ? 'opacity-40' : 'bg-[#FFD700]/[0.02]'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-[#EFE8D4] truncate">{n.title || 'Update'}</p>
+                    <Badge label={n.type} variant={n.type} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-[#A29A84] line-clamp-2">{n.message}</p>
+                </Link>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* ==================================================================== */}
-      {/* DESKTOP HEADER DISPLAY GRID (Hidden completely on mobile viewports) */}
+      {/* DESKTOP HEADER DISPLAY GRID                                         */}
       {/* ==================================================================== */}
       <div className="hidden items-center justify-between gap-4 border-b border-[#D8CCAE] bg-[#F5F0E2] px-4 py-3 md:flex lg:px-6">
         <div className="min-w-0 flex items-center gap-4">
@@ -234,8 +294,8 @@ export default function Navbar() {
             {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
 
-          <div className="relative">
-            <button onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm">
+          <div ref={notificationRef} className="relative">
+            <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm">
               <Bell size={18} />
               {unreadCount > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
             </button>
@@ -254,9 +314,18 @@ export default function Navbar() {
                     <div className="px-4 py-8 text-center text-xs text-slate-400 font-medium">No active alerts recorded</div>
                   ) : (
                     notifications.map((notification) => (
-                      <button
+                      <Link
                         key={notification.id}
-                        onClick={() => markAsRead(notification.id)}
+                        href={getNotificationHref(notification, profile?.role) || '#'}
+                        aria-disabled={!getNotificationHref(notification, profile?.role)}
+                        onClick={async (event) => {
+                          const href = getNotificationHref(notification, profile?.role)
+                          if (!href) {
+                            event.preventDefault()
+                          }
+                          await markAsRead(notification.id)
+                          setOpen(false)
+                        }}
                         className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-[#FFF9EF] ${notification.is_read ? 'opacity-60' : 'bg-amber-50/40'}`}
                       >
                         <div className="flex items-center gap-2">
@@ -265,17 +334,13 @@ export default function Navbar() {
                         </div>
                         <p className="mt-1 text-xs text-slate-600 leading-relaxed">{truncate(notification.message, 90)}</p>
                         <p className="mt-2 text-[10px] font-medium text-slate-400">{timeAgo(notification.created_at)}</p>
-                      </button>
+                      </Link>
                     ))
                   )}
                 </div>
               </div>
             )}
           </div>
-
-          <button className="hidden h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#5A513C] lg:inline-flex">
-            <Settings size={17} />
-          </button>
 
           <button
             onClick={handleProfileClick}
@@ -284,7 +349,8 @@ export default function Navbar() {
             <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online />
             <div className="leading-tight text-left">
               <p className="text-xs font-black text-[#2D271C]">{profile?.full_name || 'Rescue Driver'}</p>
-              <p className="text-[10px] text-[#6E634B] font-medium">{profile?.email || 'user@roadrescue.gh'}</p>
+              {/* Prioritized live data stream binding rule */}
+              <p className="text-[10px] text-[#6E634B] font-medium">{authenticatedEmail}</p>
             </div>
           </button>
 
@@ -293,7 +359,7 @@ export default function Navbar() {
             className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-black uppercase tracking-wider text-red-700 transition hover:bg-red-100"
           >
             <LogOut size={14} />
-            <span>Exit</span>
+            <span>Logout</span>
           </button>
         </div>
       </div>

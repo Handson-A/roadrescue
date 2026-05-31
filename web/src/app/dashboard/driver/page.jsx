@@ -60,8 +60,10 @@ export default function DriverDashboard() {
   }
 
   const progress = progressByStatus[activeRequest?.status] || 20
+  const vehicleLabel = [profile?.vehicle_make, profile?.vehicle_model].filter(Boolean).join(' ') || 'Link vehicle profile'
+  const membershipId = profile?.vehicle_plate || profile?.id?.substring(0, 8) || '—'
   const quickTiles = [
-    { label: 'Vehicle Info', value: profile?.vehicle_name || 'Link vehicle profile', href: '/dashboard/driver/account', icon: CarFront },
+    { label: 'Vehicle Info', value: vehicleLabel, href: '/dashboard/driver/account', icon: CarFront },
     { label: 'Find Fuel/EV', value: 'Locate refueling grids', href: '/dashboard/driver', icon: Fuel },
   ]
 
@@ -78,9 +80,9 @@ export default function DriverDashboard() {
         
         {/* Subtitle Directive Card Block */}
         <div className="rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
-          <h2 className="text-xl font-black tracking-tight text-[#1F1B10]">Driver Dashboard</h2>
+          <h2 className="text-xl font-black tracking-tight text-[#1F1B10]">Dashboard</h2>
           <p className="mt-1 text-xs leading-relaxed text-[#7C6B44]">
-            Deploy an emergency assistance ticket and monitor tactical responder tracking in real time.
+           Request emergency vehicle assistance and monitor your technician&#39;s arrival coordinates in real time.
           </p>
         </div>
 
@@ -90,7 +92,7 @@ export default function DriverDashboard() {
             <span className="h-2 w-2 rounded-full bg-[#F5D108] animate-pulse" />
             Active Membership
           </span>
-          <span className="font-mono text-[11px] text-slate-500">ID: {profile?.membership_id || profile?.id?.substring(0, 8) || '—'}</span>
+          <span className="font-mono text-[11px] text-slate-500">ID: {membershipId}</span>
         </div>
 
         {/* Core CTA Action Portal Layer */}
@@ -100,12 +102,12 @@ export default function DriverDashboard() {
           </div>
           <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">Hello, {profile?.full_name?.split(' ')?.[0] || 'Driver'}</p>
           <h3 className="mt-1 text-2xl font-black tracking-tight">Need Help Now?</h3>
-          <p className="mt-1 text-xs text-white/60">On-demand telemetry diagnostics and rapid mechanic deployment.</p>
+          <p className="mt-1 text-xs text-white/60">Get connected to nearby certified mechanics with live dispatch tracking.</p>
           <Link
             href="/dashboard/driver/request/new"
             className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md active:scale-98 transition"
           >
-            Initialize Dispatch Vector
+            REQUEST ROADSIDE RESCUE
             <Search size={14} strokeWidth={2.5} />
           </Link>
         </div>

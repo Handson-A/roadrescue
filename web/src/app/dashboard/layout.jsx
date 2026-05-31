@@ -9,16 +9,15 @@ export default function DashboardLayout({
   children,
 }) {
   const { role } = useAuth()
-  const hasDesktopSidebar = role === 'admin' || role === 'mechanic'
 
   return (
     <div className="min-h-screen bg-[#F6F2E7] text-[#1f1b10]">
       <Sidebar />
 
-      <div className={hasDesktopSidebar ? 'lg:pl-64' : ''}>
+      <div className="md:pl-64">
         <Navbar />
 
-        <main className="px-4 py-5 pb-36 lg:px-6 lg:py-6 lg:pb-8">
+        <main className="px-4 py-5 pb-36 md:px-6 md:py-6 md:pb-8">
           {children}
         </main>
       </div>

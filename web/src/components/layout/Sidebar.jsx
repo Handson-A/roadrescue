@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
-import { ChartColumn, Gauge, History, Home, LifeBuoy, LogOut, Radar, Settings, ShieldCheck, User, ClipboardList, Lightbulb, Brain, PlusCircle } from 'lucide-react'
+import { ChartColumn, Gauge, History, Home, LifeBuoy, LogOut, Radar, Settings, ShieldCheck, User, ClipboardList, WifiSync, Brain, PlusCircle } from 'lucide-react'
 
 import Avatar from '@/components/ui/Avatar'
 import { useAuth } from '@/hooks/useAuth'
@@ -11,18 +12,17 @@ import { signOut } from '@/lib/auth'
 
 const navByRole = {
   driver: [
-    { href: '/dashboard/driver', label: 'Home Node', icon: Home },
+    { href: '/dashboard/driver', label: 'Dashboard', icon: Home },
     { href: '/dashboard/driver/ai', label: 'AI Diagnostics', icon: Brain },
     { href: '/dashboard/driver/history', label: 'Incident Archive', icon: History },
-    { href: '/dashboard/driver/account', label: 'My Credentials', icon: User },
+    { href: '/dashboard/driver/account', label: 'Account', icon: User },
   ],
   mechanic: [
-    { href: '/dashboard/mechanic', label: 'Home', icon: Home },
+    { href: '/dashboard/mechanic', label: 'Dashboard', icon: Home },
     { href: '/dashboard/mechanic/requests', label: 'Active Jobs', icon: Radar },
     { href: '/dashboard/mechanic/history', label: 'Job History', icon: History },
-    { href: '/dashboard/mechanic/account', label: 'Earnings', icon: ChartColumn },
-    { href: '/dashboard/mechanic/settings', label: 'Profile', icon: User },
     { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
+    { href: '/dashboard/mechanic/account', label: 'Profile', icon: User },
   ],
   admin: [
     { href: '/dashboard/admin', label: 'Dashboard', icon: Gauge },
@@ -31,11 +31,12 @@ const navByRole = {
     { href: '/dashboard/admin/mechanics', label: 'Mechanics', icon: User },
     { href: '/dashboard/admin/reports', label: 'Analytics', icon: ChartColumn },
     { href: '/dashboard/admin/users', label: 'Identity Hub', icon: ShieldCheck },
-    { href: '/dashboard/admin/settings', label: 'Settings', icon: Settings },
+    { href: '/dashboard/admin/account', label: 'Account', icon: Settings },
   ],
 }
 
 export default function Sidebar() {
+  const router = useRouter()
   const pathname = usePathname()
   const { profile } = useAuth()
 
@@ -48,7 +49,7 @@ export default function Sidebar() {
 
   async function handleSignOut() {
     await signOut()
-    window.location.href = '/auth/login'
+    router.replace('/auth/login')
   }
 
   // Base theme definitions matching your exact color scheme matrix
@@ -65,8 +66,8 @@ export default function Sidebar() {
     : 'text-[#433C2B] hover:bg-[#E8DFC6] hover:text-[#2A261C]'
 
   return (
-    // Fixed hidden utility: Now visible exclusively from large screens (lg:flex) upwards
-    <aside className={`hidden lg:fixed lg:left-0 lg:top-0 lg:z-40 lg:flex lg:h-screen lg:w-64 lg:flex-col ${sidebarClass}`}>
+    // Tablet-first shell: show the sidebar from md upward and keep mobile on bottom nav only
+    <aside className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col ${sidebarClass}`}>
       
       {/* BRANDING LOGO BLOCK */}
       <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-4">
@@ -111,7 +112,7 @@ export default function Sidebar() {
       </nav>
 
       {/* FOOTER USER MANAGEMENT & CTA HUB */}
-      <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5 bg-black/[0.01]">
+      <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5 bg-black/1">
         {isAdmin ? (
           <Link
             href="/dashboard/admin/requests"
@@ -131,7 +132,7 @@ export default function Sidebar() {
             type="button"
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
           >
-            <Lightbulb size={14} /> Go Online
+            <WifiSync size={14} /> Go Online
           </button>
         )}
 

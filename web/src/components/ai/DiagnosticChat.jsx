@@ -85,9 +85,7 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
       
       {/* Header Area: Completely clean, native app feel */}
       <div className="flex items-center gap-3 border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-4">
-        <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full bg-white border border-[#DCCDA9] text-slate-700 hover:bg-slate-50 transition shadow-sm">
-          <ArrowLeft size={18} />
-        </button>
+        
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F5D108] text-[#1F1B10] shadow-sm">
           <Zap size={18} />
         </div>

@@ -89,7 +89,7 @@ export default function AdminReviewsPage() {
                 </div>
 
                 <div className="flex gap-2 lg:flex-col">
-                  <Button loading={actionLoading === request.id} onClick={() => review(request.id, 'approved')} className="lg:w-36">Approve</Button>
+                  <Button variant="outline" loading={actionLoading === request.id} onClick={() => review(request.id, 'approved')} className="lg:w-36">Approve</Button>
                   <Button variant="outline" loading={actionLoading === request.id} onClick={() => review(request.id, 'rejected')} className="lg:w-36">Reject</Button>
                 </div>
               </div>

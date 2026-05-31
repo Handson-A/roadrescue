@@ -1,11 +1,9 @@
 # ============================================================================
 # RoadRescue .gitignore — Production Ready for Vercel Deployment
 # ============================================================================
-# This file prevents committing secrets, build artifacts, and OS files
-# See https://help.github.com/articles/ignoring-files/
 
 # ============================================================================
-# ENVIRONMENT & SECRETS (Critical — NEVER commit these)
+# ENVIRONMENT & SECRETS (Critical)
 # ============================================================================
 .env
 .env.local
@@ -81,7 +79,7 @@ lerna-debug.log*
 ehthumbs.db
 
 # ============================================================================
-# TYPESCRIPT (Not used in RoadRescue, but safe to ignore)
+# TYPESCRIPT (Not used in this project, but safe to ignore)
 # ============================================================================
 *.tsbuildinfo
 next-env.d.ts

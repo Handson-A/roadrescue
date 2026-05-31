@@ -5,6 +5,36 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { NOTIFICATION_TYPE, USER_ROLE } from '@/lib/constants'
+
+function getNotificationHref(notification, role) {
+  if (!notification) return null
+
+  const requestId = notification.request_id
+  const userRole = role || USER_ROLE.DRIVER
+
+  switch (notification.type) {
+    case NOTIFICATION_TYPE.NEW_REQUEST:
+      return requestId && userRole === USER_ROLE.MECHANIC ? `/dashboard/mechanic/job/${requestId}` : null
+    case NOTIFICATION_TYPE.MECHANIC_BID:
+    case NOTIFICATION_TYPE.BID_ACCEPTED:
+    case NOTIFICATION_TYPE.MECHANIC_EN_ROUTE:
+    case NOTIFICATION_TYPE.MECHANIC_ARRIVED:
+    case NOTIFICATION_TYPE.JOB_COMPLETED:
+    case NOTIFICATION_TYPE.REQUEST_CANCELLED:
+      return requestId
+        ? userRole === USER_ROLE.MECHANIC
+          ? `/dashboard/mechanic/job/${requestId}`
+          : `/dashboard/driver/request/${requestId}`
+        : null
+    default:
+      return requestId
+        ? userRole === USER_ROLE.MECHANIC
+          ? `/dashboard/mechanic/job/${requestId}`
+          : `/dashboard/driver/request/${requestId}`
+        : null
+  }
+}
 
 export function useNotifications(userId) {
   const [notifications, setNotifications] = useState([])
@@ -86,5 +116,6 @@ export function useNotifications(userId) {
     unreadCount,
     markAsRead,
     markAllAsRead,
+    getNotificationHref,
   }
 }

@@ -259,19 +259,8 @@ export default function RegisterForm() {
         }),
       })
 
-      toast.success('Account created, check your email and activate within the next(48hrs)')
-
-      if (currentUser?.role) {
-        router.push(`/dashboard/${currentUser.role}`)
-        return
-      }
-
-      if (data?.session?.user) {
-        router.push(`/dashboard/${formData.role}`)
-        return
-      }
-
-      router.push('/auth/login')
+      toast.success('Account created. Please verify your email, then sign in once your profile is available.')
+      router.replace('/auth/login')
     } catch (err) {
       toast.error(err?.message || 'Registration failed')
     } finally {

@@ -6,7 +6,7 @@ import LoginForm from '@/components/auth/LoginForm'
 
 export default function LoginPage() {
   return (
-    <div className="space-y-6">
+    <div className="items-center justify-center space-y-2">
       <div className="flex flex-col items-center justify-centerspace-y-2">
        
         <h1 className="text-3xl font-black text-slate-950">Welcome Back</h1>
