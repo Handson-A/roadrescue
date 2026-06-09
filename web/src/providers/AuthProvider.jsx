@@ -19,6 +19,17 @@ import { createClient } from '@/lib/supabase/client'
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 1000 // Start with 1s, exponential backoff after
 
+const isRlsStyleError = (error) => {
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase()
+  return (
+    error?.code === '42501' ||
+    error?.code === 'PGRST301' ||
+    message.includes('row level security') ||
+    message.includes('violates rls policy') ||
+    message.includes('permission denied')
+  )
+}
+
 export default function AuthProvider({ children }) {
   const {
     setAuthState,
@@ -40,20 +51,37 @@ export default function AuthProvider({ children }) {
   const fetchUserProfile = async (user, retryCount = 0) => {
     if (!user?.id) return null
 
+    const userId = user?.id
+
+    const fallbackProfile = {
+      id: userId,
+      email: user.email || null,
+      full_name: user.user_metadata?.full_name || null,
+      phone: user.user_metadata?.phone || null,
+      role: user.user_metadata?.role || null,
+    }
+
     try {
       const supabase = createClient()
 
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle()
 
       if (error) {
+        if (isRlsStyleError(error)) {
+          console.warn(`Profile fetch blocked by policy for user ${userId}; using auth metadata fallback`, error)
+          setError(null)
+          setNetworkStatus('connected')
+          return fallbackProfile
+        }
+
         // Permission or network error
         if (error.code === 'PGRST100') {
           // Row not found (newly created user, profile will sync via trigger)
-          console.warn(`Profile not yet created for user ${user.id} — will be created by trigger`)
+          console.warn(`Profile not yet created for user ${userId} — will be created by trigger`)
           return null
         }
 
@@ -69,26 +97,26 @@ export default function AuthProvider({ children }) {
         }
 
         // Max retries exceeded
-        console.error(`Profile fetch failed after ${MAX_RETRIES} retries for user ${user.id}:`, error)
+        console.error(`Profile fetch failed after ${MAX_RETRIES} retries for user ${userId}:`, error)
         setError(`Failed to load profile: ${error.message}`)
         setNetworkStatus('degraded')
         return null
       }
 
       // Success — profile found or null (newly created user)
-      retryCountRef.current[user.id] = 0
+      retryCountRef.current[userId] = 0
       setError(null) // Clear previous errors
       setNetworkStatus('connected')
 
-      if (!profile) return null
+      if (!profile) return fallbackProfile
 
-      const extendedProfile = { ...profile }
+      const extendedProfile = { ...fallbackProfile, ...profile }
 
-      if (profile.role === 'driver') {
+      if (profile?.role === 'driver') {
         const { data: driverProfile } = await supabase
           .from('driver_profiles')
           .select('vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, emergency_contact_name, emergency_contact_phone, home_area, rating_avg, total_requests')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .maybeSingle()
 
         if (driverProfile) {
@@ -106,11 +134,11 @@ export default function AuthProvider({ children }) {
         }
       }
 
-      if (profile.role === 'mechanic') {
+      if (profile?.role === 'mechanic') {
         const { data: mechanicProfile } = await supabase
           .from('mechanic_profiles')
           .select('specializations, years_experience, business_name, verification_status, rating_avg, total_jobs, is_available, location_label')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .maybeSingle()
 
         if (mechanicProfile) {
@@ -139,7 +167,7 @@ export default function AuthProvider({ children }) {
         return fetchUserProfile(user, retryCount + 1)
       }
 
-      return null
+      return fallbackProfile
     }
   }
 

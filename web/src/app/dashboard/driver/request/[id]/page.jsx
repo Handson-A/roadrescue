@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { CarFront, PhoneCall, MessageCircle, Clock3, MapPin } from 'lucide-react'
+import { BusFront, Clock3, ExternalLink, MapPin, PhoneCall } from 'lucide-react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -13,6 +13,43 @@ import RequestTimeline from '@/components/request/RequestTimeline'
 import { useRequestStatus } from '@/hooks/useRequestStatus'
 import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
 import { timeAgo } from '@/lib/utils'
+
+const ACTIVE_DRIVER_REQUEST_STATUSES = ['accepted', 'en_route', 'arrived', 'in_progress']
+
+function normalizeGeoPoint(point) {
+  if (!point) return null
+
+  if (typeof point.latitude === 'number' && typeof point.longitude === 'number') {
+    return { lat: point.latitude, lng: point.longitude }
+  }
+
+  if (typeof point.lat === 'number' && typeof point.lng === 'number') {
+    return { lat: point.lat, lng: point.lng }
+  }
+
+  if (Array.isArray(point.coordinates) && point.coordinates.length === 2) {
+    return { lat: point.coordinates[1], lng: point.coordinates[0] }
+  }
+
+  if (typeof point === 'string') {
+    const match = point.match(/POINT\((-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\)/i)
+    if (match) {
+      return { lat: Number(match[2]), lng: Number(match[1]) }
+    }
+  }
+
+  return null
+}
+
+function buildTransitLinks(point) {
+  if (!point) return { primary: '', fallback: '' }
+
+  const encodedLocation = encodeURIComponent(`${point.lat},${point.lng}`)
+  return {
+    primary: `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${point.lat}&pickup[longitude]=${point.lng}`,
+    fallback: `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}&zoom=16`,
+  }
+}
 
 export default function DriverRequestTrackingPage() {
   const { id } = useParams()
@@ -41,6 +78,13 @@ export default function DriverRequestTrackingPage() {
 
   const mechanic = request.mechanic
   const etaMinutes = request.eta_minutes || (request.status === 'en_route' ? 10 : request.status === 'arrived' ? 2 : 18)
+  const incidentPoint = normalizeGeoPoint(request.incident_location)
+  const transitLinks = buildTransitLinks(incidentPoint)
+  const isActiveDispatch = ACTIVE_DRIVER_REQUEST_STATUSES.includes(request.status)
+  const workshopLabel = [
+    mechanic?.mechanic_profiles?.business_name,
+    mechanic?.mechanic_profiles?.location_label,
+  ].filter(Boolean).join(' · ')
 
   return (
     <PageWrapper title="Live tracking" description="Track the dispatcher, assigned mechanic, and current lifecycle state.">
@@ -48,6 +92,35 @@ export default function DriverRequestTrackingPage() {
         <div className="overflow-hidden rounded-4xl bg-[#F3F4F6] shadow-soft ring-1 ring-[#7C7767]/25">
           <RescueMap request={request} driverLocation={request.incident_location} mechanicLocation={mechanicLocation} height="320px" />
         </div>
+
+        <Card className="rounded-[1.75rem] border-[#1F2937]/15 bg-[#F3F4F6] p-0">
+          <button
+            type="button"
+            onClick={() => {
+              const targetUrl = transitLinks.primary || transitLinks.fallback
+              if (targetUrl) window.open(targetUrl, '_blank', 'noopener,noreferrer')
+            }}
+            disabled={!transitLinks.primary && !transitLinks.fallback}
+            className="w-full rounded-[1.75rem] p-4 text-left transition hover:bg-[#E8EAF0] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#0F172A]">Alternative Transit Operator</p>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-[#111827]">Arrange ride support while help is on-site</p>
+                <p className="mt-1 text-xs text-[#475569]">Uses your pinned breakdown coordinate for ride-hailing and transit routing.</p>
+              </div>
+              <div className="rounded-xl bg-[#0F172A] p-2 text-[#F8FAFC]">
+                <BusFront size={16} />
+              </div>
+            </div>
+            {transitLinks.fallback && (
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                Open transit options
+                <ExternalLink size={12} />
+              </span>
+            )}
+          </button>
+        </Card>
 
         <div className="rounded-[1.75rem] bg-[#111827] px-4 py-4 text-[#F3F4F6] shadow-[0_18px_50px_rgba(17,24,39,0.25)]">
           <div className="flex items-center justify-between gap-3">
@@ -61,28 +134,37 @@ export default function DriverRequestTrackingPage() {
           </div>
         </div>
 
-        <Card className="rounded-[1.75rem] border-[#7C7767]/25 bg-[#F3F4F6] p-0 overflow-hidden">
+        {mechanic && isActiveDispatch && (
+        <Card className="rounded-[1.75rem] border-[#0F172A]/20 bg-[#F3F4F6] p-0 overflow-hidden">
           <div className="px-4 pt-4 pb-3">
             <div className="flex items-center gap-2 text-[#7C7767]">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#FFD700]" />
-              <span className="text-xs font-black uppercase tracking-[0.2em]">On the way</span>
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-[#0F172A]">Mechanic comms live</span>
             </div>
             <div className="mt-4 flex items-start gap-3">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFD700] text-lg font-black text-[#111827]">{mechanic?.full_name?.split(' ').map((part) => part[0]).join('').slice(0, 2) || 'RR'}</div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-lg font-black text-[#111827]">{mechanic?.full_name || 'Assigned mechanic'}</p>
-                <p className="truncate text-sm text-[#7C7767]">{mechanic?.mechanic_profiles?.business_name || 'Certified recovery specialist'}</p>
+                <p className="truncate text-sm text-[#334155]">{workshopLabel || 'Certified recovery specialist'}</p>
                 <p className="mt-1 text-sm text-[#FFD700]">★★★★★ 4.9</p>
               </div>
               <div className="flex flex-col gap-2">
-                <button className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111827] text-[#F3F4F6]" aria-label="Call mechanic">
+                <a
+                  href={mechanic?.phone ? `tel:${mechanic.phone}` : undefined}
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111827] text-[#F3F4F6]"
+                  aria-label="Call mechanic"
+                >
                   <PhoneCall size={18} />
-                </button>
-                <button className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F3F4F6] text-[#7C7767]" aria-label="Message mechanic">
-                  <MessageCircle size={18} />
-                </button>
+                </a>
               </div>
             </div>
+            <a
+              href={mechanic?.phone ? `tel:${mechanic.phone}` : undefined}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white"
+            >
+              <PhoneCall size={14} />
+              Call {mechanic?.phone || 'mechanic'}
+            </a>
           </div>
 
           <div className="mx-4 mb-4 rounded-[1.25rem] bg-[#F3F4F6] p-4">
@@ -99,6 +181,7 @@ export default function DriverRequestTrackingPage() {
             </div>
           </div>
         </Card>
+        )}
 
         <Card className="rounded-[1.75rem] p-4">
           <RequestTimeline status={request.status} />
@@ -128,19 +211,23 @@ export default function DriverRequestTrackingPage() {
             <RequestTimeline status={request.status} />
           </Card>
 
-          {mechanic && (
-            <Card>
-              <p className="mb-3 text-xs uppercase tracking-[0.22em] text-muted">Assigned mechanic</p>
+          {mechanic && isActiveDispatch && (
+            <Card className="border-[#0F172A]/20 bg-[#0F172A] text-[#F8FAFC]">
+              <p className="mb-3 text-xs uppercase tracking-[0.22em] text-[#94A3B8]">Assigned mechanic</p>
               <div className="flex items-center gap-3">
                 <Avatar name={mechanic.full_name} src={mechanic.avatar_url} online />
                 <div>
-                  <p className="text-sm font-semibold">{mechanic.full_name}</p>
-                  <p className="text-xs text-muted">{mechanic.phone || 'Contact pending'}</p>
+                  <p className="text-sm font-semibold text-white">{mechanic.full_name}</p>
+                  <p className="text-xs text-[#CBD5E1]">{workshopLabel || 'Certified recovery specialist'}</p>
                 </div>
               </div>
-              <div className="mt-3 text-xs text-muted">
-                {mechanic.mechanic_profiles?.business_name || 'Verified mechanic'}
-              </div>
+              <a
+                href={mechanic?.phone ? `tel:${mechanic.phone}` : undefined}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/60 bg-emerald-500/15 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-emerald-100"
+              >
+                <PhoneCall size={14} />
+                Call {mechanic?.phone || 'mechanic'}
+              </a>
             </Card>
           )}
 
@@ -154,13 +241,46 @@ export default function DriverRequestTrackingPage() {
           </Card>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="space-y-4 lg:col-span-2">
           <RescueMap
             request={request}
             driverLocation={request.incident_location}
             mechanicLocation={mechanicLocation}
             height="560px"
           />
+
+          <Card className="rounded-[1.75rem] border-[#0F172A]/15 bg-[#F3F4F6] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#0F172A]">Alternative Transit Operator</p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-[#111827]">Need to leave the scene?</p>
+                <p className="mt-1 text-xs text-[#475569]">Open ride-hailing and transit maps from your pinned breakdown location.</p>
+              </div>
+              <div className="rounded-xl bg-[#0F172A] p-2 text-[#F8FAFC]">
+                <BusFront size={16} />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a
+                href={transitLinks.primary || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#0F172A] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#F8FAFC]"
+              >
+                Open ride options
+                <ExternalLink size={14} />
+              </a>
+              <a
+                href={transitLinks.fallback || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#0F172A]/20 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-wider text-[#0F172A]"
+              >
+                Open transit map
+                <ExternalLink size={14} />
+              </a>
+            </div>
+          </Card>
         </div>
       </div>
     </PageWrapper>

@@ -58,17 +58,25 @@ export async function getCurrentUser() {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return null
 
+  const fallbackProfile = {
+    id: user.id,
+    email: user.email,
+    full_name: user.user_metadata?.full_name || null,
+    phone: user.user_metadata?.phone || null,
+    role: user.user_metadata?.role || null,
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (profileError) return null
+  if (profileError) return fallbackProfile
 
-  const extendedProfile = profile ? { ...profile } : {}
+  const extendedProfile = profile ? { ...profile } : { ...fallbackProfile }
 
-  const role = profile?.role
+  const role = profile?.role || fallbackProfile.role
 
   if (role === 'mechanic') {
     const { data: mechanicProfile } = await supabase

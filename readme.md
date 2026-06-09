@@ -170,7 +170,6 @@ roadrescue/
 - Error handling and user feedback
 
 ### 🚧 In Progress / Planned
-- Google Maps integration for better visualization
 - Email notifications for key events
 - Payment processing and earnings reports
 - Two-factor authentication

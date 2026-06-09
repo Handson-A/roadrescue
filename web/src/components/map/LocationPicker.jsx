@@ -1,228 +1,175 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-// 1. Notice the new import: we import the functional utilities, NOT the Loader class
-import { importLibrary, setOptions } from '@googlemaps/js-api-loader'
+
+const ACCRA_LAT = 5.6037
+const ACCRA_LNG = -0.1870
+
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false, loading: () => <div style={{ height: '300px' }} className="animate-pulse bg-slate-100 rounded-xl" /> }
+)
+
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+)
+
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+)
+
+function MapClickHandler({ onClick }) {
+  const { useMapEvent } = require('react-leaflet')
+  useMapEvent('click', (event) => {
+    onClick(event.latlng.lat, event.lng)
+  })
+  return null
+}
+
+function MapController({ center, zoom }) {
+  const { useMap } = require('react-leaflet')
+  const map = useMap()
+  useEffect(() => {
+    if (map) {
+      map.setView(center, zoom)
+    }
+  }, [map, center, zoom])
+  return null
+}
 
 export default function LocationPicker({ onSelect, onLocationSelect }) {
   const [lat, setLat] = useState('')
   const [lng, setLng] = useState('')
   const [address, setAddress] = useState('')
-  const [mapLoaded, setMapLoaded] = useState(false)
-  const [mapError, setMapError] = useState(null)
-  const mapContainer = useRef(null)
-  const map = useRef(null)
-  const marker = useRef(null)
-  const geocoder = useRef(null)
-  
-  const AdvancedMarkerRef = useRef(null)
-  const callback = onSelect || onLocationSelect
+  const [mapCenter, setMapCenter] = useState([ACCRA_LAT, ACCRA_LNG])
+  const callbackRef = useRef(null)
 
-  // Initialize Google Map
   useEffect(() => {
-    if (!mapContainer.current || mapLoaded) return
+    callbackRef.current = onSelect || onLocationSelect
+  }, [onSelect, onLocationSelect])
 
-    const initMap = async () => {
-      try {
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-        if (!apiKey) {
-          setMapError('Google Maps API key not configured')
-          return
-        }
-
-        // 2. Configure the loader globally using the new functional API
-        setOptions({
-          apiKey,
-          version: 'weekly',
-        })
-
-        // 3. Directly call importLibrary (no "new Loader()" anymore)
-        const { Map } = await importLibrary('maps')
-        const { AdvancedMarkerElement } = await importLibrary('marker')
-        const { Geocoder } = await importLibrary('geocoding')
-
-        AdvancedMarkerRef.current = AdvancedMarkerElement
-        geocoder.current = new Geocoder()
-
-        // Default to Accra, Ghana or user's current location.
-        // The selected point is reverse-geocoded into a human-readable place label when possible.
-        const defaultLat = 5.6037
-        const defaultLng = -0.1870
-
-        map.current = new Map(mapContainer.current, {
-          zoom: 14,
-          center: { lat: defaultLat, lng: defaultLng },
-          mapId: 'roadrescue-map', 
-          disableDefaultUI: false,
-          fullscreenControl: true,
-          zoomControl: true,
-          mapTypeControl: true,
-        })
-
-        // Add click listener to place marker
-        map.current.addListener('click', async (event) => {
-          const clickedLat = event.latLng.lat()
-          const clickedLng = event.latLng.lng()
-          await placeMarker(clickedLat, clickedLng)
-        })
-
-        // Get user's current location and center map
-        fetchCurrentLocation()
-        setMapLoaded(true)
-      } catch (error) {
-        console.error('Map initialization error:', error)
-        setMapError('Failed to load Google Maps')
-      }
-    }
-
-    initMap()
-  }, [mapLoaded])
-
-  async function reverseGeocode(latitude, longitude) {
-    if (!geocoder.current) return null
-
+  const reverseGeocode = useCallback(async (latitude, longitude) => {
     try {
-      const result = await geocoder.current.geocode({
-        location: { lat: latitude, lng: longitude },
-      })
-
-      if (result.results && result.results[0]) {
-        return result.results[0].formatted_address
-      }
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        { headers: { 'Accept': 'application/json' } }
+      )
+      if (!response.ok) return null
+      const data = await response.json()
+      return data?.display_name || null
     } catch (error) {
-      console.error('Geocoding error:', error)
+      console.warn('Reverse geocoding failed:', error)
+      return null
     }
+  }, [])
 
-    return null
-  }
-
-  async function placeMarker(latitude, longitude) {
+  const placeMarkerValue = useCallback((latitude, longitude) => {
     const nextLat = Number(latitude.toFixed(6))
     const nextLng = Number(longitude.toFixed(6))
 
     setLat(String(nextLat))
     setLng(String(nextLng))
+    setMapCenter([nextLat, nextLng])
 
-    const geocodedAddress = await reverseGeocode(nextLat, nextLng)
-    const label = geocodedAddress || `${nextLat.toFixed(4)}, ${nextLng.toFixed(4)}`
-    setAddress(label)
+    void reverseGeocode(nextLat, nextLng).then((geocodedAddress) => {
+      const label = geocodedAddress || `${nextLat.toFixed(4)}, ${nextLng.toFixed(4)}`
+      setAddress(label)
 
-    if (map.current && AdvancedMarkerRef.current) {
-      if (marker.current) {
-        marker.current.map = null 
+      if (callbackRef.current) {
+        callbackRef.current({
+          lat: nextLat,
+          lng: nextLng,
+          latitude: nextLat,
+          longitude: nextLng,
+          address: label,
+        })
       }
-
-      const AdvancedMarkerElement = AdvancedMarkerRef.current
-      marker.current = new AdvancedMarkerElement({
-        map: map.current,
-        position: { lat: nextLat, lng: nextLng },
-        title: label,
-      })
-
-      map.current.panTo({ lat: nextLat, lng: nextLng })
-    }
-
-    emitLocation(nextLat, nextLng, label)
-  }
-
-  function emitLocation(nextLat, nextLng, nextAddress) {
-    if (!callback) return
-    callback({
-      lat: nextLat,
-      lng: nextLng,
-      latitude: nextLat,
-      longitude: nextLng,
-      address: nextAddress || `${nextLat.toFixed(4)}, ${nextLng.toFixed(4)}`,
     })
-  }
+  }, [reverseGeocode])
 
-  function fetchCurrentLocation() {
-    if (!navigator.geolocation) return
+  const detectLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      placeMarkerValue(ACCRA_LAT, ACCRA_LNG)
+      return
+    }
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const nextLat = Number(position.coords.latitude.toFixed(6))
-        const nextLng = Number(position.coords.longitude.toFixed(6))
-        await placeMarker(nextLat, nextLng)
-      },
+      (position) => placeMarkerValue(position.coords.latitude, position.coords.longitude),
       (error) => {
         console.warn('Geolocation error:', error)
-        const defaultLat = 5.6037
-        const defaultLng = -0.1870
-        placeMarker(defaultLat, defaultLng)
+        placeMarkerValue(ACCRA_LAT, ACCRA_LNG)
       }
     )
-  }
+  }, [placeMarkerValue])
+
+  // Initialize location on mount - this is acceptable for location detection initialization
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    if (typeof window !== 'undefined') {
+      detectLocation()
+    }
+  }, [])
 
   function confirmManualLocation() {
     const nextLat = Number(lat)
     const nextLng = Number(lng)
     if (!Number.isFinite(nextLat) || !Number.isFinite(nextLng)) return
-    placeMarker(nextLat, nextLng)
+    placeMarkerValue(nextLat, nextLng)
   }
 
   return (
     <div className="space-y-4">
-      {/* Google Map Container */}
-      <div className="rounded-[1.75rem] border border-border bg-slate-100 p-4 shadow-soft">
-        {mapError ? (
-          <div className="flex min-h-75 items-center justify-center rounded-[1.25rem] border border-dashed border-red-300 bg-red-50 px-6 text-center text-sm text-red-600">
-            <div>
-              <p className="font-semibold">Map Not Available</p>
-              <p className="mt-2 text-xs">{mapError}</p>
-              <p className="mt-2 text-xs">Enter coordinates manually below</p>
-            </div>
-          </div>
-        ) : (
-          <div
-            ref={mapContainer}
-            className="h-75 w-full rounded-[1.25rem] border border-slate-200 bg-white"
-            style={{ minHeight: '300px' }}
+      <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+        <MapContainer
+          center={mapCenter}
+          zoom={14}
+          style={{ height: '300px', width: '100%' }}
+          className="rounded-[1.25rem] border border-slate-200"
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-        )}
+          {(lat && lng) && (
+            <Marker position={[Number(lat), Number(lng)]} />
+          )}
+          <MapClickHandler onClick={placeMarkerValue} />
+          <MapController center={mapCenter} zoom={14} />
+        </MapContainer>
       </div>
 
-      <Button variant="outline" fullWidth onClick={fetchCurrentLocation}>
-        📍 Use current location
+      <Button variant="outline" fullWidth onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider">
+        📍 Detect My Location
       </Button>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Manual Entry</p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Input
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            label="Latitude"
-            placeholder="5.6037"
-            type="number"
-            step="0.0001"
-          />
-          <Input
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            label="Longitude"
-            placeholder="-0.1870"
-            type="number"
-            step="0.0001"
-          />
-        </div>
-
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Position Parameter Descriptors</p>
+        
         <Input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          label="Address label"
-          placeholder="Landmark or street"
-          className="mt-3"
+          label="Confirmed Incident Address"
+          placeholder="Verifying location landmarks..."
+          className="bg-slate-50/50"
         />
+
+        <div className="grid gap-3 grid-cols-2">
+          <Input value={lat} onChange={(e) => setLat(e.target.value)} label="Latitude Coordinates" placeholder="5.6037" type="number" step="0.0001" />
+          <Input value={lng} onChange={(e) => setLng(e.target.value)} label="Longitude Coordinates" placeholder="-0.1870" type="number" step="0.0001" />
+        </div>
 
         <Button
           fullWidth
           onClick={confirmManualLocation}
           disabled={!lat || !lng}
-          className="mt-3"
+          className="bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider h-11"
         >
-          Confirm pickup point
+          Confirm Destination Target
         </Button>
       </div>
     </div>

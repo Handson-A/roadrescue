@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
-import { signUp, getCurrentUser } from '@/lib/auth'
+import { signUp } from '@/lib/auth'
 import { USER_ROLE } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
 
@@ -187,17 +187,16 @@ export default function RegisterForm() {
         role: formData.role,
       })
 
-      const currentUser = await getCurrentUser()
+      const userId = data?.user?.id || data?.session?.user?.id
+      const role = data?.user?.user_metadata?.role || data?.session?.user?.user_metadata?.role || formData.role
 
-      if ((currentUser?.role || formData.role) === USER_ROLE.MECHANIC) {
-        const userId = currentUser?.id || data?.session?.user?.id
+      if (role === USER_ROLE.MECHANIC) {
         if (userId) {
           await saveMechanicProfile(userId)
         }
       }
 
-      if ((currentUser?.role || formData.role) === USER_ROLE.DRIVER) {
-        const userId = currentUser?.id || data?.session?.user?.id
+      if (role === USER_ROLE.DRIVER) {
         if (userId) {
           await saveDriverProfile(userId)
         }
@@ -205,11 +204,11 @@ export default function RegisterForm() {
 
       if (avatarFile) {
         const supabase = createClient()
-        const userId = currentUser?.id || data?.user?.id || data?.session?.user?.id
+        const avatarUserId = userId || data?.user?.id || data?.session?.user?.id
 
-        if (userId) {
+        if (avatarUserId) {
           const fileExtension = avatarFile.name.split('.').pop() || 'jpg'
-          const filePath = `avatars/${userId}/${Date.now()}.${fileExtension}`
+          const filePath = `avatars/${avatarUserId}/${Date.now()}.${fileExtension}`
           const { error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, avatarFile, {
@@ -225,7 +224,7 @@ export default function RegisterForm() {
             await supabase
               .from('profiles')
               .update({ avatar_url: publicUrlData.publicUrl })
-              .eq('id', userId)
+              .eq('id', avatarUserId)
           }
         }
       }

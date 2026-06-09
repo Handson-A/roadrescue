@@ -37,7 +37,7 @@ RoadRescue is a real-time rescue coordination platform connecting drivers with n
 - **Styling**: Tailwind CSS
 - **State Management**: React Hooks
 - **Real-time**: Supabase Realtime Subscriptions
-- **Maps**: Leaflet.js or Google Maps API
+- **Maps**: Leaflet.js (OpenStreetMap tiles) with Nominatim reverse geocoding
 
 ### Backend
 - **Runtime**: Node.js (Next.js)
@@ -179,7 +179,6 @@ Main endpoints:
 ## Features Deferred (Future Implementation)
 
 - Email notifications (integration with SendGrid/Mailgun)
-- Google Maps API for enhanced mapping features
 - Two-factor authentication
 - Push notifications (mobile)
 - Payment processing integration

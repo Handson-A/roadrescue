@@ -97,7 +97,7 @@ export const useAuthStore = create((set, get) => ({
    */
   isAuthenticated: () => {
     const { user } = get()
-    return !!user && !!user.id
+    return !!user?.id
   },
 
   /**
@@ -124,7 +124,7 @@ export const useAuthStore = create((set, get) => ({
    */
   hasAnyRole: (roles) => {
     const { profile } = get()
-    return profile && roles.includes(profile.role)
+    return roles.includes(profile?.role)
   },
 
   /**
@@ -161,6 +161,6 @@ export const useAuthStore = create((set, get) => ({
    */
   canPerformAuthAction: () => {
     const { networkStatus, user } = get()
-    return networkStatus === 'connected' && !!user
+    return networkStatus === 'connected' && !!user?.id
   },
 }))

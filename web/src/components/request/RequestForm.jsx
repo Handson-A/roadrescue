@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { Camera, ImagePlus } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -12,6 +14,7 @@ import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import { useDiagnostic } from '@/hooks/useDiagnostic'
 import { useToast } from '@/components/ui/Toast'
 import { SERVICE_TYPE } from '@/lib/constants'
+import { createClient } from '@/lib/supabase/client'
 import { formatStatus } from '@/lib/utils'
 
 const serviceOptions = [
@@ -29,6 +32,9 @@ export default function RequestForm() {
   const { diagnose, diagnosis, diagnosing, isFallback } = useDiagnostic()
 
   const [submitting, setSubmitting] = useState(false)
+  const [snapshotUploading, setSnapshotUploading] = useState(false)
+  const [vehicleImageFile, setVehicleImageFile] = useState(null)
+  const [vehicleImagePreview, setVehicleImagePreview] = useState('')
   const [form, setForm] = useState({
     incidentLat: null,
     incidentLng: null,
@@ -54,6 +60,69 @@ export default function RequestForm() {
 
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  function onVehicleSnapshotChange(event) {
+    const file = event.target.files?.[0]
+    if (!file) {
+      setVehicleImageFile(null)
+      setVehicleImagePreview('')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast({ message: 'Please choose an image file', type: 'warning' })
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ message: 'Snapshot must be 10MB or less', type: 'warning' })
+      return
+    }
+
+    if (vehicleImagePreview) {
+      URL.revokeObjectURL(vehicleImagePreview)
+    }
+
+    setVehicleImageFile(file)
+    setVehicleImagePreview(URL.createObjectURL(file))
+  }
+
+  async function uploadVehicleSnapshot() {
+    if (!vehicleImageFile) return null
+
+    const supabase = createClient()
+    if (!supabase?.storage?.from) {
+      throw new Error('Snapshot upload is unavailable in this environment')
+    }
+
+    setSnapshotUploading(true)
+
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      const userId = authData?.user?.id || 'driver'
+      const fileExtension = vehicleImageFile.name.split('.').pop() || 'jpg'
+      const filePath = `${userId}/${Date.now()}-${crypto.randomUUID()}.${fileExtension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-snapshots')
+        .upload(filePath, vehicleImageFile, {
+          upsert: false,
+          contentType: vehicleImageFile.type,
+        })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('vehicle-snapshots')
+        .getPublicUrl(filePath)
+
+      return publicUrlData?.publicUrl || null
+    } finally {
+      setSnapshotUploading(false)
+    }
   }
 
   async function runDiagnostic() {
@@ -82,6 +151,16 @@ export default function RequestForm() {
 
     setSubmitting(true)
     try {
+      let vehicleImageUrl = null
+      try {
+        vehicleImageUrl = await uploadVehicleSnapshot()
+      } catch (uploadError) {
+        toast({
+          message: uploadError.message || 'Snapshot upload failed. Dispatch will continue without image.',
+          type: 'warning',
+        })
+      }
+
       const response = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,6 +168,8 @@ export default function RequestForm() {
           ...form,
           vehicleYear: form.vehicleYear ? Number(form.vehicleYear) : null,
           aiDiagnosticResult: diagnosis || null,
+          vehicleImageUrl,
+          vehicle_image_url: vehicleImageUrl,
         }),
       })
 
@@ -145,6 +226,47 @@ export default function RequestForm() {
           <div className="sm:col-span-2">
             <Input label="Plate Number" value={form.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} placeholder="GR-1234-24" />
           </div>
+
+          <div className="sm:col-span-2">
+            <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#7C6B44]">
+              Optional Vehicle Camera Snapshot
+            </label>
+            <label className="group flex cursor-pointer flex-col gap-3 rounded-2xl border border-dashed border-[#C8B98E] bg-[#FFF9EF] p-4 transition hover:border-slate-900">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={onVehicleSnapshotChange}
+                className="sr-only"
+              />
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-slate-900 p-2 text-white">
+                    <Camera size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-[#1F1B10]">Tap to upload from gallery or camera</p>
+                    <p className="text-xs text-[#7C6B44]">Helps your mechanic prepare parts and reduce wait time.</p>
+                  </div>
+                </div>
+                <ImagePlus size={18} className="text-[#7C6B44]" />
+              </div>
+
+              {vehicleImagePreview && (
+                <div className="overflow-hidden rounded-xl border border-[#E0D5B7] bg-white">
+                  <Image
+                    src={vehicleImagePreview}
+                    alt="Vehicle snapshot preview"
+                    width={1024}
+                    height={768}
+                    unoptimized
+                    className="h-48 w-full object-cover"
+                  />
+                </div>
+              )}
+            </label>
+          </div>
         </div>
       </div>
 
@@ -195,10 +317,10 @@ export default function RequestForm() {
           size="lg" 
           onClick={submitRequest} 
           loading={submitting} 
-          disabled={!canSubmit}
+          disabled={!canSubmit || snapshotUploading}
           className="bg-slate-900 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 rounded-xl py-3.5 shadow-md disabled:opacity-40"
         >
-          {submitting ? 'Initializing Dispatch Gateway...' : 'Send Emergency Dispatch'}
+          {submitting || snapshotUploading ? 'Initializing Dispatch Gateway...' : 'Send Emergency Dispatch'}
         </Button>
       </div>
       
