@@ -21,15 +21,15 @@ export default function LoginForm() {
       setLoading(true)
       const data = await signIn(formData)
 
-      const currentUser = await getCurrentUser()
-      if (!currentUser?.role) {
+      const role = data?.user?.user_metadata?.role || data?.session?.user?.user_metadata?.role
+      if (!role) {
         toast.error('Your account is not ready yet. Please confirm your email or try again after your profile syncs.')
         router.replace('/auth/login')
         return
       }
 
       toast.success('Login successful')
-      router.replace(`/dashboard/${currentUser.role}`)
+      router.replace(`/dashboard/${role}`)
     } catch (err) {
       toast.error(err?.message || 'Unable to login')
     } finally {

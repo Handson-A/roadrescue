@@ -37,12 +37,12 @@ function AuthLayoutContent({ children }) {
           <div className="absolute top-12 left-12 xl:left-16 z-10">
             <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold backdrop-blur text-white">
                       <Image
-            src="/images/logo.png"
-            alt="RoadRescue"
-            width={32}
-            height={32}
-            className="rounded-full shadow-md h-auto" // Added h-auto here
-          />  
+                        src="/images/logo.png"
+                        alt="RoadRescue"
+                        width={32}
+                        height={32}
+                        className="rounded-full shadow-md h-auto w-auto"
+                      />
               Ghana Roadside Emergency Network
             </div>
           </div>

@@ -25,6 +25,8 @@
 // web/src/app/layout.jsx
 import '@/styles/global.css'
 
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Toaster } from 'react-hot-toast'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 
@@ -83,6 +85,8 @@ export default function RootLayout({
             />
 
             {children}
+            <SpeedInsights />
+            <Analytics />
           </ToastProvider>
         </AuthProvider>
       </body>

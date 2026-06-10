@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import PageWrapper from '@/components/layout/PageWrapper'
 import RescueMap from '@/components/map/RescueMap'
@@ -20,18 +20,24 @@ export default function MechanicPage() {
   const [available, setAvailable] = useState(false)
   const [mechProfile, setMechProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const userIdRef = useRef(user?.id)
 
   useEffect(() => {
-    if (!user?.id) return
+    userIdRef.current = user?.id
+
+    if (!userIdRef.current) return
     let mounted = true
 
     async function loadJobs() {
+      const currentUserId = userIdRef.current
+      if (!currentUserId) return
+
       const supabase = createClient()
       
       const { data: mechanicData } = await supabase
         .from('mechanic_profiles')
         .select('business_name, is_available, verification_status, current_status, service_radius_km, hourly_rate')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUserId)
         .maybeSingle()
 
       const { data: pending } = await supabase
@@ -51,11 +57,11 @@ export default function MechanicPage() {
           created_at,
           driver:driver_id (id, full_name, phone)
         `)
-        .eq('mechanic_id', user.id)
+        .eq('mechanic_id', currentUserId)
         .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
         .order('created_at', { ascending: false })
 
-      if (mounted) {
+      if (mounted && userIdRef.current) {
         setMechProfile(mechanicData || null)
         setAvailable(Boolean(mechanicData?.is_available))
         setIncomingJobs(pending || [])
@@ -73,10 +79,13 @@ export default function MechanicPage() {
   }, [user?.id])
 
   const toggleAvailability = async () => {
+    const currentUserId = userIdRef.current
+    if (!currentUserId) return
+
     const nextAvailability = !available
     setAvailable(nextAvailability)
     const supabase = createClient()
-    await supabase.from('mechanic_profiles').update({ is_available: nextAvailability }).eq('user_id', user.id)
+    await supabase.from('mechanic_profiles').update({ is_available: nextAvailability }).eq('user_id', currentUserId)
   }
 
   return (

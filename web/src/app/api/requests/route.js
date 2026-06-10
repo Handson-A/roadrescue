@@ -21,7 +21,7 @@ export async function POST(req) {
       .single()
 
     if (profile?.role !== 'driver') {
-      return NextResponse.json({ error: 'Only drivers can create requests' }, { status: 403 })
+      return NextResponse.json({ error: 'You can only create a request if you signed up as a driver' }, { status: 403 })
     }
 
     const body = await req.json()

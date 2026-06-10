@@ -36,7 +36,8 @@ export default function MechanicsVerificationPage() {
 
   useEffect(() => {
     let mounted = true
-    if (mounted) loadMechanics()
+    // call asynchronously to avoid synchronous setState inside effect
+    setTimeout(() => { if (mounted) loadMechanics() }, 0)
     return () => { mounted = false }
   }, [])
 
@@ -73,7 +74,7 @@ export default function MechanicsVerificationPage() {
             <Spinner />
           </Card>
         ) : mechanics.length === 0 ? (
-          /* Premium design placeholder empty-state setup */
+          /* placeholder for empty-state setup */
           <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-md mx-auto mt-12">
             <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-3.5 border border-slate-200/60 shadow-sm">
               <ShieldCheck size={20} className="text-slate-400" />

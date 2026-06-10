@@ -8,7 +8,6 @@
   - [ ] NEXT_PUBLIC_SUPABASE_URL
   - [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
   - [ ] SUPABASE_SERVICE_ROLE_KEY
-  - [ ] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   - [ ] OPENAI_API_KEY
   - [ ] RESEND_API_KEY
   - [ ] NEXT_PUBLIC_APP_URL (set to production domain)
@@ -255,10 +254,12 @@ git log --oneline -6 --decorate
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase URL | Production, Preview, Development |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your anon key | Production, Preview, Development |
 | `SUPABASE_SERVICE_ROLE_KEY` | Your service role key | Production only ⚠️ |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Your Google Maps key | Production, Preview, Development |
 | `OPENAI_API_KEY` | Your OpenAI key | Production only ⚠️ |
 | `RESEND_API_KEY` | Your Resend key | Production only ⚠️ |
 | `NEXT_PUBLIC_APP_URL` | Your production domain | Production, Preview, Development |
+
+Note: This project uses Leaflet with OpenStreetMap tiles for maps and Nominatim
+for reverse geocoding. No Google Maps API key is required by default.
 
 **⚠️ CRITICAL SECURITY:**
 - Service role key, OpenAI key, and Resend key: **Production only**
@@ -295,7 +296,7 @@ curl https://roadrescue.app -I
 - [ ] **Onboarding Page**: Load `/onboarding` → role selection renders
 - [ ] **Login**: `/auth/login` → form loads with warm cream theme
 - [ ] **Auth**: Try login with valid credentials
-- [ ] **Map**: Driver dashboard loads Google Maps
+ - [ ] **Map**: Driver dashboard loads Leaflet map (OpenStreetMap tiles)
 - [ ] **Realtime**: Mechanic location tracking works (if logged in)
 - [ ] **Notifications**: Test email notifications (if logged in as mechanic)
 - [ ] **Admin**: Admin dashboard loads `/dashboard/admin` (if admin role)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
@@ -20,6 +20,7 @@ export default function MechanicAccountPage() {
   const [mechanicProfile, setMechanicProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const userIdRef = useRef(user?.id)
 
   // Combined Form State covering Profile, Mechanic parameters, and App preferences
   const [formData, setFormData] = useState({
@@ -46,24 +47,29 @@ export default function MechanicAccountPage() {
   })
 
   useEffect(() => {
-    if (!user?.id) return
+    userIdRef.current = user?.id
+
+    if (!userIdRef.current) return
 
     let mounted = true
     async function loadFullProfile() {
+      const currentUserId = userIdRef.current
+      if (!currentUserId) return
+
       const supabase = createClient()
       
       // 1. Fetch base profile parameters
       const { data: baseProfile } = await supabase
         .from('profiles')
         .select('full_name, email, phone')
-        .eq('id', user.id)
+        .eq('id', currentUserId)
         .maybeSingle()
 
       // 2. Fetch mechanic workplace metadata
       const { data: mechData } = await supabase
         .from('mechanic_profiles')
         .select('business_name, specializations, location_label, service_radius_km, hourly_rate, current_status, years_experience, license_number, license_expiry, is_available, verification_status, verified_at, total_jobs_completed, average_rating, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUserId)
         .maybeSingle()
 
       // 3. Fetch custom persistent preferences endpoint
@@ -78,7 +84,7 @@ export default function MechanicAccountPage() {
         console.warn('Preferences endpoint fallback active:', err)
       }
 
-      if (mounted) {
+      if (mounted && userIdRef.current) {
         setMechanicProfile(mechData || null)
 
         setFormData((prev) => ({
@@ -215,7 +221,10 @@ export default function MechanicAccountPage() {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Profile" className="h-20 w-20 rounded-2xl object-cover border-2 border-[#FFD700]" />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={profile.avatar_url} alt="Profile" className="h-20 w-20 rounded-2xl object-cover border-2 border-[#FFD700]" />
+                </>
               ) : (
                 <div className="h-20 w-20 rounded-2xl bg-[#FFD700] flex items-center justify-center font-black text-slate-900 text-2xl shadow-inner tracking-tight shrink-0">
                   {getUserInitials()}

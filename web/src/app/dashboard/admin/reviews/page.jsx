@@ -104,7 +104,7 @@ export default function AdminReviewsPage() {
             </div>
             <h3 className="text-sm font-bold text-slate-900">Queue Completely Cleared</h3>
             <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
-              There are no pending identity profile edits or registration criteria adjustments requiring administrative moderation right now.
+              There are no pending identity profile edits or registration criteria adjustments requiring administrative moderation at the moment.
             </p>
           </div>
         ) : (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import RescueMap from '@/components/map/RescueMap'
@@ -14,12 +14,18 @@ export default function MechanicNavigationPage() {
   const { user } = useAuth()
   const [activeJob, setActiveJob] = useState(null)
   const [loading, setLoading] = useState(true)
+  const userIdRef = useRef(user?.id)
 
   useEffect(() => {
-    if (!user?.id) return
+    userIdRef.current = user?.id
+
+    if (!userIdRef.current) return
     let mounted = true
 
     async function loadActiveRoute() {
+      const currentUserId = userIdRef.current
+      if (!currentUserId) return
+
       const supabase = createClient()
       
       const { data } = await supabase
@@ -33,11 +39,11 @@ export default function MechanicNavigationPage() {
           created_at,
           driver:driver_id (id, full_name, phone)
         `)
-        .eq('mechanic_id', user.id)
+        .eq('mechanic_id', currentUserId)
         .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
         .maybeSingle()
 
-      if (mounted) {
+      if (mounted && userIdRef.current) {
         setActiveJob(data || null)
         setLoading(false)
       }

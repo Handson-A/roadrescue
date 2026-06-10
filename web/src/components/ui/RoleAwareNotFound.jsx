@@ -26,7 +26,7 @@ export default function RoleAwareNotFound() {
             </span>
             <h1 className="mt-4 text-5xl font-black leading-none lg:text-7xl">404</h1>
             <p className="mt-4 text-base leading-7 text-white/80 lg:text-lg">
-              The route you're looking for doesn't exist. We'll get you back to the right screen.
+              The page you&apos;re looking for doesn&apos;t exist. Let&apos;s get you back to the right screen.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -52,12 +52,12 @@ export default function RoleAwareNotFound() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#D0C6AB] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6F654D]">
               <Search size={12} />
-              Route unavailable
+              Page unavailable
             </div>
 
             <h2 className="mt-5 text-3xl font-black text-[#1F1B10]">Check the address or return to your dashboard.</h2>
             <p className="mt-3 max-w-md text-sm leading-7 text-[#4D4732]">
-              If you followed a link, it may have moved or been removed. Use your dashboard to continue your rescue workflow.
+              Ooops!, nothing here for you. Use your dashboard to continue your rescue workflow.
             </p>
 
             <div className="mt-8 grid gap-3">
@@ -73,7 +73,7 @@ export default function RoleAwareNotFound() {
           <div className="mt-8 rounded-3xl border border-[#D0C6AB] bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold text-[#1F1B10]">Need help?</p>
             <p className="mt-2 text-sm leading-6 text-[#6E634B]">
-              Use the sign-in flow to reach the correct role screen.
+              Sign-in again to return to your dashboard.
             </p>
           </div>
         </div>

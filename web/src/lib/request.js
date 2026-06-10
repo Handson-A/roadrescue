@@ -32,6 +32,8 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     vehicleYear,
     vehicleColor,
     vehiclePlate,
+    vehicleImageUrl,
+    vehicle_image_url,
     aiDiagnosticResult,
   } = payload
 
@@ -52,6 +54,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
         vehicle_year: vehicleYear,
         vehicle_color: vehicleColor,
         vehicle_plate: vehiclePlate,
+        vehicle_image_url: vehicleImageUrl || vehicle_image_url || null,
         ai_diagnostic_result: aiDiagnosticResult || null,
       })
       .select()

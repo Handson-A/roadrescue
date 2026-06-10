@@ -76,7 +76,7 @@ export default function Sidebar() {
           alt="RoadRescue"
           width={42}
           height={42}
-          className="mx-auto rounded-full h-auto shadow-sm"
+          className="mx-auto rounded-full h-auto w-auto shadow-sm"
         />
         <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.2em] ${isAdmin ? 'text-[#C1B596]' : 'text-[#786D53]'}`}>
           {isAdmin ? 'Ghana Operations' : isMechanic ? 'Mechanic Pro' : 'Driver Terminal'}

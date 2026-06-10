@@ -79,7 +79,8 @@ export function useRequestStatus(requestId) {
             mechanic_profiles (
               rating_avg,
               specializations,
-              business_name
+              business_name,
+              location_label
             )
           )
         `)

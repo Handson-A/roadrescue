@@ -3,11 +3,15 @@
 ## Current State
 
 ### Maps
-**Status**: ✅ Library installed, ⏳ API key not yet configured
+**Status**: ✅ Leaflet fully integrated (no API key required)
 
-- **Package**: `@googlemaps/js-api-loader` (installed in package.json)
-- **Current Implementation**: LocationPicker component uses browser `navigator.geolocation` API
-- **Next Step**: Add Google Maps JS API key and integrate interactive map widget
+- **Package**: `leaflet` and `react-leaflet` (installed in package.json)
+- **Current Implementation**: LocationPicker and RescueMap components use Leaflet with OpenStreetMap
+- **Features**:
+  - Interactive map with click-to-select location
+  - Automatic geolocation detection
+  - Reverse geocoding via Nominatim (OpenStreetMap)
+  - Driver/Mechanic tracking with route visualization
 
 ### Email
 **Status**: ⏳ Not configured
@@ -20,28 +24,19 @@
 
 ## What You Need
 
-### 1️⃣ Google Maps API Key
+### 1️⃣ Leaflet / OpenStreetMap (Ready to Use)
 
-**Get it:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project
-3. Enable these APIs:
-   - Google Maps JavaScript API
-   - Google Maps Geocoding API (optional, for reverse geocoding)
-   - Places API (optional, for address autocomplete)
-4. Create an **API Key** credential
-5. Restrict it to:
-   - Application: Web browser
-   - Websites / HTTP referrers: `localhost:3000`, `yourdomain.com`
+Leaflet works out of the box with OpenStreetMap tiles. **No API key or signup required.**
 
-**Add to `.env.local`:**
+**Optional**: You can use Mapbox tiles for better styling by setting:
 ```
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSy...
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.ey...
 ```
 
-**Cost**: Free tier includes $200/month credit; ~$7 per 1000 map loads
-
----
+Then change the TileLayer URL in `LocationPicker.jsx` and `RescueMap.jsx` to:
+```
+url={`https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`}
+```
 
 ### 2️⃣ Email Service (Pick One)
 
@@ -88,8 +83,8 @@ SMTP_FROM=noreply@yourapp.com
 ## What the Code Currently Does
 
 ### Maps
-- **LocationPicker.jsx**: Uses `navigator.geolocation` to get user's browser location (works, no API key needed)
-- **Next step**: Render interactive Google Map widget to visualize mechanic locations in real-time
+- **LocationPicker.jsx**: Interactive Leaflet map with click selection and geolocation
+- **RescueMap.jsx**: Live tracking map showing driver and mechanic positions with route line
 
 ### Email
 - **No email sending implemented yet**
@@ -98,53 +93,6 @@ SMTP_FROM=noreply@yourapp.com
   - Bid received notifications
   - Bid accepted/rejected messages
   - Job completed reminders
-
----
-
-## Quick Setup Steps
-
-### 1. Add Google Maps API Key
-```bash
-# In roadrescue/web/.env.local
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_KEY_HERE
-```
-
-### 2. Install Email Library
-```bash
-cd roadrescue/web
-npm install resend  # or @sendgrid/mail or nodemailer
-```
-
-### 3. Add Email Config
-```bash
-# In roadrescue/web/.env.local
-RESEND_API_KEY=YOUR_KEY_HERE
-RESEND_FROM_EMAIL=noreply@roadrescue.com
-```
-
-### 4. Create Email Notification API Route
-```javascript
-// web/src/app/api/notifications/email/route.js
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export async function POST(request) {
-  const { to, subject, message } = await request.json();
-  
-  try {
-    const result = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL,
-      to,
-      subject,
-      html: message,
-    });
-    return Response.json(result);
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-}
-```
 
 ---
 
@@ -158,11 +106,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 # Service role (backend only, never expose)
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 
-# OpenAI (for AI diagnostics)
-OPENAI_API_KEY=sk-...
+# AI Diagnostics (Gemini)
+GEMINI_API_KEY=your-gemini-key
 
-# Google Maps (optional but recommended)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSy...
+# Optional: Mapbox for custom map tiles
+# NEXT_PUBLIC_MAPBOX_TOKEN=pk.ey...
 
 # Email Service (pick one)
 RESEND_API_KEY=re_...
@@ -176,8 +124,5 @@ SENDGRID_FROM_EMAIL=noreply@roadrescue.com
 
 ## What Would You Like to Do?
 
-1. **Set up Google Maps** integration first?
-2. **Choose and set up email** (Resend, SendGrid, Nodemailer)?
-3. **Both** — I can create the migration files, config setup, and API routes?
-
-Let me know which providers you want and I'll handle the full setup!
+1. **Set up email** (Resend, SendGrid, Nodemailer)?
+2. **Both** — I can create the config setup, and API routes?

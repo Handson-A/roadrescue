@@ -16,7 +16,7 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
     .from('mechanic_profiles')
     .select(`
       *,
-      user:user_id (
+      user:profiles!mechanic_profiles_user_id_fkey (
         id,
         full_name,
         phone,
@@ -120,12 +120,12 @@ export async function getAllRequests(serviceSupabase, { status, limit = 50, offs
     .from('rescue_requests')
     .select(`
       *,
-      driver:driver_id (
+      driver:profiles!rescue_requests_driver_id_fkey (
         id,
         full_name,
         phone
       ),
-      mechanic:mechanic_id (
+      mechanic:profiles!rescue_requests_mechanic_id_fkey (
         id,
         full_name,
         phone

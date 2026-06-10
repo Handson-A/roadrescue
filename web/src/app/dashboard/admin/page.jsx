@@ -263,7 +263,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-medium text-slate-500 shadow-xs">
             <Radio size={14} className="text-emerald-500 animate-pulse" />
             <span>Terminal Connected: Authenticated Session Node — </span>
-            <span className="font-bold text-slate-800">{profile.full_name || 'System Administrator'}</span>
+            <span className="font-bold text-slate-800">{profile?.full_name || 'System Administrator'}</span>
           </div>
         )}
       </div>
