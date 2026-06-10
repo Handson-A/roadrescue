@@ -240,7 +240,7 @@ export default function RegisterForm() {
         <p>Welcome to RoadRescue as a <strong>${formData.role}</strong>.</p>
         <p>${dynamicMessage} We are built to ensure every roadside connection is secure, reliable, and seamless.</p>
         <br/>
-        <p>To get started, please confirm your email with the Supabase authentication link sent together with this mail and log in to your account.</p>
+    
         <p>Once logged in, you can update your profile picture and complete your profile details. This will help us connect you with the right matches when you need assistance or when drivers are looking for trusted professionals.</p>
         <p>Thank you for joining the RoadRescue community. We look forward to supporting you on every journey ahead.</p>
         <p>Best regards,<br/>The RoadRescue Team</p>
