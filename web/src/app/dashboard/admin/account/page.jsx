@@ -132,7 +132,7 @@ export default function AdminAccountPage() {
                 <Mail size={13} className="text-slate-400" /> Core System Routing Email
               </label>
               <p className="text-sm font-semibold text-slate-500 flex items-center gap-1.5">{resolvedFormData.email || 'N/A'}</p>
-              <p className="mt-0.5 text-[10px] text-slate-400">Locked infrastructure variables cannot be altered inline.</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">Locked infrastructure variables cannot be altered</p>
             </div>
 
             <div>

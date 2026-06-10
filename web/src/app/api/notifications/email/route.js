@@ -1,11 +1,21 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let resend
+function getResend() {
+  if (!resend) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing RESEND_API_KEY')
+    }
+    resend = new Resend(apiKey)
+  }
+  return resend
+}
 const primaryFromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@roadrescue.com'
 const fallbackFromEmail = 'RoadRescue <onboarding@resend.dev>'
 
 async function sendEmail({ to, subject, html }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: primaryFromEmail,
     to,
     subject,
@@ -35,7 +45,7 @@ export async function POST(request) {
 
     if (result.error?.statusCode === 403 || result.error?.name === 'validation_error') {
       console.warn('Primary Resend sender rejected, retrying with fallback onboarding sender')
-      result = await resend.emails.send({
+      result = await getResend().emails.send({
         from: fallbackFromEmail,
         to,
         subject,

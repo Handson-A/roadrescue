@@ -36,7 +36,7 @@ export async function POST(request, { params }) {
     const isAdmin = profile.role === 'admin'
 
     if (!isDriverOwner && !isAssignedMechanic && !isAdmin) {
-      return Response.json({ error: 'Not authorized to cancel this request' }, { status: 403 })
+      return Response.json({ error: 'You are not authorized to cancel this request' }, { status: 403 })
     }
 
     if (rescueRequest.status === 'completed' || rescueRequest.status === 'cancelled') {

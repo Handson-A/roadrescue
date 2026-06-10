@@ -25,7 +25,7 @@ export async function POST(request) {
     const message = normalizeString(body.message)
 
     if (!requestId || !Number.isFinite(proposedPrice)) {
-      return Response.json({ error: 'Missing bid fields' }, { status: 400 })
+      return Response.json({ error: 'Missing fields' }, { status: 400 })
     }
 
     const { data: rescueRequest, error: requestError } = await serviceClient
