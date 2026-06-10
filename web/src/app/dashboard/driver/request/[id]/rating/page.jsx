@@ -40,7 +40,7 @@ export default function DriverRatingPage() {
     return () => {
       mounted = false
     }
-  }, [id])
+  }, [id, supabase])
 
   async function submit() {
     setSubmitting(true)

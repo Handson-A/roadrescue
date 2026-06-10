@@ -5,7 +5,7 @@
  * Chat interface for AI diagnostic conversation with driver
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ArrowLeft, Send, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -19,6 +19,7 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const messageIdRef = useRef(0);
   const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating'];
 
   const handleSendMessage = async (textToSend) => {
@@ -26,7 +27,7 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
     if (!currentInput.trim() || loading) return;
 
     // 1. Mount User Message locally
-    const userMessage = { id: Date.now(), sender: 'user', text: currentInput };
+    const userMessage = { id: ++messageIdRef.current, sender: 'user', text: currentInput };
     setMessages((prev) => [...prev, userMessage]);
     if (!textToSend) setInput('');
     
@@ -53,7 +54,7 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
 
       // 3. Mount AI Response Node
       const aiMessage = {
-        id: Date.now() + 1,
+        id: ++messageIdRef.current,
         sender: 'ai',
         text: data.reply,
       };

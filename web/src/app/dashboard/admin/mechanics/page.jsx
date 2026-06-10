@@ -36,7 +36,8 @@ export default function MechanicsVerificationPage() {
 
   useEffect(() => {
     let mounted = true
-    if (mounted) loadMechanics()
+    // call asynchronously to avoid synchronous setState inside effect
+    setTimeout(() => { if (mounted) loadMechanics() }, 0)
     return () => { mounted = false }
   }, [])
 

@@ -221,7 +221,10 @@ export default function MechanicAccountPage() {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Profile" className="h-20 w-20 rounded-2xl object-cover border-2 border-[#FFD700]" />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={profile.avatar_url} alt="Profile" className="h-20 w-20 rounded-2xl object-cover border-2 border-[#FFD700]" />
+                </>
               ) : (
                 <div className="h-20 w-20 rounded-2xl bg-[#FFD700] flex items-center justify-center font-black text-slate-900 text-2xl shadow-inner tracking-tight shrink-0">
                   {getUserInitials()}

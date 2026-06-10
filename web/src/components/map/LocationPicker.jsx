@@ -106,13 +106,12 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
     )
   }, [placeMarkerValue])
 
-  // Initialize location on mount - this is acceptable for location detection initialization
+  // Initialize location on mount (deferred to avoid sync setState inside effect)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     if (typeof window !== 'undefined') {
-      detectLocation()
+      setTimeout(() => { detectLocation() }, 0)
     }
-  }, [])
+  }, [detectLocation])
 
   function confirmManualLocation() {
     const nextLat = Number(lat)

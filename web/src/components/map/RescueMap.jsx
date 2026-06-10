@@ -65,11 +65,11 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
   const [driverIcon, setDriverIcon] = useState(null)
   const [mechanicIcon, setMechanicIcon] = useState(null)
 
-  /* eslint-disable react-hooks/react-compiler/react-compiler */
   useEffect(() => {
+    // Require leaflet and create icons synchronously but set state in a microtask
     const L = require('leaflet')
     delete L.Icon.Default.prototype._getIconUrl
-    setDriverIcon(new L.Icon({
+    const driver = new L.Icon({
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -77,8 +77,8 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
       iconAnchor: [12, 41],
       popupAnchor: [1, -34],
       shadowSize: [41, 41]
-    }))
-    setMechanicIcon(new L.Icon({
+    })
+    const mechanic = new L.Icon({
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -86,9 +86,13 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
       iconAnchor: [12, 41],
       popupAnchor: [1, -34],
       shadowSize: [41, 41]
-    }))
+    })
+    // Defer state updates to avoid setState during render/effect synchronous phase
+    Promise.resolve().then(() => {
+      setDriverIcon(driver)
+      setMechanicIcon(mechanic)
+    })
   }, [])
-  /* eslint-enable react-hooks/react-compiler/react-compiler */
 
   const mapCenter = useMemo(() => {
     if (driver?.lat && driver?.lng) {

@@ -45,7 +45,10 @@ export default function RescueChatPanel({
         </Link>
 
         <div className="h-11 w-11 overflow-hidden rounded-full bg-slate-200 ring-2 ring-amber-400">
-          {avatarUrl ? <img src={avatarUrl} alt={contactName || 'Contact'} className="h-full w-full object-cover" /> : null}
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt={contactName || 'Contact'} className="h-full w-full object-cover" />
+          ) : null}
         </div>
 
         <div className="min-w-0 flex-1">

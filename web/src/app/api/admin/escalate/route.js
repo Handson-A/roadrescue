@@ -9,7 +9,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    const response = NextResponse.json({ message: 'User escalated to admin' })
+    const response = NextResponse.json({ message: 'User is now an admin' })
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

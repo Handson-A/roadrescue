@@ -6,6 +6,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 
 /**
  * ResponsiveGrid Component
@@ -20,12 +21,14 @@ export function ResponsiveGrid({ children, cols = { mobile: 1, tablet: 2, deskto
  * ResponsiveImage Component
  * Optimizes image loading and sizing for mobile
  */
-export function ResponsiveImage({ src, alt, priority = false, ...props }) {
+export function ResponsiveImage({ src, alt, priority = false, width, height, ...props }) {
   return (
-    <img
+    <Image
       src={src}
       alt={alt}
-      loading={priority ? 'eager' : 'lazy'}
+      width={width || 800}
+      height={height || 600}
+      priority={priority}
       className="w-full h-auto object-cover rounded-lg"
       {...props}
     />

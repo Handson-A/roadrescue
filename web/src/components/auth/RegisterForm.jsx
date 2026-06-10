@@ -465,6 +465,7 @@ export default function RegisterForm() {
           />
           {avatarPreview ? (
             <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={avatarPreview} alt="Avatar preview" className="h-14 w-14 rounded-full object-cover" />
               <p className="text-xs text-slate-500">Preview ready. This will be uploaded after signup.</p>
             </div>

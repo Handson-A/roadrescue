@@ -33,8 +33,11 @@ export function RBACProtectedPage({
       return;
     }
 
-    setIsAuthorized(true);
-    setChecked(true);
+    // defer state updates to avoid calling setState synchronously inside effect
+    setTimeout(() => {
+      setIsAuthorized(true);
+      setChecked(true);
+    }, 0);
   }, [profile, loading, allowedRoles, router]);
 
   if (!checked || loading) {
@@ -83,7 +86,7 @@ export function ConditionalRender({
 export function RoleRestrictedSection({ 
   children, 
   allowedRoles = [],
-  deniedMessage = "You don't have access to this section"
+  deniedMessage = "You don&apos;t have access to this section"
 }) {
   const { profile } = useAuth();
   const hasAccess = allowedRoles.length === 0 || allowedRoles.includes(profile?.role);
