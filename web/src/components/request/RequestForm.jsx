@@ -15,7 +15,6 @@ import { useDiagnostic } from '@/hooks/useDiagnostic'
 import { useToast } from '@/components/ui/Toast'
 import { SERVICE_TYPE } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
-import { formatStatus } from '@/lib/utils'
 
 const serviceOptions = [
   { value: SERVICE_TYPE.REPAIR, label: 'General Repair' },
@@ -29,7 +28,7 @@ const serviceOptions = [
 export default function RequestForm() {
   const router = useRouter()
   const { toast } = useToast()
-  const { diagnose, diagnosis, diagnosing, isFallback } = useDiagnostic()
+  const { diagnose, diagnosis, diagnosing } = useDiagnostic()
 
   const [submitting, setSubmitting] = useState(false)
   const [snapshotUploading, setSnapshotUploading] = useState(false)
@@ -131,16 +130,12 @@ export default function RequestForm() {
       return
     }
 
-    const result = await diagnose({
+    await diagnose({
       symptoms: form.problemDescription,
       vehicleMake: form.vehicleMake,
       vehicleModel: form.vehicleModel,
       vehicleYear: form.vehicleYear,
     })
-
-    if (result?.recommended_service) {
-      updateField('serviceType', result.recommended_service)
-    }
   }
 
   async function submitRequest() {
@@ -168,7 +163,6 @@ export default function RequestForm() {
           ...form,
           vehicleYear: form.vehicleYear ? Number(form.vehicleYear) : null,
           aiDiagnosticResult: diagnosis || null,
-          vehicleImageUrl,
           vehicle_image_url: vehicleImageUrl,
         }),
       })
@@ -270,45 +264,40 @@ export default function RequestForm() {
         </div>
       </div>
 
-      {/* STEP 3: INCIDENT DISPATCH CORE CARD */}
-      <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
-        <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#7C6B44]">Step 3</p>
-          <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Incident Details</h3>
-        </div>
-        <div className="space-y-4 p-4">
-          <Textarea
-            label="What is happening?"
-            value={form.problemDescription}
-            onChange={(e) => updateField('problemDescription', e.target.value)}
-            placeholder="Describe any warning lights, sounds, or sudden component failures..."
-            hint="Detailed descriptions improve the precision of the AI diagnostic engine."
-          />
+{/* STEP 3: INCIDENT DISPATCH CORE CARD */}
+       <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
+         <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
+           <p className="text-[10px] font-bold uppercase tracking-widest text-[#7C6B44]">Step 3</p>
+           <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Incident Details</h3>
+         </div>
+         <div className="space-y-4 p-4">
+           <Textarea
+             label="What is happening?"
+             value={form.problemDescription}
+             onChange={(e) => updateField('problemDescription', e.target.value)}
+             placeholder="Describe any warning lights, sounds, or sudden component failures..."
+             hint="Detailed descriptions improve the precision of the AI diagnostic engine."
+           />
 
-          <Select
-            label="Service Type"
-            value={form.serviceType}
-            onChange={(e) => updateField('serviceType', e.target.value)}
-            options={serviceOptions}
-          />
+           <Select
+             label="Service Type"
+             value={form.serviceType}
+             onChange={(e) => updateField('serviceType', e.target.value)}
+             options={serviceOptions}
+           />
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={runDiagnostic}
-              disabled={diagnosing}
-              className="rounded-xl border border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-900 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              {diagnosing ? 'Analyzing parameters...' : 'Run AI Diagnosis'}
-            </button>
-            <span className="text-[11px] font-bold text-[#7C6B44]">
-              {diagnosis ? `Suggested Node: ${formatStatus(diagnosis.recommended_service || form.serviceType)}` : 'Recommended baseline scan'}
-            </span>
-          </div>
+           <button
+             type="button"
+             onClick={runDiagnostic}
+             disabled={diagnosing}
+             className="rounded-xl border border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-900 transition hover:bg-slate-50 disabled:opacity-50"
+           >
+             {diagnosing ? 'Analyzing parameters...' : 'Run AI Diagnosis'}
+           </button>
 
-          {diagnosis && <DiagnosticResult diagnosis={diagnosis} isFallback={isFallback} />}
-        </div>
-      </div>
+           {diagnosis && <DiagnosticResult diagnosis={diagnosis} />}
+         </div>
+       </div>
 
       {/* EMERGENCY PRIMARY ACTION DISPATCH TRIGGER BUTTON */}
       <div className="pt-2">

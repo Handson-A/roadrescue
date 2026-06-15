@@ -1,10 +1,5 @@
 'use client';
 
-/**
- * RequestCard Component
- * Displays rescue request summary with key details
- */
-
 import Badge from '@/components/ui/Badge';
 
 export default function RequestCard({ request, isActive = false }) {
@@ -34,11 +29,14 @@ export default function RequestCard({ request, isActive = false }) {
         <Badge variant={getStatusColor(request.status)}>{request.status}</Badge>
       </div>
 
-      {request.diagnostics && (
+      {request.ai_diagnostic_result && (
         <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
           <p className="text-sm text-gray-600">
-            <strong>AI Diagnosis:</strong> {request.diagnostics}
+            <strong>AI Diagnosis:</strong> {request.ai_diagnostic_result.problem || request.ai_diagnostic_result.summary || 'AI analysis pending'}
           </p>
+          {request.ai_diagnostic_result.severity && (
+            <p className="text-xs mt-1 text-blue-700">Severity: {request.ai_diagnostic_result.severity}</p>
+          )}
         </div>
       )}
 

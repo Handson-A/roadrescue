@@ -1,39 +1,21 @@
-// import { createBrowserClient } from '@supabase/ssr'
-
-// let browserClient
-
-// export function createClient() {
-//   if (!browserClient) {
-//     browserClient = createBrowserClient(
-//       process.env.NEXT_PUBLIC_SUPABASE_URL,
-//       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-//     )
-//   }
-
-//   return browserClient
-// }
-
-// export const supabase = createClient()
-
 import { createBrowserClient } from '@supabase/ssr'
-import { createMockClient, isMockAuthEnabled } from './mockClient' // adjust path to your mock client file
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 let browserClient
 
 export function createClient() {
-  // Graceful fallback to the mock engine if credentials aren't loaded yet
-  if (isMockAuthEnabled()) {
-    return createMockClient()
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing client-side environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
   }
 
   if (!browserClient) {
-    browserClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    )
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
   }
 
   return browserClient
 }
 
-export const supabase = createClient()
+// Export singleton instance wrapper cleanly
+export const supabase = typeof window !== 'undefined' ? createClient() : null

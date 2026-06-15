@@ -49,13 +49,11 @@ export default function DriverDashboard() {
 
   const progressByStatus = {
     pending: 20,
-    bidding: 35,
     accepted: 55,
     en_route: 75,
     arrived: 92,
     in_progress: 92,
     completed: 100,
-    resolved: 100,
     cancelled: 100,
   }
 

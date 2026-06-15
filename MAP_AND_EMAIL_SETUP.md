@@ -87,12 +87,13 @@ SMTP_FROM=noreply@yourapp.com
 - **RescueMap.jsx**: Live tracking map showing driver and mechanic positions with route line
 
 ### Email
-- **No email sending implemented yet**
-- **Needed**: API route like `/api/notifications/email` to send:
-  - New rescue request alerts
-  - Bid received notifications
-  - Bid accepted/rejected messages
-  - Job completed reminders
+- **Email API available** at `/api/notifications/email`
+- **Profile preferences API** at `/api/profile/preferences` handles user preferences
+- **Needed**: Configure email provider (SendGrid, Resend, or SMTP) for:
+   - New rescue request alerts
+   - Job status update notifications
+   - Job completed reminders
+   - Profile change request confirmations
 
 ---
 

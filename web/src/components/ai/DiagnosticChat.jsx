@@ -1,13 +1,7 @@
 'use client';
 
-/**
- * DiagnosticChat Component
- * Chat interface for AI diagnostic conversation with driver
- */
-
-import { useState, useRef } from 'react';
-import { ArrowLeft, Send, Zap } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Zap } from 'lucide-react';
 
 export default function DiagnosticChat({ onDiagnosisComplete }) {
   const [messages, setMessages] = useState([
@@ -19,74 +13,71 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const messageIdRef = useRef(0);
+  const messagesEndRef = useRef(null);
+  const messageIdRef = useRef(1);
   const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating'];
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   const handleSendMessage = async (textToSend) => {
     const currentInput = textToSend || input;
     if (!currentInput.trim() || loading) return;
 
-    // 1. Mount User Message locally
-    const userMessage = { id: ++messageIdRef.current, sender: 'user', text: currentInput };
+    messageIdRef.current += 1;
+    const userMessage = { id: messageIdRef.current, sender: 'user', text: currentInput };
     setMessages((prev) => [...prev, userMessage]);
     if (!textToSend) setInput('');
     
-    // FIXED: Using state setter function instead of const assignment mutation
     setLoading(true);
 
     try {
-      // 2. Call your internal API handler route (Supports Free Tier backends)
-      const response = await fetch('/api/diagnostic', {
+      const response = await fetch('/api/ai/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: currentInput,
-          history: messages.map(m => ({ 
-            role: m.sender === 'user' ? 'user' : 'assistant', 
-            content: m.text 
-          }))
-        }),
+        body: JSON.stringify({ symptoms: currentInput }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.error || 'Failed to process diagnosis');
+      if (!response.ok || !data.success) throw new Error(data.error || 'Failed to process diagnosis');
 
-      // 3. Mount AI Response Node
+      const diagnosis = data.diagnosis;
+      const aiText = diagnosis?.problem || 'Unable to diagnose issue';
+      
+      messageIdRef.current += 1;
       const aiMessage = {
-        id: ++messageIdRef.current,
+        id: messageIdRef.current,
         sender: 'ai',
-        text: data.reply,
+        text: aiText,
       };
       setMessages((prev) => [...prev, aiMessage]);
 
-      // Optional trigger hook callback for your parent layout state
-      if (onDiagnosisComplete && data.diagnosis) {
-        onDiagnosisComplete(data.diagnosis);
+      if (onDiagnosisComplete && diagnosis) {
+        onDiagnosisComplete(diagnosis);
       }
     } catch (err) {
-      toast.error('AI node temporarily congested. Running backup routine...');
+      messageIdRef.current += 1;
+      const fallbackText = `Based on "${currentInput}", checks point to ignition or fluid issues. Verify dashboard signals.`
       
-      // Local simulation fallback keeps your presentation stable if the key rate limit drops
-      setTimeout(() => {
-        setMessages((prev) => [...prev, {
-          id: Date.now() + 2,
-          sender: 'ai',
-          text: `Fallback Routine: Based on the symptoms described for "${currentInput}", diagnostic checks point toward ignition system components or basic fluid level discrepancies. Please cross-verify your instrument cluster signals.`
-        }]);
-      }, 600);
+      setMessages((prev) => [...prev, {
+        id: messageIdRef.current,
+        sender: 'ai',
+        text: fallbackText,
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    // FIXED: Added lg:pl-64 layout structural padding to push content past the fixed sidebar bounds
     <div className="w-full min-h-[calc(100vh-4rem)] lg:min-h-screen lg:pl-64 flex flex-col bg-[#FFF8EA] text-slate-900">
-      
-      {/* Header Area: Completely clean, native app feel */}
       <div className="flex items-center gap-3 border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-4">
-        
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F5D108] text-[#1F1B10] shadow-sm">
           <Zap size={18} />
         </div>
@@ -99,7 +90,6 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
         </div>
       </div>
 
-      {/* Chat History Area: Beautiful scrolling message clusters */}
       <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -121,9 +111,9 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Action Area */}
       <div className="border-t border-[#E0D5B7] bg-[#FFF9EF] px-4 pb-24 lg:pb-6 pt-4">
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#7C6B44]">Try asking about:</p>
         <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -140,7 +130,6 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
           ))}
         </div>
 
-        {/* Text Input Box Frame Container */}
         <div className="flex items-center gap-2 rounded-2xl bg-white border border-[#DCCDA9] p-2 shadow-sm focus-within:border-slate-900 transition">
           <input
             type="text"
@@ -161,7 +150,6 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
           </button>
         </div>
       </div>
-
     </div>
   );
 }

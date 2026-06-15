@@ -16,8 +16,7 @@ function getNotificationHref(notification, role) {
   switch (notification.type) {
     case NOTIFICATION_TYPE.NEW_REQUEST:
       return requestId && userRole === USER_ROLE.MECHANIC ? `/dashboard/mechanic/job/${requestId}` : null
-    case NOTIFICATION_TYPE.MECHANIC_BID:
-    case NOTIFICATION_TYPE.BID_ACCEPTED:
+    case NOTIFICATION_TYPE.MECHANIC_ACCEPTED:
     case NOTIFICATION_TYPE.MECHANIC_EN_ROUTE:
     case NOTIFICATION_TYPE.MECHANIC_ARRIVED:
     case NOTIFICATION_TYPE.JOB_COMPLETED:

@@ -64,11 +64,7 @@ export function useRealtime(channelName, config, onEvent) {
         },
         (payload) => onEvent(payload)
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`[Realtime] subscribed to ${channelName}`)
-        }
-      })
+      .subscribe()
 
     channelRef.current = channel
 

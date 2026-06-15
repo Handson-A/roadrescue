@@ -2,7 +2,7 @@
 
 ## Option 1: Using Supabase Dashboard (Easiest)
 
-1. Go to **[https://app.supabase.com](https://app.supabase.com)** → Select your project
+1. Visit **[https://app.supabase.com](https://app.supabase.com)** → Select your project
 2. Click **"SQL Editor"** in the left sidebar
 3. Click **"New Query"** or **"New SQL Snippet"**
 4. Copy-paste the contents of each migration file **in order**:

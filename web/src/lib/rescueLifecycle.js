@@ -12,13 +12,12 @@ export const REQUEST_STATUS_FLOW = {
 
 export const NOTIFICATION_TYPES = {
   NEW_REQUEST: 'new_request',
-  MECHANIC_BID: 'mechanic_bid',
-  BID_ACCEPTED: 'bid_accepted',
-  BID_MISSED: 'bid_missed',
+  MECHANIC_ACCEPTED: 'mechanic_accepted',
   MECHANIC_EN_ROUTE: 'mechanic_en_route',
   MECHANIC_ARRIVED: 'mechanic_arrived',
   JOB_COMPLETED: 'job_completed',
   REQUEST_CANCELLED: 'request_cancelled',
+  SYSTEM_ALERT: 'system_alert',
 }
 
 export function normalizeString(value) {
@@ -47,10 +46,19 @@ export function buildGeoPoint(longitude, latitude) {
 
 export function normalizeDiagnosticResult(value) {
   if (!value) return null
-  if (typeof value === 'object') return value
-
-  const summary = normalizeString(value)
-  return summary ? { summary } : null
+  if (typeof value !== 'object') return null
+  return {
+    problem: Array.isArray(value.problems)
+      ? value.problems[0]
+      : value.problem || value.summary || '',
+    severity: value.severity || 'low',
+    recommendations: Array.isArray(value.recommendations) ? value.recommendations : [],
+    estimated_causes: Array.isArray(value.estimated_causes)
+      ? value.estimated_causes
+      : Array.isArray(value.estimatedCauses)
+        ? value.estimatedCauses
+        : [],
+  }
 }
 
 export function parseRequestPayload(payload = {}) {
@@ -183,6 +191,7 @@ export function formatRequestRow(request, extras = {}) {
     location: request.location_address ?? request.incident_address ?? extras.location ?? '',
     createdAt: request.created_at,
     updatedAt: request.updated_at,
+    vehicle_image_url: request.vehicle_image_url ?? extras.vehicle_image_url ?? null,
     assignedMechanic: extras.assignedMechanic ?? null,
     bids: extras.bids ?? [],
     driver: extras.driver ?? null,

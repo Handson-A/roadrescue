@@ -1,27 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
-import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, CarFront, BadgeCheck, Shield, ArrowLeft } from 'lucide-react'
+import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2 } from 'lucide-react'
 
 export default function DriverAccountPage() {
   const { user, profile } = useAuth()
   const [driverProfile, setDriverProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [dataInitialized, setDataInitialized] = useState(false)
+  const fileInputRef = useRef(null)
   
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
+    avatarUrl: '',
     vehicleMake: '',
     vehicleModel: '',
     vehicleYear: '',
@@ -39,18 +39,25 @@ export default function DriverAccountPage() {
 
     async function loadFullProfile() {
       const supabase = createClient()
-      const { data } = await supabase
+      
+      // FIXED: Removed non-existent rating_avg and total_requests from the query selection array
+      const { data, error } = await supabase
         .from('driver_profiles')
         .select('vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, emergency_contact_name, emergency_contact_phone, home_area')
         .eq('user_id', user.id)
         .maybeSingle()
 
+      if (error) {
+        console.error('[PROFILE SYNC ERROR]:', error.message)
+      }
+
       if (mounted) {
         setDriverProfile(data || null)
         setFormData({
           fullName: profile?.full_name || '',
-          email: profile?.email || '',
+          email: profile?.email || '', // Locked parameter field
           phone: profile?.phone || '',
+          avatarUrl: profile?.avatar_url || '',
           vehicleMake: data?.vehicle_make || '',
           vehicleModel: data?.vehicle_model || '',
           vehicleYear: data?.vehicle_year || '',
@@ -75,60 +82,93 @@ export default function DriverAccountPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  // File Upload Pipeline targeting Supabase Storage Bucket
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Enforce 2MB profile picture upload limits
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size must be less than 2MB')
+      return
+    }
+
+    try {
+      setUploadingAvatar(true)
+      const supabase = createClient()
+      
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user.id}/${Math.random()}.${fileExt}`
+
+      // 1. Stream file payload into the pre-configured 'avatars' storage space
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      // 2. Resolve the public asset access path link
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      // 3. Immediately commit profile image sync step to the core data table
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
+      setFormData(prev => ({ ...prev, avatarUrl: publicUrl }))
+      toast.success('Avatar image synchronized successfully')
+    } catch (err) {
+      toast.error(err.message || 'Failed to process avatar file upload')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   const handleSave = async () => {
     setLoading(true)
     try {
       const supabase = createClient()
 
+      // Mutate central details tracking table
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          full_name: formData.fullName,
-          phone: formData.phone,
+          full_name: formData.fullName.trim(),
+          phone: formData.phone.trim(),
         })
         .eq('id', user?.id)
 
       if (profileError) throw profileError
 
       const payload = {
-        vehicle_make: formData.vehicleMake.trim() || null,
-        vehicle_model: formData.vehicleModel.trim() || null,
-        vehicle_year: formData.vehicleYear ? Number.parseInt(formData.vehicleYear, 10) || null : null,
-        vehicle_color: formData.vehicleColor.trim() || null,
-        vehicle_plate: formData.vehiclePlate.trim() || null,
-        emergency_contact_name: formData.emergencyContactName.trim() || null,
-        emergency_contact_phone: formData.emergencyContactPhone.trim() || null,
-        home_area: formData.homeArea.trim() || null,
+        vehicle_make: formData.vehicleMake.trim(),
+        vehicle_model: formData.vehicleModel.trim(),
+        vehicle_year: formData.vehicleYear ? parseInt(formData.vehicleYear, 10) || null : null,
+        vehicle_color: formData.vehicleColor.trim(),
+        vehicle_plate: formData.vehiclePlate.trim().toUpperCase(),
+        emergency_contact_name: formData.emergencyContactName.trim(),
+        emergencyContactPhone: formData.emergencyContactPhone.trim(),
+        home_area: formData.homeArea.trim(),
       }
 
-      const { data: existingDriver, error: readError } = await supabase
+      // Upsert tracking layer evaluation
+      const { error: updateError } = await supabase
         .from('driver_profiles')
-        .select('user_id')
+        .update(payload)
         .eq('user_id', user?.id)
-        .maybeSingle()
 
-      if (readError) throw readError
-
-      if (existingDriver) {
-        const { error: updateError } = await supabase
-          .from('driver_profiles')
-          .update(payload)
-          .eq('user_id', user?.id)
-
-        if (updateError) throw updateError
-      } else {
-        const { error: insertError } = await supabase
-          .from('driver_profiles')
-          .insert({ user_id: user?.id, ...payload })
-
-        if (insertError) throw insertError
-      }
+      if (updateError) throw updateError
 
       setDriverProfile(payload)
       toast.success('Profile updated successfully')
       setIsEditing(false)
     } catch (error) {
-      toast.error(error.message || 'Failed to update profile')
+      toast.error(error.message || 'Failed to update profile data rows')
     } finally {
       setLoading(false)
     }
@@ -146,17 +186,36 @@ export default function DriverAccountPage() {
   }
 
   return (
-    // FIXED: Added lg:pl-64 layout alignment constraint configuration
     <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 lg:pl-64 flex justify-center items-start pb-24 lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
-        <div className="flex items-center gap-3 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-[#1F1B10]">My Profile</h1>
-            <p className="text-xs text-[#7C6B44] font-medium">Manage verification data and emergency links</p>
+        {/* Profile Card Header with Dynamic Avatar Management Terminal */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-5 shadow-sm">
+          <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-20 h-20 rounded-full border-2 border-[#DCCDA9] overflow-hidden bg-amber-50 flex items-center justify-center shadow-inner">
+              {formData.avatarUrl ? (
+                <img src={formData.avatarUrl} alt="Avatar profile" className="w-full h-full object-cover" />
+              ) : (
+                <User size={32} className="text-[#7C6B44]" />
+              )}
+            </div>
+            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {uploadingAvatar ? (
+                <Loader2 size={16} className="text-white animate-spin" />
+              ) : (
+                <Camera size={18} className="text-white" />
+              )}
+            </div>
+            <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" disabled={uploadingAvatar} />
+          </div>
+
+          <div className="text-center sm:text-left flex-1">
+            <h1 className="text-lg font-black tracking-tight text-[#1F1B10]">{formData.fullName || 'Active Driver'}</h1>
+            <p className="text-xs text-[#7C6B44] font-medium">RoadRescue Driver Terminal Instance</p>
           </div>
         </div>
 
+        {/* Section 1: Core Base Profiles */}
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
@@ -189,12 +248,15 @@ export default function DriverAccountPage() {
               )}
             </div>
 
+            {/* IMMUTABLE LOCKED COMPONENT ENTRY */}
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">
-                <Mail size={12} /> Registered Email Address
+                <Mail size={12} /> Registered Email Address (Immutable)
               </label>
-              <p className="text-sm font-bold text-slate-500">{formData.email || 'Not configured'}</p>
-              <p className="mt-1 text-[10px] font-medium text-slate-400">Security parameter locked to session configuration</p>
+              <p className="text-sm font-bold text-slate-400 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 select-none">
+                {formData.email || 'Not configured'}
+              </p>
+              <p className="mt-1 text-[9px] font-medium text-slate-400">Security architecture constraint: Email updates must be explicitly processed via Admin Terminal</p>
             </div>
 
             <div>
@@ -211,7 +273,7 @@ export default function DriverAccountPage() {
             <div>
               <label className="mb-1.5 block text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">Primary Operation Base Area</label>
               {isEditing ? (
-                <Input value={formData.homeArea} onChange={(e) => handleChange('homeArea', e.target.value)} placeholder="Accra, East Legon, Tema..." />
+                <Input value={formData.homeArea} onChange={(e) => handleChange('homeArea', e.target.value)} placeholder="Accra, East Legon, Kasoa..." />
               ) : (
                 <p className="text-sm font-bold text-[#1F1B10]">{formData.homeArea || 'Not configured'}</p>
               )}
@@ -219,6 +281,7 @@ export default function DriverAccountPage() {
           </div>
         </div>
 
+        {/* Section 2: Vehicle Management Blocks */}
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
@@ -238,11 +301,11 @@ export default function DriverAccountPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Production Year</label>
-              {isEditing ? <Input type="number" value={formData.vehicleYear} onChange={(e) => handleChange('vehicleYear', e.target.value)} placeholder="2020" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleYear || '—'}</p>}
+              {isEditing ? <Input type="number" value={formData.vehicleYear} onChange={(e) => handleChange('vehicleYear', e.target.value)} placeholder="2022" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleYear || '—'}</p>}
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-[#7C6B44]">Chassis Color</label>
-              {isEditing ? <Input value={formData.vehicleColor} onChange={(e) => handleChange('vehicleColor', e.target.value)} placeholder="White" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleColor || '—'}</p>}
+              {isEditing ? <Input value={formData.vehicleColor} onChange={(e) => handleChange('vehicleColor', e.target.value)} placeholder="Silver" /> : <p className="text-sm font-bold text-[#1F1B10]">{formData.vehicleColor || '—'}</p>}
             </div>
             <div className="sm:col-span-2 border-t border-slate-100 pt-3">
               <label className="mb-1 block text-xs font-bold text-[#7C6B44]">License Plate Number</label>
@@ -251,6 +314,7 @@ export default function DriverAccountPage() {
           </div>
         </div>
 
+        {/* Section 3: Safety SOS Emergency Linking */}
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">

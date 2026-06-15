@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin, createErrorResponse } from '@/lib/rbac'
 
+// Structural lookup mapping matrices for safety verification checks
 const driverFieldMap = {
   full_name: { table: 'profiles', column: 'full_name' },
   phone: { table: 'profiles', column: 'phone' },
@@ -23,7 +23,7 @@ const mechanicFieldMap = {
   years_experience: { table: 'mechanic_profiles', column: 'years_experience' },
   license_number: { table: 'mechanic_profiles', column: 'license_number' },
   license_expiry: { table: 'mechanic_profiles', column: 'license_expiry' },
-  service_radius_km: { table: 'mechanic_profiles', column: 'service_radius_km' },
+  service_radius: { table: 'mechanic_profiles', column: 'service_radius' },
   location_label: { table: 'mechanic_profiles', column: 'location_label' },
 }
 
@@ -33,6 +33,9 @@ function mapField(targetTable, fieldKey) {
   return null
 }
 
+// ================================================
+// GET PORTAL: READ PENDING APPROVAL QUEUE
+// ================================================
 export async function GET(req) {
   try {
     const access = await requireAdmin()
@@ -46,7 +49,7 @@ export async function GET(req) {
       .from('profile_change_requests')
       .select(`
         *,
-        user:profiles!profile_change_requests_user_id_fkey (id, full_name, phone, role),
+        user:profiles!profile_change_requests_user_id_fkey (id, full_name, email, phone, role),
         reviewer:profiles!profile_change_requests_reviewed_by_fkey (id, full_name)
       `)
       .eq('status', status)
@@ -56,11 +59,15 @@ export async function GET(req) {
 
     return NextResponse.json({ requests: data || [] }, { status: 200 })
   } catch (error) {
+    console.error('[SERVER ROUTE FAULT] GET change requests failed:', error)
     const status = error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden' ? 403 : 500
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json({ error: error.message || 'Internal server error processing reviews' }, { status })
   }
 }
 
+// ================================================
+// PATCH PORTAL: RESOLVE AND EXECUTE DATA METRICS
+// ================================================
 export async function PATCH(req) {
   try {
     const access = await requireAdmin()
@@ -72,52 +79,77 @@ export async function PATCH(req) {
     const { requestId, action, reviewNotes } = body
 
     if (!requestId || !action || !['approved', 'rejected'].includes(action)) {
-      return NextResponse.json({ error: 'requestId and valid action are required' }, { status: 400 })
+      return NextResponse.json({ error: 'requestId and a valid action state parameter are required' }, { status: 400 })
     }
 
-    const { data: request, error: requestError } = await serviceSupabase
+    // 1. Locate current review log record entry
+    const { data: changeRequest, error: requestError } = await serviceSupabase
       .from('profile_change_requests')
       .select('*')
       .eq('id', requestId)
       .single()
 
-    if (requestError) throw requestError
+    if (requestError || !changeRequest) {
+      return NextResponse.json({ error: 'Target update transaction record not found' }, { status: 404 })
+    }
 
+    // 2. Execute target row value migrations if action is approved
     if (action === 'approved') {
-      const mapping = mapField(request.target_table, request.field_key)
+      const mapping = mapField(changeRequest.target_table, changeRequest.field_key)
       if (!mapping) {
-        return NextResponse.json({ error: 'Unsupported field for approval workflow' }, { status: 400 })
+        return NextResponse.json({ error: 'Unsupported field column configuration for approval workflow' }, { status: 400 })
       }
 
-      const updateValue = request.new_value && typeof request.new_value === 'object' && !Array.isArray(request.new_value)
-        ? request.new_value
-        : { [mapping.column]: request.new_value }
+      // Production Hardening: Safely handle JSONB values.
+      // If the incoming text string value is already pre-wrapped in an absolute payload map object, use it directly.
+      // Otherwise, explicitly bundle it inside the target column mapping parameter context.
+      let updateValue = {}
+      if (
+        changeRequest.new_value && 
+        typeof changeRequest.new_value === 'object' && 
+        !Array.isArray(changeRequest.new_value) &&
+        changeRequest.new_value.hasOwnProperty(mapping.column)
+      ) {
+        updateValue = changeRequest.new_value
+      } else {
+        updateValue = { [mapping.column]: changeRequest.new_value }
+      }
 
+      // Mutate the targeted data rows inside production tables securely via service role privileges
       const { error: updateError } = await serviceSupabase
         .from(mapping.table)
         .update(updateValue)
-        .eq(mapping.table === 'profiles' ? 'id' : 'user_id', request.user_id)
+        .eq(mapping.table === 'profiles' ? 'id' : 'user_id', changeRequest.user_id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('[DATA COMMIT BLOCK FAULT]:', updateError)
+        return NextResponse.json({ error: `Failed to execute data merge update pipeline into table: ${mapping.table}` }, { status: 500 })
+      }
     }
 
-    const { data, error } = await serviceSupabase
+    // 3. Commit review decision tracking parameters back onto the audit trail table row
+    const { data: updatedRecord, error: auditUpdateError } = await serviceSupabase
       .from('profile_change_requests')
       .update({
         status: action,
-        review_notes: reviewNotes || null,
+        review_notes: reviewNotes || (action === 'approved' ? 'Approved by operations command' : 'Rejected by operations command'),
         reviewed_by: profile.id,
         reviewed_at: new Date().toISOString(),
       })
       .eq('id', requestId)
-      .select('*')
+      .select(`
+        *,
+        user:profiles!profile_change_requests_user_id_fkey (id, full_name, email, phone, role),
+        reviewer:profiles!profile_change_requests_reviewed_by_fkey (id, full_name)
+      `)
       .single()
 
-    if (error) throw error
+    if (auditUpdateError) throw auditUpdateError
 
-    return NextResponse.json({ request: data }, { status: 200 })
+    return NextResponse.json({ success: true, request: updatedRecord }, { status: 200 })
   } catch (error) {
+    console.error('[SERVER ROUTE FAULT] PATCH change requests failed:', error)
     const status = error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden' ? 403 : 500
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json({ error: error.message || 'Internal processing error executing audit clearance' }, { status })
   }
 }

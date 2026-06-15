@@ -37,39 +37,6 @@ export async function POST(request) {
 }
 
 // ─────────────────────────────────────────────────────────
-// EXAMPLE 2: Notify mechanic that bid was accepted
-// ─────────────────────────────────────────────────────────
-//
-// In web/src/app/api/requests/[id]/route.js (when driver accepts a bid):
-//
-//  import { sendNotificationEmail } from '@/lib/email'
-//
-//  export async function PATCH(request, { params }) {
-//    // ... your existing bid acceptance code ...
-//
-//    const acceptedBid = null
-//    const mechanic = null
-//    const driver = null
-//
-//    // Send email to mechanic that their bid was accepted
-//    await sendNotificationEmail({
-//      to: mechanic.email,
-//      subject: '✅ Your Bid Was Accepted!',
-//      type: 'bid_accepted',
-//      data: {
-//        mechanicName: mechanic.full_name,
-//        driverName: driver.full_name,
-//        location: rescueRequest.location_address,
-//        bidAmount: acceptedBid.proposed_price,
-//        appUrl: 'https://roadrescue.com/requests',
-//      },
-//    })
-//
-//    return Response.json({ success: true, bid: acceptedBid })
-//  }
-//
-
-// ─────────────────────────────────────────────────────────
 
 // In web/src/app/api/requests/[id]/route.js (when mechanic marks job completed):
 

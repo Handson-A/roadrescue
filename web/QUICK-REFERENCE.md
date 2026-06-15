@@ -171,6 +171,7 @@ curl -H "Authorization: Bearer DRIVER_TOKEN" \
    - [ ] Check `/api/admin/*` has `requireAdmin()`
    - [ ] Check `/api/mechanics/*` has `requireMechanic()` 
    - [ ] Check `/api/requests/*` has `requireDriver()`
+   - [ ] Check `/api/profile/preferences` has proper auth
 
 2. **Test cross-role access blocking**
    - [ ] Driver can't access mechanic routes

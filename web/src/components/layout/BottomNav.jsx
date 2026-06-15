@@ -87,13 +87,14 @@ export default function BottomNav() {
       <Link
         key={item.href}
         href={item.href}
-        className="flex flex-col items-center justify-center py-1.5 px-1 transition-all duration-200 group min-w-[3.75rem] active:scale-95"
+        className="flex flex-col items-center justify-center pt-2.5 pb-2 px-1 transition-all duration-200 group min-w-[3.75rem] active:scale-95"
         aria-current={isActive ? 'page' : undefined}
       >
-        <div className={`inline-flex h-8 w-11 items-center justify-center rounded-xl transition-all duration-300 ${isActive ? 'bg-[#F5D108] text-[#1F1B10] shadow-md shadow-[#F5D108]/10' : 'bg-transparent text-[#7C6B44] group-hover:text-[#BAAFA0]'}`}>
-          <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+        {/* Taller background pill wrapper h-8 -> h-9 */}
+        <div className={`inline-flex h-9 w-12 items-center justify-center rounded-xl transition-all duration-300 ${isActive ? 'bg-[#F5D108] text-[#1F1B10] shadow-md shadow-[#F5D108]/15' : 'bg-transparent text-[#7C6B44] group-hover:text-[#BAAFA0]'}`}>
+          <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
         </div>
-        <span className={`mt-1 text-[9px] font-bold uppercase tracking-wider transition-colors ${isActive ? 'text-[#F5D108]' : 'text-[#7C6B44]'}`}>
+        <span className={`mt-1.5 text-[9.5px] font-black uppercase tracking-wider transition-colors ${isActive ? 'text-[#F5D108]' : 'text-[#7C6B44]'}`}>
           {item.label}
         </span>
       </Link>
@@ -105,8 +106,9 @@ export default function BottomNav() {
   // ==================================================================== 
   if (role === 'mechanic') {
     return (
-      <div className="fixed left-0 right-0 bottom-0 z-50 md:hidden pointer-events-auto bg-[#1F1B10] border-t border-white/[0.06] pt-1 px-3 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-        <nav className="mx-auto flex w-full items-center justify-between max-w-md h-14">
+      <div className="fixed left-0 right-0 bottom-0 z-50 md:hidden pointer-events-auto bg-[#1F1B10] border-t border-white/[0.06] pt-1 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_35px_rgba(0,0,0,0.55)]">
+        {/* Taller internal row context h-14 -> h-16 */}
+        <nav className="mx-auto flex w-full items-center justify-between max-w-md h-16">
           {mechanicNav.map(renderNavItem)}
         </nav>
       </div>
@@ -122,33 +124,35 @@ export default function BottomNav() {
 
   return (
     <>
-      <div className="fixed left-0 right-0 bottom-0 z-50 md:hidden pointer-events-none pb-[env(safe-area-inset-bottom)]">
+      {/* Taller wrapper container base box alignment padding */}
+      <div className="fixed left-0 right-0 bottom-0 z-50 md:hidden pointer-events-none pb-[calc(env(safe-area-inset-bottom)+0.25rem)]">
         
-        {/* Floating SOS Trigger */}
-        <div className="absolute left-1/2 top-[-26px] -translate-x-1/2 z-50">
+        {/* Floating SOS Trigger shifted upward to look proportionate with taller nav */}
+        <div className="absolute left-1/2 top-[-30px] -translate-x-1/2 z-50">
           <button
             onClick={handleEmergency}
             aria-label="Request Rescue"
-            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F5D108] text-[#1F1B10] shadow-[0_8px_24px_rgba(245,209,8,0.35)] active:scale-90 transition-transform duration-150 border-[5px] border-[#1F1B10] relative group"
+            className="pointer-events-auto flex h-15 w-15 items-center justify-center rounded-full bg-[#F5D108] text-[#1F1B10] shadow-[0_10px_28px_rgba(245,209,8,0.4)] active:scale-90 transition-transform duration-150 border-[5px] border-[#1F1B10] relative group"
           >
             <span className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-active:opacity-100 transition-opacity" />
-            <Wrench size={20} strokeWidth={2.5} className="transform group-hover:rotate-12 transition-transform" />
+            <Wrench size={22} strokeWidth={2.5} className="transform group-hover:rotate-12 transition-transform" />
           </button>
         </div>
 
         {/* Carved Navigation Bar */}
-        <nav className="pointer-events-auto relative w-full bg-[#1F1B10] border-t border-white/[0.06] pt-1 px-2 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
-          {/* Custom Inward Carve Visual Simulator Blocks */}
-          <div className="absolute top-[-5px] left-1/2 -translate-x-1/2 w-20 h-5 bg-[#1F1B10] rounded-t-2xl border-t border-x border-white/[0.06] z-10" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[72px] h-4 bg-[#1F1B10] z-20" />
+        <nav className="pointer-events-auto relative w-full bg-[#1F1B10] border-t border-white/[0.06] pt-1 px-2 shadow-[0_-10px_35px_rgba(0,0,0,0.55)]">
+          {/* Custom Inward Carve Visual Simulator Blocks enlarged for clean curves */}
+          <div className="absolute top-[-5px] left-1/2 -translate-x-1/2 w-22 h-5 bg-[#1F1B10] rounded-t-3xl border-t border-x border-white/[0.06] z-10" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[78px] h-4 bg-[#1F1B10] z-20" />
 
-          <div className="relative z-30 mx-auto flex w-full items-center justify-between max-w-md h-14">
+          {/* Expanded bar layout container h-14 -> h-16 */}
+          <div className="relative z-30 mx-auto flex w-full items-center justify-between max-w-md h-16">
             <div className="flex flex-1 items-center justify-around">
               {leftItems.map(renderNavItem)}
             </div>
 
-            {/* Gap structure space for button alignment */}
-            <div className="w-16 shrink-0 h-full" />
+            {/* Gap structure space for button alignment widened */}
+            <div className="w-18 shrink-0 h-full" />
 
             <div className="flex flex-1 items-center justify-around">
               {rightItems.map(renderNavItem)}

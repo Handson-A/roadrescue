@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import PageWrapper from '@/components/layout/PageWrapper'
-import RescueMap from '@/components/map/RescueMap'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -11,7 +11,21 @@ import Spinner from '@/components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { timeAgo } from '@/lib/utils'
-import { ShieldCheck, Radio, AlertCircle, Wrench, DollarSign } from 'lucide-react'
+import { Radio, AlertCircle, Wrench, DollarSign, ShieldCheck, X, AlertTriangle, MapPin } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+// Client-safe Leaflet Map Lazy Loader Container
+const RescueMap = dynamic(
+  () => import('@/components/map/RescueMap'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[370px] flex items-center justify-center bg-slate-50 border rounded-2xl">
+        <Spinner />
+      </div>
+    )
+  }
+)
 
 export default function MechanicPage() {
   const { user } = useAuth()
@@ -20,72 +34,119 @@ export default function MechanicPage() {
   const [available, setAvailable] = useState(false)
   const [mechProfile, setMechProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showOfflineModal, setShowOfflineModal] = useState(false)
   const userIdRef = useRef(user?.id)
 
   useEffect(() => {
-    userIdRef.current = user?.id
+  userIdRef.current = user?.id
 
-    if (!userIdRef.current) return
-    let mounted = true
+  if (!userIdRef.current) return
+  let mounted = true
 
-    async function loadJobs() {
-      const currentUserId = userIdRef.current
-      if (!currentUserId) return
-
-      const supabase = createClient()
-      
-      const { data: mechanicData } = await supabase
-        .from('mechanic_profiles')
-        .select('business_name, is_available, verification_status, current_status, service_radius_km, hourly_rate')
-        .eq('user_id', currentUserId)
-        .maybeSingle()
-
-      const { data: pending } = await supabase
-        .from('rescue_requests')
-        .select('id, status, service_type, problem_description, incident_address, created_at, estimated_price')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-
-      const { data: active } = await supabase
-        .from('rescue_requests')
-        .select(`
-          id,
-          status,
-          service_type,
-          problem_description,
-          incident_address,
-          created_at,
-          driver:driver_id (id, full_name, phone)
-        `)
-        .eq('mechanic_id', currentUserId)
-        .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
-        .order('created_at', { ascending: false })
-
-      if (mounted && userIdRef.current) {
-        setMechProfile(mechanicData || null)
-        setAvailable(Boolean(mechanicData?.is_available))
-        setIncomingJobs(pending || [])
-        setActiveJobs(active || [])
-        setLoading(false)
-      }
-    }
-
-    loadJobs()
-    const interval = setInterval(loadJobs, 10000)
-    return () => {
-      mounted = false
-      clearInterval(interval)
-    }
-  }, [user?.id])
-
-  const toggleAvailability = async () => {
+  async function loadJobs() {
     const currentUserId = userIdRef.current
     if (!currentUserId) return
 
-    const nextAvailability = !available
-    setAvailable(nextAvailability)
     const supabase = createClient()
-    await supabase.from('mechanic_profiles').update({ is_available: nextAvailability }).eq('user_id', currentUserId)
+    
+    // Fetch mechanic profile metrics cleanly
+    const { data: mechanicData, error: profileErr } = await supabase
+      .from('mechanic_profiles')
+      .select('business_name, is_available, years_experience')
+      .eq('user_id', currentUserId)
+      .maybeSingle()
+
+    if (profileErr) console.error('[DB EXCEPTION] Profile fetch:', profileErr.message)
+
+    // Fetch pending requests pool
+    const { data: pending, error: pendingErr } = await supabase
+      .from('rescue_requests')
+      .select('id, status, service_type, problem_description, incident_address, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+
+    if (pendingErr) console.error('[DB EXCEPTION] Pending fetch:', pendingErr.message)
+
+    // Fetch active assignments pool
+    const { data: active, error: activeErr } = await supabase
+      .from('rescue_requests')
+      .select(`
+        id,
+        status,
+        service_type,
+        problem_description,
+        incident_address,
+        created_at,
+        incident_lat,
+        incident_lng,
+        driver:profiles!rescue_requests_driver_id_fkey (id, full_name, phone)
+      `)
+      .eq('mechanic_id', currentUserId)
+      .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
+      .order('created_at', { ascending: false })
+
+    if (activeErr) console.error('[DB EXCEPTION] Active fetch:', activeErr.message)
+
+    if (mounted && userIdRef.current) {
+      setMechProfile(mechanicData || null)
+      
+      // REMOVED THE BUG: No longer resetting state to 0 on every polling cycle
+      if (mechanicData) {
+        setAvailable(Boolean(mechanicData.is_available))
+      }
+      
+      setIncomingJobs(pending || [])
+      setActiveJobs(active || [])
+      setLoading(false)
+    }
+  }
+
+  loadJobs()
+  const interval = setInterval(loadJobs, 10000)
+  return () => {
+    mounted = false
+    clearInterval(interval)
+  }
+}, [user?.id])
+
+  const handleAvailabilityToggle = async () => {
+    if (available) {
+      setShowOfflineModal(true)
+    } else {
+      await executeStatusUpdate(true)
+    }
+  }
+
+  const executeStatusUpdate = async (status) => {
+    const currentUserId = userIdRef.current
+    const supabase = createClient()
+    
+    setAvailable(status)
+    setShowOfflineModal(false)
+
+    try {
+      const { error } = await supabase
+        .from('mechanic_profiles')
+        .update({ is_available: status })
+        .eq('user_id', currentUserId)
+
+      if (error) throw error
+      toast.success(`Duty status configured: ${status ? 'Online' : 'Offline'}`)
+    } catch (err) {
+      console.error('[STATUS FAULT]:', err.message)
+      setAvailable(!status)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
+        <div className="text-center space-y-3">
+          <Spinner />
+          <p className="text-xs font-mono font-black text-[#7C6B44] uppercase tracking-widest animate-pulse">Synchronizing Radio Terminals...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -96,7 +157,7 @@ export default function MechanicPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
         {/* ================= TOP DISPATCH POOL CONTROLLER ================= */}
-        <div className={`rounded-2xl border p-5 transition-all duration-300 ${available ? 'bg-emerald-50/60 border-emerald-200/80' : 'bg-[#F3F4F6] border-slate-200'}`}>
+        <div className={`rounded-2xl border p-5 transition-all duration-300 ${available ? 'bg-emerald-50/60 border-emerald-200/80' : 'bg-slate-100 border-slate-200'}`}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3.5">
               <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${available ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
@@ -108,25 +169,25 @@ export default function MechanicPage() {
                   {available ? 'Online & Receiving Requests' : 'Offline from Dispatch Pool'}
                 </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 font-medium">
-                  <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 capitalize">
-                    <ShieldCheck size={13} /> {mechProfile?.verification_status || 'Verification Pending'}
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 capitalize">
+                    <ShieldCheck size={13} /> Console Stream Secure
                   </span>
                   <span>•</span>
-                  <span>Coverage: {mechProfile?.service_radius_km ?? '—'} km radius</span>
+                  <span>Experience: {mechProfile?.years_experience ?? '0'} Years Vetted</span>
                 </div>
               </div>
             </div>
             <Button 
               variant={available ? 'outline' : 'primary'} 
-              onClick={toggleAvailability}
-              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${available ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900'}`}
+              onClick={handleAvailabilityToggle}
+              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${available ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-[#F5D108] hover:bg-[#F5D108]/90 text-slate-900'}`}
             >
               {available ? 'Go Offline' : 'Go Online'}
             </Button>
           </div>
         </div>
 
-        {/* ================= REFINED COUNTER GRID (NO DUPLICATION) ================= */}
+        {/* ================= COUNTER GRID ================= */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
           <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
@@ -148,47 +209,42 @@ export default function MechanicPage() {
 
           <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Hourly Base Rate</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Operation Center</span>
               <DollarSign size={16} className="text-slate-400" />
             </div>
-            <p className="mt-2 text-4xl font-black text-[#111827] tracking-tight">
-              {mechProfile?.hourly_rate ? `$${Number(mechProfile.hourly_rate).toFixed(0)}` : '—'}
+            <p className="mt-2 text-xl font-black text-[#111827] truncate tracking-tight pt-1.5">
+              {mechProfile?.business_name || 'Independent Specialist'}
             </p>
-            <p className="mt-1 text-xs text-slate-500 font-medium">Standard structural rate setup</p>
+            <p className="mt-2.5 text-xs text-slate-500 font-medium">Active terminal identity node</p>
           </Card>
         </div>
 
         {/* ================= PRIMARY CONSOLE WORKING INTERFACE ================= */}
         <div className="grid gap-6 lg:grid-cols-12">
           
-          {/* LEFT AREA: MAP WITH INLINE CONDITIONAL RADAR STATE */}
+          {/* LEFT AREA: FIXED PRECISE OVERFLOW WRAPPING ACCORDING TO image_be026a.jpg */}
           <div className="space-y-4 lg:col-span-7">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm bg-white">
-              <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Live Dispatch Target Radar</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/40">
-                  <span className="h-1 w-1 rounded-full bg-emerald-500 animate-ping" />
-                  {activeJobs.length > 0 ? 'Active Tracking' : 'Radar Scanning'}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
+              <div className="bg-slate-50 border-b border-slate-200/60 px-4 py-3.5 flex items-center justify-between z-20">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Live Tracking</span>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight">Spatial Routing Topology Tracker</h3>
+                </div>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/50">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {activeJobs.length > 0 ? 'Active System Track' : 'Radar Scanning'}
                 </span>
               </div>
               
-              {activeJobs.length > 0 ? (
-                <RescueMap request={activeJobs[0]} height="370px" />
-              ) : (
-                <div className="h-[370px] bg-slate-50/40 flex flex-col items-center justify-center p-6 text-center border-t border-slate-100">
-                  <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3 border border-slate-200/60 shadow-sm">
-                    <Radio size={20} className={available ? "animate-pulse text-amber-500" : "text-slate-400"} />
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-800">
-                    {available ? 'Awaiting Dispatch Coordinates' : 'System Offline'}
-                  </h4>
-                  <p className="text-xs text-slate-400 max-w-xs mt-1 font-medium leading-relaxed">
-                    {available 
-                      ? 'Your target tracker radar is online. Once you review and accept an incoming emergency request, the routing path map will populate here.' 
-                      : 'Toggle your duty status to online above to join the vehicle service dispatch pool and initialize your mapping radar.'}
-                  </p>
-                </div>
-              )}
+              {/* FIXED UI: Absolute hidden overflow wrapping fixes the square clipping blowout seen in image_be026a.jpg */}
+              <div className="w-full h-[370px] relative overflow-hidden bg-slate-50 rounded-b-2xl z-10">
+                <RescueMap 
+                  request={activeJobs.length > 0 ? activeJobs[0] : null} 
+                  isRadarMode={activeJobs.length === 0}
+                  isOnline={available}
+                  height="100%" 
+                />
+              </div>
             </div>
 
             {activeJobs.length > 0 && (
@@ -207,9 +263,11 @@ export default function MechanicPage() {
                             <Badge label={job.service_type} variant="default" />
                           </div>
                           <p className="mt-2.5 text-sm font-bold text-slate-900 leading-snug">{job.problem_description}</p>
-                          <p className="mt-1 text-xs text-slate-500 font-medium">{job.incident_address || 'Location coordinates pending'}</p>
+                          <p className="mt-1 text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <MapPin size={12} className="text-slate-400" /> {job.incident_address || 'Location coordinates pending'}
+                          </p>
                         </div>
-                        <Link href={`/dashboard/mechanic/job/${job.id}`} className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition-colors">
+                        <Link href={`/dashboard/mechanic/job/${job.id}`} className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition-colors self-center">
                           Open Details
                         </Link>
                       </div>
@@ -220,17 +278,15 @@ export default function MechanicPage() {
             )}
           </div>
 
-          {/* RIGHT AREA: STREAMLINED LIVE BREAKDOWN CHANNELS */}
+          {/* RIGHT AREA: INCIDENT BROADCAST FEEDS */}
           <div className="space-y-4 lg:col-span-5">
             <Card className="p-0 overflow-hidden border-slate-200 bg-white shadow-sm rounded-2xl">
               <div className="border-b border-slate-100 bg-slate-900 px-4 py-3.5 text-white flex justify-between items-center">
-                <h4 className="text-xs font-black uppercase tracking-wider text-[#FFD700]">Urgent Broadcast Feed</h4>
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#F5D108]">Urgent Broadcast Feed</h4>
                 {incomingJobs.length > 0 && <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />}
               </div>
               <div className="p-4">
-                {loading ? (
-                  <div className="py-12 flex justify-center"><Spinner /></div>
-                ) : incomingJobs.length === 0 ? (
+                {incomingJobs.length === 0 ? (
                   <p className="py-8 text-center text-xs font-medium text-slate-400">No open corridor breakdown alerts right now.</p>
                 ) : (
                   <div className="space-y-3">
@@ -252,36 +308,58 @@ export default function MechanicPage() {
               </div>
             </Card>
 
-            {/* LOWER ASSISTANCE SIDEBAR SUMMARY CARD */}
-            <Card className="rounded-2xl border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Available Payout Estimates</h4>
-                <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">{incomingJobs.length} Live</span>
+            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center items-center py-12 text-center text-slate-400">
+              <div className="h-9 w-9 rounded-xl bg-slate-50 border flex items-center justify-center mb-2.5 text-slate-400 shadow-2xs">
+                <AlertCircle size={16} />
               </div>
-              <div className="space-y-2">
-                {incomingJobs.length === 0 ? (
-                  <div className="py-3 text-center text-xs font-medium text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                    Awaiting dispatch signals...
-                  </div>
-                ) : (
-                  incomingJobs.slice(0, 2).map((job) => (
-                    <div key={job.id} className="rounded-xl border border-slate-50 bg-slate-50/40 px-3.5 py-2.5 flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 truncate capitalize">{job.service_type.replace('_', ' ')}</p>
-                        <p className="text-[11px] text-slate-400 truncate mt-0.5">{job.incident_address || 'Route mapped'}</p>
-                      </div>
-                      <span className="text-sm font-black text-slate-900 shrink-0">
-                        {job.estimated_price ? `$${Number(job.estimated_price).toFixed(0)}` : '$—'}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Network Node Active</h4>
+              <p className="text-[11px] max-w-[200px] mt-1 font-medium leading-relaxed">System mapping radar is polling your PostGIS geometric location loop metrics cleanly.</p>
             </Card>
-
           </div>
+
         </div>
       </div>
+
+      {/* ================= CONFIRMATION OFFLINE MODAL VECTOR ================= */}
+      {showOfflineModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
+            <button 
+              onClick={() => setShowOfflineModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={18} />
+            </button>
+            
+            <div className="flex gap-3.5 items-start">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  Going offline removes your workshop profile from active emergency network nodes. Drivers nearby will not be able to broadcast breakdown signals to your console.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 justify-end pt-2">
+              <button 
+                onClick={() => setShowOfflineModal(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Stay Online
+              </button>
+              <button 
+                onClick={() => { executeStatusUpdate(false) }}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-slate-800 transition-colors shadow-sm"
+              >
+                Confirm Offline
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
     </PageWrapper>
   )
 }

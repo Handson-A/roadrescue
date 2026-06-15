@@ -1,101 +1,83 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic' // FIXED: Added Next.js standard lazy router
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
-import { createClient } from '@/lib/supabase/client'
+import toast from 'react-hot-toast'
 import { BarChart3, TrendingUp, Clock, Users, Star, MapPin, Wrench } from 'lucide-react'
 
+// Dynamic Import: Disables server side instantiation rendering to prevent leaflet window crashes
+const LiveHotspotsMap = dynamic(
+  () => import('@/components/admin/LiveHotspotsMap'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[26rem] flex items-center justify-center bg-slate-50 border rounded-xl">
+        <Spinner />
+      </div>
+    )
+  }
+)
+
 export default function AdminReportsPage() {
+  // ... rest of your AdminReportsPage component code remains exactly identical
   const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState(7) // 7 days or 30 days switch
-  const [metrics, setMetrics] = useState({
-    totalIncidents24h: 0,
-    incidentDelta: 0,
-    avgResponseMinutes: 0,
-    activeMechanicsCount: 0,
-    systemCsat: 0.0,
-    faultCategories: {
-      mechanical: 0,
-      engine: 0,
-      tire: 0,
-      electrical: 0,
-      other: 0
-    }
-  })
+  const [timeRange, setTimeRange] = useState(7) // 7 days or 30 days toggle switch wrapper
+  const [stats, setStats] = useState(null)
 
   useEffect(() => {
     let mounted = true
 
-    async function computeLiveAnalytics() {
+    async function loadLiveSystemAnalytics() {
       try {
-        const supabase = createClient()
-
-        // 1. Fetch system totals for request histories
-        const { data: requests } = await supabase
-          .from('rescue_requests')
-          .select('created_at, status, service_type, driver_rating')
-
-        // 2. Fetch active technical operators status
-        const { data: mechanics } = await supabase
-          .from('mechanic_profiles')
-          .select('is_available, average_rating')
-
-        if (!mounted) return
-
-        // Process live metrics calculation blocks
-        const now = new Date()
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        setLoading(true)
         
-        const incidents24h = requests?.filter(r => new Date(r.created_at) >= oneDayAgo) || []
-        const totalRequestsCount = requests?.length || 0
-        
-        // Calculate category structural distributions
-        const totalFaults = requests?.length || 1 
-        const engineCount = requests?.filter(r => r.service_type === 'engine_repair' || r.service_type === 'mechanical').length || 0
-        const tireCount = requests?.filter(r => r.service_type === 'flat_tire' || r.service_type === 'tire_replacement').length || 0
-        const electricalCount = requests?.filter(r => r.service_type === 'battery_jump' || r.service_type === 'electrical').length || 0
-        const otherCount = totalRequestsCount - (engineCount + tireCount + electricalCount)
+        // Connect to your secure server-side API endpoint
+        const response = await fetch('/api/admin/stats')
+        const result = await response.json()
 
-        // Aggregate customer satisfaction average rating indices
-        const ratedJobs = requests?.filter(r => r.driver_rating > 0) || []
-        const computedCsat = ratedJobs.length > 0 
-          ? (ratedJobs.reduce((sum, r) => sum + r.driver_rating, 0) / ratedJobs.length).toFixed(1)
-          : '4.8' // premium brand fallback projection anchor if table records are fresh
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to retrieve system operational reports')
+        }
 
-        setMetrics({
-          totalIncidents24h: incidents24h.length || totalRequestsCount || 14, // dynamic evaluation values
-          incidentDelta: 12, // consistent statistical baseline parameters
-          avgResponseMinutes: 18.4, 
-          activeMechanicsCount: mechanics?.filter(m => m.is_available).length || mechanics?.length || 8,
-          systemCsat: computedCsat,
-          faultCategories: {
-            mechanical: Math.round(((engineCount + otherCount) / totalFaults) * 100) || 62,
-            engine: Math.round((engineCount / totalFaults) * 100) || 42,
-            tire: Math.round((tireCount / totalFaults) * 100) || 28,
-            electrical: Math.round((electricalCount / totalFaults) * 100) || 18,
-            other: Math.round((otherCount / totalFaults) * 100) || 12
-          }
-        })
+        if (mounted) {
+          setStats(result.stats)
+        }
       } catch (err) {
-        console.error('Analytics compute fault pipeline exception:', err)
+        console.error('[REPORTS PAGE SYNC FAULT]:', err)
+        toast.error(err.message || 'Error pulling live data panels')
       } finally {
         if (mounted) setLoading(false)
       }
     }
 
-    computeLiveAnalytics()
+    loadLiveSystemAnalytics()
     return () => { mounted = false }
   }, [timeRange])
 
-  if (loading) {
+  if (loading || !stats) {
     return (
       <PageWrapper title="Operational Analytics">
         <div className="flex justify-center py-24"><Spinner /></div>
       </PageWrapper>
     )
   }
+
+  // Safely compute percentage breakdown metrics from database categories arrays
+  const totalIncidents = stats.totalRequests || 0
+  const findCountByService = (type) => stats.serviceTypeBreakdown?.find(s => s.service_type === type)?.count || 0
+
+  const categoriesPercentages = {
+    engine: totalIncidents > 0 ? Math.round((findCountByService('engine_repair') / totalIncidents) * 100) : 0,
+    tire: totalIncidents > 0 ? Math.round((findCountByService('flat_tire') / totalIncidents) * 100) : 0,
+    electrical: totalIncidents > 0 ? Math.round((findCountByService('battery_jump') / totalIncidents) * 100) : 0,
+    other: totalIncidents > 0 ? Math.round((findCountByService('other') / totalIncidents) * 100) : 0,
+  }
+
+  // Aggregate global cumulative fault calculations
+  const totalMechanicalPercentage = Math.min(categoriesPercentages.engine + categoriesPercentages.other, 100)
 
   return (
     <PageWrapper 
@@ -106,129 +88,156 @@ export default function AdminReportsPage() {
         
         {/* ================= HIGH LEVEL ANALYTICS SUMMARY GRID ================= */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Volume (24h)</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Incidents Logged</span>
               <BarChart3 size={16} className="text-slate-400" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{metrics.totalIncidents24h}</p>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stats.totalRequests}</p>
             <p className="mt-1 text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-              <TrendingUp size={12} /> +{metrics.incidentDelta}% vs historical cycle
+              <TrendingUp size={12} /> +{stats.activeRequests} actively on-going
             </p>
           </Card>
 
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Avg Response Time</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Avg Dispatch Response</span>
               <Clock size={16} className="text-slate-400" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{metrics.avgResponseMinutes}m</p>
-            <p className="mt-1 text-xs font-medium text-slate-400">-4m optimized deployment curve</p>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stats.avgResponseTime || '0'}m</p>
+            <p className="mt-1 text-xs font-medium text-slate-400">From creation ticket to mechanic match</p>
           </Card>
 
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Active Operators</span>
               <Users size={16} className="text-slate-400" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{metrics.activeMechanicsCount}</p>
-            <p className="mt-1 text-xs font-bold text-emerald-600">Live coordinates tracking sync</p>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stats.activeMechanics}</p>
+            <p className="mt-1 text-xs font-bold text-emerald-600">Mechanics toggled live on-duty</p>
           </Card>
 
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">CSAT Index Score</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">System CSAT Score</span>
               <Star size={16} className="text-[#FFD700] fill-[#FFD700]" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{metrics.systemCsat} <span className="text-sm font-bold text-slate-400">/ 5.0</span></p>
-            <p className="mt-1 text-xs font-bold text-amber-600 tracking-wider">★★★★★ User feedback metrics</p>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stats.avgRating || '5.0'} <span className="text-sm font-bold text-slate-400">/ 5.0</span></p>
+            <p className="mt-1 text-xs font-bold text-amber-600 tracking-wider">Verified transaction reviews</p>
           </Card>
         </div>
 
-        {/* ================= HOTSPOTS MAP VISUALIZER & CHART MATRIX ================= */}
+        {/* ================= MAP VISUALIZER & DIAGNOSTIC MATRIX ================= */}
         <div className="grid gap-6 lg:grid-cols-[1.9fr_0.9fr]">
-          <Card className="rounded-2xl border-slate-200 bg-white p-0 overflow-hidden shadow-sm">
-            <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex justify-between items-center">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <MapPin size={14} className="text-slate-400" /> Regional Breakdown Hotspots Map
-              </h3>
-              <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Accra Grid</span>
-            </div>
-            <div className="p-4 bg-slate-50/20">
-              <div className="h-96 rounded-xl border border-slate-200/80 bg-[radial-gradient(circle_at_50%_50%,rgba(245,209,8,0.08),transparent_35%),radial-gradient(circle_at_30%_40%,rgba(17,24,39,0.04),transparent_40%),radial-gradient(circle_at_70%_55%,rgba(245,209,8,0.05),transparent_35%),linear-gradient(160deg,#111827_0%,#1f2937_45%,#111827_100%)] relative">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#334155_1px,transparent_1px),linear-gradient(to_bottom,#334155_1px,transparent_1px)] bg-[size:3rem_3rem] opacity-10" />
-              </div>
-            </div>
-          </Card>
+          <Card className="rounded-2xl border border-slate-100 bg-white p-0 overflow-hidden shadow-sm">
+  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex justify-between items-center">
+    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+      <MapPin size={14} className="text-slate-400" /> Regional Breakdown Hotspots Map
+    </h3>
+    <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Live System Sync</span>
+  </div>
+  <div className="p-4 bg-slate-50/20">
+    {/* Interactive Node Deployment Layer Map */}
+    <LiveHotspotsMap mechanics={stats.activeMechanicLocations} />
+  </div>
+</Card>
 
-          {/* FAULT DISTRIBUTION GRAPH SUMMARY */}
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-between">
+          {/* REAL FAULT DISTRIBUTION SUMMARY PANEL */}
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col justify-between">
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-5">
-                <Wrench size={14} /> Diagnostic Categories
+                <Wrench size={14} /> Diagnostic Breakdown
               </h3>
               
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-center">
-                <p className="text-4xl font-black text-slate-900 tracking-tight">{metrics.faultCategories.mechanical}%</p>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Mechanical Work-orders</p>
+                <p className="text-4xl font-black text-slate-900 tracking-tight">{totalMechanicalPercentage}%</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Mechanical Incidents Ratio</p>
               </div>
 
-              {/* Dynamic CSS Bar distribution vectors */}
+              {/* Dynamic CSS Bar charts powered by live state calculations */}
               <div className="mt-6 space-y-4 text-xs font-semibold text-slate-700">
                 <div className="space-y-1">
-                  <div className="flex justify-between"><span>Engine Overhauls</span><span className="text-slate-900">{metrics.faultCategories.engine}%</span></div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div className="bg-[#FFD700] h-full rounded-full transition-all duration-500" style={{ width: `${metrics.faultCategories.engine}%` }} /></div>
+                  <div className="flex justify-between"><span>Engine Diagnostics</span><span className="text-slate-900">{categoriesPercentages.engine}%</span></div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-[#FFD700] h-full rounded-full transition-all duration-500" style={{ width: `${categoriesPercentages.engine}%` }} />
+                  </div>
                 </div>
+                
                 <div className="space-y-1">
-                  <div className="flex justify-between"><span>Tire Blowouts</span><span className="text-slate-900">{metrics.faultCategories.tire}%</span></div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div className="bg-slate-700 h-full rounded-full transition-all duration-500" style={{ width: `${metrics.faultCategories.tire}%` }} /></div>
+                  <div className="flex justify-between"><span>Tire Maintenance</span><span className="text-slate-900">{categoriesPercentages.tire}%</span></div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-slate-700 h-full rounded-full transition-all duration-500" style={{ width: `${categoriesPercentages.tire}%` }} />
+                  </div>
                 </div>
+
                 <div className="space-y-1">
-                  <div className="flex justify-between"><span>Electrical / Battery Dead</span><span className="text-slate-900">{metrics.faultCategories.electrical}%</span></div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div className="bg-slate-400 h-full rounded-full transition-all duration-500" style={{ width: `${metrics.faultCategories.electrical}%` }} /></div>
+                  <div className="flex justify-between"><span>Electrical / Battery</span><span className="text-slate-900">{categoriesPercentages.electrical}%</span></div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-slate-400 h-full rounded-full transition-all duration-500" style={{ width: `${categoriesPercentages.electrical}%` }} />
+                  </div>
                 </div>
+
                 <div className="space-y-1">
-                  <div className="flex justify-between"><span>Other Failures</span><span className="text-slate-900">{metrics.faultCategories.other}%</span></div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div className="bg-slate-200 h-full rounded-full transition-all duration-500" style={{ width: `${metrics.faultCategories.other}%` }} /></div>
+                  <div className="flex justify-between"><span>Other Callouts</span><span className="text-slate-900">{categoriesPercentages.other}%</span></div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-slate-200 h-full rounded-full transition-all duration-500" style={{ width: `${categoriesPercentages.other}%` }} />
+                  </div>
                 </div>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* ================= LINE RESPONSE TIME GRAPH SIMULATOR ================= */}
-        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Response Dispatch Timeline Latency</h3>
-            <div className="flex gap-1.5 text-[11px] font-bold uppercase tracking-wider">
-              <button 
-                onClick={() => setTimeRange(7)} 
-                className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 7 ? 'bg-[#FFD700] border-[#FFD700] text-slate-900 font-extrabold shadow-xs' : 'bg-white text-slate-400 border-slate-200'}`}
-              >
-                Last 7 Days
-              </button>
-              <button 
-                onClick={() => setTimeRange(30)} 
-                className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 30 ? 'bg-[#FFD700] border-[#FFD700] text-slate-900 font-extrabold shadow-xs' : 'bg-white text-slate-400 border-slate-200'}`}
-              >
-                Last 30 Days
-              </button>
+        {/* ================= STATE FACTOR BAR VISUALIZER CHANNELS ================= */}
+        <div className="w-full">
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Operational Distribution Load</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Live tracking counts grouped by active workflow nodes</p>
+              </div>
+              <div className="flex gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+                <button 
+                  onClick={() => setTimeRange(7)} 
+                  className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 7 ? 'bg-[#FFD700] border-[#FFD700] text-slate-900 font-extrabold shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
+                >
+                  7 Days View
+                </button>
+                <button 
+                  onClick={() => setTimeRange(30)} 
+                  className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 30 ? 'bg-[#FFD700] border-[#FFD700] text-slate-900 font-extrabold shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
+                >
+                  30 Days View
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="h-56 rounded-xl border border-slate-200 bg-slate-50/30 p-4 relative flex items-end">
-            {/* Grid metrics line graph overlay simulator layout container */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_19%,rgba(148,163,184,0.08)_20%,transparent_21%),linear-gradient(to_right,transparent_14%,rgba(148,163,184,0.05)_15%,transparent_16%)] bg-[size:100%_2.5rem,5rem_100%] opacity-70" />
-            <div className="w-full flex items-end justify-between h-32 px-4 relative z-10">
-              <div className="w-8 bg-slate-200 rounded-t h-[45%] opacity-70 hover:bg-[#FFD700] transition-colors" title="Mon" />
-              <div className="w-8 bg-slate-200 rounded-t h-[60%] opacity-70 hover:bg-[#FFD700] transition-colors" title="Tue" />
-              <div className="w-8 bg-slate-200 rounded-t h-[35%] opacity-70 hover:bg-[#FFD700] transition-colors" title="Wed" />
-              <div className="w-8 bg-slate-200 rounded-t h-[85%] opacity-70 hover:bg-[#FFD700] transition-colors" title="Thu" />
-              <div className="w-8 bg-slate-900 rounded-t h-[55%] hover:bg-[#FFD700] transition-colors" title="Fri (Active Cycle)" />
-              <div className="w-8 bg-slate-200 rounded-t h-[40%] opacity-70 hover:bg-[#FFD700] transition-colors" title="Sat" />
-              <div className="w-8 bg-slate-200 rounded-t h-[30%] opacity-70 hover:bg-[#FFD700] transition-colors" title="Sun" />
+
+            <div className="min-h-[14rem] rounded-xl border border-slate-100 bg-slate-50/50 p-6 flex flex-col justify-center gap-4 relative">
+              {(!stats.statusBreakdown || stats.statusBreakdown.length === 0) ? (
+                <div className="text-center text-xs font-medium text-slate-400 py-12">No active lifecycle transitions logged in current database matrix.</div>
+              ) : (
+                stats.statusBreakdown.map((item) => {
+                  const barPercentage = totalVolume > 0 ? Math.min(Math.round((item.count / totalVolume) * 100), 100) : 5;
+                  return (
+                    <div key={item.status} className="w-full flex items-center gap-4 text-xs font-bold">
+                      <span className="w-24 text-slate-500 font-mono uppercase text-[10px] tracking-wider text-left">{item.status}</span>
+                      <div className="flex-1 bg-slate-100 h-5 rounded-md overflow-hidden relative shadow-inner">
+                        <div 
+                          className="bg-slate-900 h-full rounded-md transition-all duration-700 ease-out flex items-center justify-end px-2"
+                          style={{ width: `${barPercentage}%` }}
+                        >
+                          {barPercentage > 10 && <span className="text-[10px] font-black text-white">{barPercentage}%</span>}
+                        </div>
+                      </div>
+                      <span className="w-12 text-right text-slate-900 font-black">{item.count} open</span>
+                    </div>
+                  )
+                })
+              )}
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
+
       </div>
     </PageWrapper>
   )

@@ -22,11 +22,9 @@ export function useMechanicPresence(mechanicId) {
     })
 
     channel
-      .on('presence', { event: 'join' }, ({ key }) => {
-        console.log(`[Presence] mechanic online: ${key}`)
+      .on('presence', { event: 'join' }, () => {
       })
-      .on('presence', { event: 'leave' }, async ({ key }) => {
-        // mechanic disconnected — mark them unavailable in DB
+      .on('presence', { event: 'leave' }, async ({ key }) => {        // mechanic disconnected — mark them unavailable in DB
         if (key === mechanicId) {
           await supabase
             .from('mechanic_profiles')

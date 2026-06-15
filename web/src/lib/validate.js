@@ -57,24 +57,3 @@ export function validateRequestBody(body) {
     ? { valid: false, errors }
     : { valid: true }
 }
-
-// validates a bid body
-export function validateBidBody(body) {
-  const errors = []
-
-  if (!isNonEmptyString(body.requestId)) {
-    errors.push('requestId is required')
-  }
-
-  if (!isPositiveInt(body.estimatedArrivalMinutes)) {
-    errors.push('estimatedArrivalMinutes must be a positive integer')
-  }
-
-  if (body.estimatedArrivalMinutes > 180) {
-    errors.push('estimatedArrivalMinutes cannot exceed 180')
-  }
-
-  return errors.length > 0
-    ? { valid: false, errors }
-    : { valid: true }
-}

@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -19,7 +18,6 @@ const services = [
 export default function JobCompletionPage() {
   const { id } = useParams()
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -30,21 +28,18 @@ export default function JobCompletionPage() {
     let mounted = true
 
     async function loadJob() {
-      const { data } = await supabase
-        .from('rescue_requests')
-        .select('id, status, service_type, problem_description, incident_address, driver:driver_id (full_name, phone)')
-        .eq('id', id)
-        .single()
+      const response = await fetch(`/api/requests/${id}`)
+      const payload = await response.json()
 
       if (mounted) {
-        setJob(data || null)
+        setJob(response.ok ? payload.request : null)
         setLoading(false)
       }
     }
 
     loadJob()
     return () => { mounted = false }
-  }, [id, supabase])
+  }, [id])
 
   async function submitCompletion() {
     setSubmitting(true)
@@ -52,7 +47,7 @@ export default function JobCompletionPage() {
       const response = await fetch('/api/requests/status', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: id, newStatus: 'completed' }),
+        body: JSON.stringify({ requestId: id, newStatus: 'completed', completionNotes: notes, performedServices: performed }),
       })
 
       const payload = await response.json()

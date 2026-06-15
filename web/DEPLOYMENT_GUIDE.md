@@ -150,7 +150,7 @@ Related: Location tracking for active jobs"
 git commit -m "refactor(lib): consolidate request.js with enhanced error handling
 
 - Merged duplicate file (requests.js → definitive request.js)
-- Added missing BID_STATUS import
+- Removed obsolete bid helpers and route handlers
 - Wrapped all functions in try-catch blocks
 - Improved error logging and validation
 - Functions covered:
@@ -226,12 +226,12 @@ git log --oneline -6 --decorate
 ## Phase 4: VERCEL DEPLOYMENT SETUP
 
 ### Step 4.1: Create Vercel Account (if needed)
-1. Go to: https://vercel.com/signup
+1. Visit: https://vercel.com/signup
 2. Sign up with GitHub account
 3. Authorize Vercel to access your GitHub repositories
 
 ### Step 4.2: Connect Repository to Vercel
-1. Go to: https://vercel.com/dashboard
+1. Visit: https://vercel.com/dashboard
 2. Click: **Add New Project**
 3. Select: **Handson-A/roadrescue** repository
 4. Choose: **web** folder as root directory
@@ -272,7 +272,7 @@ for reverse geocoding. No Google Maps API key is required by default.
 3. Get your Vercel deployment URL: `https://roadrescue-[random].vercel.app`
 
 ### Step 4.6: Configure Production Domain
-1. Go to: **Settings → Domains**
+1. Visit: **Settings → Domains**
 2. Click: **Add**
 3. Enter: Your custom domain (e.g., `roadrescue.app`)
 4. Follow: DNS configuration steps
@@ -299,6 +299,7 @@ curl https://roadrescue.app -I
  - [ ] **Map**: Driver dashboard loads Leaflet map (OpenStreetMap tiles)
 - [ ] **Realtime**: Mechanic location tracking works (if logged in)
 - [ ] **Notifications**: Test email notifications (if logged in as mechanic)
+- [ ] **Profile Preferences**: Test `/api/profile/preferences` GET/PUT endpoints
 - [ ] **Admin**: Admin dashboard loads `/dashboard/admin` (if admin role)
 
 ### Step 5.3: Check Security Headers
@@ -310,7 +311,7 @@ curl -I https://roadrescue.app | grep -E "X-Content-Type|X-Frame|X-XSS|Referrer"
 ```
 
 ### Step 5.4: Monitor Deployment
-1. Go to: Vercel Dashboard
+1. Visit: Vercel Dashboard
 2. Check: **Deployments** tab
 3. Current deployment should show: ✓ **Ready**
 4. Check: **Analytics** tab for error rates
@@ -353,7 +354,7 @@ ls -la src/lib/request.js
 
 ## ROLLBACK (If needed)
 ```bash
-# Go to Vercel Dashboard
+# Visit Vercel Dashboard
 # Click on failed deployment
 # Click "Rollback to Previous"
 # Vercel will redeploy previous working version

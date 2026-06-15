@@ -1,39 +1,51 @@
-
 import Badge from '@/components/ui/Badge'
 
-export default function DiagnosticResult({ diagnosis, isFallback, className = '' }) {
+const severityVariantMap = {
+  low: 'success',
+  medium: 'warning',
+  high: 'danger',
+  critical: 'danger',
+}
+
+export default function DiagnosticResult({ diagnosis, className = '' }) {
   if (!diagnosis) return null
+
+  const { problem, severity, recommendations = [], estimated_causes = [] } = diagnosis
 
   return (
     <div className={`bg-surface-raised border border-surface-border rounded-card p-4 space-y-3 ${className}`}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-amber uppercase tracking-wider">
-          ⚡ AI Diagnosis
+          AI Diagnosis
         </span>
-        {isFallback && (
-          <span className="text-xs text-text-muted">Service unavailable — manual mode</span>
-        )}
+        <Badge label={severity} variant={severityVariantMap[severity] || 'default'} dot />
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-semibold text-text-primary">{diagnosis.fault_category}</span>
-        <Badge label={diagnosis.urgency} variant={diagnosis.urgency} dot />
+      <div>
+        <span className="text-sm font-semibold text-text-primary">{problem}</span>
       </div>
 
-      <p className="text-sm text-text-secondary leading-relaxed">{diagnosis.summary}</p>
+      {estimated_causes.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Likely Causes</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            {estimated_causes.map((cause, idx) => (
+              <li key={idx} className="text-xs text-text-secondary">{cause}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      {/* safety advice highlighted */}
-      <div className="flex items-start gap-2 bg-amber/5 border border-amber/20 rounded-btn px-3 py-2">
-        <span className="text-amber text-sm mt-0.5">⚠</span>
-        <p className="text-xs text-text-primary">{diagnosis.safety_advice}</p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-text-muted">Can drive:</span>
-        <span className={`text-xs font-semibold ${diagnosis.can_drive ? 'text-emerald-400' : 'text-red-400'}`}>
-          {diagnosis.can_drive ? 'Yes — drive slowly to a mechanic' : 'No — stay put'}
-        </span>
-      </div>
+      {recommendations.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Recommendations</p>
+          <ul className="list-disc list-inside space-y-0.5">
+            {recommendations.map((rec, idx) => (
+              <li key={idx} className="text-xs text-text-secondary">{rec}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

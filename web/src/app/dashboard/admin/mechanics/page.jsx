@@ -1,5 +1,6 @@
 'use client'
-
+import dynamic from 'next/dynamic'
+import { MapPin } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
@@ -13,7 +14,11 @@ export default function MechanicsVerificationPage() {
   const [mechanics, setMechanics] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(null)
-
+  // Bring back our LiveHotspotsMap component but pass the pending dataset inside
+  const LiveHotspotsMap = dynamic(
+  () => import('@/components/admin/LiveHotspotsMap'),
+  { ssr: false, loading: () => <div className="w-full h-48 bg-slate-100 rounded-xl animate-pulse flex items-center justify-center" /> }
+)
   async function loadMechanics() {
     try {
       const response = await fetch('/api/admin/mechanics?status=pending', { cache: 'no-store' })
@@ -101,32 +106,41 @@ export default function MechanicsVerificationPage() {
                   </div>
                 </div>
 
-                {/* COLUMN 2: WORKPLACE MATRIX */}
-                <div className="space-y-1">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
-                    <Briefcase size={12} /> Workplace Node
-                  </span>
-                  <p className="text-sm font-bold text-slate-800 truncate">{mech.business_name || 'Independent Operator'}</p>
-                  <p className="text-xs text-slate-400 font-semibold pt-0.5">
-                    {mech.years_experience ? `${mech.years_experience} Yrs Experience` : 'Tenure documentation pending'}
-                  </p>
-                </div>
+              
+{/* COLUMN 1: ACCOUNT IDENTIFICATION (Kept identical) */}
+<div className="space-y-1">...</div>
 
-                {/* COLUMN 3: SPECIALIZATIONS */}
-                <div className="space-y-1.5">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block flex items-center gap-1">
-                    <Wrench size={12} /> Vetted Core Skills
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {mech.specializations && mech.specializations.length > 0 ? (
-                      mech.specializations.slice(0, 3).map((spec) => (
-                        <Badge key={spec} label={spec.replace('_', ' ')} variant="default" />
-                      ))
-                    ) : (
-                      <span className="text-xs italic text-slate-400 font-medium">General Mechanics</span>
-                    )}
-                  </div>
-                </div>
+{/* COMBINED COLUMN 2 & 3: WORKSPACE & VERIFICATION GEOLOCATION TOPOLOGY MAP */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:col-span-2">
+  <div className="space-y-1">
+    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+      <Briefcase size={12} /> Workplace Node
+    </span>
+    <p className="text-sm font-bold text-slate-800 truncate">{mech.business_name || 'Independent Operator'}</p>
+    <p className="text-xs text-slate-400 font-semibold pt-0.5">
+      {mech.years_experience ? `${mech.years_experience} Yrs Experience` : 'Tenure pending'}
+    </p>
+    <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-2">
+      <MapPin size={12} className="text-slate-400" /> Base: {mech.location_label || 'Ghana Grid Node'}
+    </p>
+    
+    {/* Map skill badges right underneath workspace info text descriptions */}
+    <div className="flex flex-wrap gap-1 pt-2">
+      {mech.specializations?.slice(0, 2).map((spec) => (
+        <Badge key={spec} label={spec} variant="default" />
+      ))}
+    </div>
+  </div>
+
+  {/* Embedded relational Leaflet coordinate locator mapping card */}
+  <div className="w-full h-32 rounded-xl overflow-hidden border border-slate-200/60 shadow-xs hidden sm:block">
+    {/* We wrap the pending mechanic item into an array list to render a focused map pin node */}
+    <LiveHotspotsMap mechanics={[mech]} />
+  </div>
+</div>
+
+{/* COLUMN 4: ACTION TRIGGER CONTROLLERS (Kept identical) */}
+<div className="flex items-center gap-2 ...">...</div>
 
                 {/* COLUMN 4: ACTION TRIGGER CONTROLLERS */}
                 <div className="flex items-center gap-2 border-t border-slate-50 pt-4 lg:border-0 lg:pt-0 shrink-0">

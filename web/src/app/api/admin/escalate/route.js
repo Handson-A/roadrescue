@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST(request) {
@@ -9,30 +9,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    const response = NextResponse.json({ message: 'User is now an admin' })
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          getAll: () => request.cookies.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
+    const supabase = await createClient()
+    const serviceSupabase = await createServiceClient()
 
-    // Get current user
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
 
-    if (!currentUser) {
+    if (authError || !currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Verify current user is admin
     const { data: adminProfile } = await supabase
       .from('profiles')
       .select('role')
@@ -43,16 +28,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Only admins can escalate users' }, { status: 403 })
     }
 
-    // Find user by email
-    const { data: { users } } = await supabase.auth.admin.listUsers()
+    const { data: { users }, error: usersError } = await serviceSupabase.auth.admin.listUsers()
+
+    if (usersError) {
+      return NextResponse.json({ error: usersError.message }, { status: 500 })
+    }
+
     const targetUser = users.find(u => u.email === email)
 
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Update user profile role to admin
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceSupabase
       .from('profiles')
       .update({ role: 'admin' })
       .eq('id', targetUser.id)

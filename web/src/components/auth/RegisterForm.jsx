@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Input from '@/components/ui/Input'
@@ -13,9 +13,9 @@ import { createClient } from '@/lib/supabase/client'
 export default function RegisterForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [avatarFile, setAvatarFile] = useState(null)
-  const [avatarPreview, setAvatarPreview] = useState('')
   const [consentAccepted, setConsentAccepted] = useState(false)
+  const [showOptionalDetails, setShowOptionalDetails] = useState(false)
+  
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -37,122 +37,76 @@ export default function RegisterForm() {
 
   const isMechanic = formData.role === USER_ROLE.MECHANIC
   const isDriver = formData.role === USER_ROLE.DRIVER
-  const [showOptionalDetails, setShowOptionalDetails] = useState(false)
 
-  useEffect(() => {
-    return () => {
-      if (avatarPreview) {
-        URL.revokeObjectURL(avatarPreview)
-      }
-    }
-  }, [avatarPreview])
-
-  // Modified to handle structural side effects safely during the user interaction event
   function updateField(field, value) {
     setFormData((current) => ({ ...current, [field]: value }))
-    
-    // If the user actively switches their role, reset the details toggle container cleanly
     if (field === 'role') {
       setShowOptionalDetails(false)
     }
   }
 
   function parseSpecializations(value) {
+    if (!value) return []
     return value
       .split(',')
       .map((item) => item.trim())
       .filter(Boolean)
   }
 
-  function handleAvatarChange(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (avatarPreview) {
-      URL.revokeObjectURL(avatarPreview)
-    }
-
-    setAvatarFile(file)
-    setAvatarPreview(URL.createObjectURL(file))
-  }
-
   async function saveMechanicProfile(userId) {
-    const supabase = createClient()
-    const mechanicPayload = {
-      user_id: userId,
-      business_name: formData.businessName.trim() || null,
-      specializations: parseSpecializations(formData.specializations),
-      years_experience: formData.yearsExperience ? Number.parseInt(formData.yearsExperience, 10) || 0 : 0,
-      location_label: formData.serviceArea.trim() || null,
-      is_available: false,
-    }
-
-    const { data: existingMechanic, error: readError } = await supabase
-      .from('mechanic_profiles')
-      .select('user_id')
-      .eq('user_id', userId)
-      .single()
-
-    if (readError && readError.code !== 'PGRST116') {
-      throw readError
-    }
-
-    if (existingMechanic) {
-      const { error: updateError } = await supabase
-        .from('mechanic_profiles')
-        .update(mechanicPayload)
-        .eq('user_id', userId)
-
-      if (updateError) throw updateError
+    if (!formData.businessName && !formData.specializations && !formData.yearsExperience && !formData.serviceArea) {
       return
     }
 
-    const { error: insertError } = await supabase
-      .from('mechanic_profiles')
-      .insert(mechanicPayload)
+    const supabase = createClient()
+    const mechanicPayload = {}
+    
+    if (formData.businessName.trim()) mechanicPayload.business_name = formData.businessName.trim()
+    if (formData.specializations.trim()) mechanicPayload.specializations = parseSpecializations(formData.specializations)
+    if (formData.yearsExperience) mechanicPayload.years_experience = parseInt(formData.yearsExperience, 10) || 0
+    if (formData.serviceArea.trim()) mechanicPayload.location_label = formData.serviceArea.trim()
 
-    if (insertError) throw insertError
+    if (Object.keys(mechanicPayload).length === 0) return
+
+    const { error } = await supabase
+      .from('mechanic_profiles')
+      .update(mechanicPayload)
+      .eq('user_id', userId)
+
+    if (error) throw error
   }
 
   async function saveDriverProfile(userId) {
-    const supabase = createClient()
-    const driverPayload = {
-      user_id: userId,
-      vehicle_make: formData.vehicleMake.trim() || null,
-      vehicle_model: formData.vehicleModel.trim() || null,
-      vehicle_year: formData.vehicleYear ? Number.parseInt(formData.vehicleYear, 10) || null : null,
-      vehicle_color: formData.vehicleColor.trim() || null,
-      vehicle_plate: formData.vehiclePlate.trim() || null,
-      emergency_contact_name: formData.emergencyContactName.trim() || null,
-      emergency_contact_phone: formData.emergencyContactPhone.trim() || null,
-      home_area: formData.serviceArea.trim() || null,
-    }
-
-    const { data: existingDriver, error: readError } = await supabase
-      .from('driver_profiles')
-      .select('user_id')
-      .eq('user_id', userId)
-      .single()
-
-    if (readError && readError.code !== 'PGRST116') {
-      throw readError
-    }
-
-    if (existingDriver) {
-      const { error: updateError } = await supabase
-        .from('driver_profiles')
-        .update(driverPayload)
-        .eq('user_id', userId)
-
-      if (updateError) throw updateError
+    if (
+      !formData.vehicleMake && !formData.vehicleModel && !formData.vehicleYear && 
+      !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea &&
+      !formData.emergencyContactName && !formData.emergencyContactPhone
+    ) {
       return
     }
 
-    const { error: insertError } = await supabase
-      .from('driver_profiles')
-      .insert(driverPayload)
+    const supabase = createClient()
+    const driverPayload = {}
 
-    if (insertError) throw insertError
+    if (formData.vehicleMake.trim()) driverPayload.vehicle_make = formData.vehicleMake.trim()
+    if (formData.vehicleModel.trim()) driverPayload.vehicle_model = formData.vehicleModel.trim()
+    if (formData.vehicleYear) driverPayload.vehicle_year = parseInt(formData.vehicleYear, 10) || null
+    if (formData.vehicleColor.trim()) driverPayload.vehicle_color = formData.vehicleColor.trim()
+    if (formData.vehiclePlate.trim()) driverPayload.vehicle_plate = formData.vehiclePlate.trim().toUpperCase()
+    if (formData.serviceArea.trim()) driverPayload.home_area = formData.serviceArea.trim()
+    if (formData.emergencyContactName.trim()) driverPayload.emergency_contact_name = formData.emergencyContactName.trim()
+    
+    // FIXED: Form field map realigned back to snake_case schema to block payload drops
+    if (formData.emergencyContactPhone.trim()) driverPayload.emergency_contact_phone = formData.emergencyContactPhone.trim()
+
+    if (Object.keys(driverPayload).length === 0) return
+
+    const { error } = await supabase
+      .from('driver_profiles')
+      .update(driverPayload)
+      .eq('user_id', userId)
+
+    if (error) throw error
   }
 
   async function handleSubmit(e) {
@@ -179,6 +133,7 @@ export default function RegisterForm() {
         return
       }
 
+      // Step 1: Sign up user into Supabase Auth.
       const data = await signUp({
         email,
         password: formData.password,
@@ -190,77 +145,74 @@ export default function RegisterForm() {
       const userId = data?.user?.id || data?.session?.user?.id
       const role = data?.user?.user_metadata?.role || data?.session?.user?.user_metadata?.role || formData.role
 
-      if (role === USER_ROLE.MECHANIC) {
-        if (userId) {
+      // Step 2: Update optional tables safely
+      if (userId && showOptionalDetails) {
+        if (role === USER_ROLE.MECHANIC) {
           await saveMechanicProfile(userId)
         }
-      }
-
-      if (role === USER_ROLE.DRIVER) {
-        if (userId) {
+        if (role === USER_ROLE.DRIVER) {
           await saveDriverProfile(userId)
         }
       }
 
-      if (avatarFile) {
-        const supabase = createClient()
-        const avatarUserId = userId || data?.user?.id || data?.session?.user?.id
-
-        if (avatarUserId) {
-          const fileExtension = avatarFile.name.split('.').pop() || 'jpg'
-          const filePath = `avatars/${avatarUserId}/${Date.now()}.${fileExtension}`
-          const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, avatarFile, {
-              upsert: true,
-              contentType: avatarFile.type,
-            })
-
-          if (uploadError) {
-            toast.error(uploadError.message || 'Avatar upload failed, you can add it later from your profile.')
-          } else {
-            const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath)
-
-            await supabase
-              .from('profiles')
-              .update({ avatar_url: publicUrlData.publicUrl })
-              .eq('id', avatarUserId)
-          }
-        }
-      }
-
+      // Step 3: Trigger Transactional Email Template
       const roleLabel = formData.role.toLowerCase()
-      const dynamicMessage =
-        roleLabel === 'mechanic'
-          ? 'Thank you for partnering with us to keep our community safe and moving.'
-          : 'Your safety is our top priority, and we\'re here to ensure help is always within reach.'
+      const wrapperStyle = "background-color: #FFF8EA; padding: 32px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;"
+      const containerStyle = "max-width: 540px; margin: 0 auto; background-color: #ffffff; border: 1px solid #DCCDA9; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(31, 27, 16, 0.03);"
+      const headerStyle = "background: #1F1B10; padding: 32px 24px; text-align: center; border-bottom: 3px solid #F5D108;"
+      const bodyStyle = "padding: 32px 24px; color: #1F1B10;"
+      const greetingStyle = "font-size: 16px; font-weight: 800; margin-top: 0; margin-bottom: 12px; color: #1F1B10;"
+      const textStyle = "font-size: 14px; line-height: 1.6; color: #5E5440; margin-top: 0; margin-bottom: 20px;"
+      const parameterBoxStyle = "background-color: #FFF9EF; border: 1px solid #E0D5B7; border-radius: 12px; padding: 16px; margin: 24px 0;"
+      const buttonStyle = "display: inline-block; background-color: #F5D108; color: #1F1B10; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 14px 28px; border-radius: 12px; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(245, 209, 8, 0.2);"
+      const footerStyle = "text-align: center; padding: 24px; border-top: 1px solid #FFF1D6; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: #7C6B44; background-color: #FFF9EF;"
 
-      const emailBody = `
-        <p>Hi ${fullName},</p>
-        <p>Welcome to RoadRescue as a <strong>${formData.role}</strong>.</p>
-        <p>${dynamicMessage} We are built to ensure every roadside connection is secure, reliable, and seamless.</p>
-        <br/>
-    
-        <p>Once logged in, you can update your profile picture and complete your profile details. This will help us connect you with the right matches when you need assistance or when drivers are looking for trusted professionals.</p>
-        <p>Thank you for joining the RoadRescue community. We look forward to supporting you on every journey ahead.</p>
-        <p>Best regards,<br/>The RoadRescue Team</p>
+      const structuredEmailContent = `
+        <div style="${wrapperStyle}">
+          <div style="${containerStyle}">
+            <div style="${headerStyle}">
+              <span style="font-size: 10px; font-weight: 900; color: #F5D108; text-transform: uppercase; letter-spacing: 0.2em; display: block; margin-bottom: 6px;">Clearance Authenticated</span>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 900; color: #ffffff;">Welcome to RoadRescue</h1>
+            </div>
+            <div style="${bodyStyle}">
+              <p style="${greetingStyle}">Welcome aboard, ${fullName},</p>
+              <p style="${textStyle}">Your security access token has been verified. Your platform identity configuration is now logged as an active <strong>${roleLabel}</strong> on our priority emergency dispatch network.</p>
+              
+              <div style="${parameterBoxStyle}">
+                <p style="font-size: 13px; line-height: 1.6; color: #1F1B10; margin: 0; font-weight: 500;">
+                  ${roleLabel === 'mechanic' 
+                    ? 'Thank you for partnering with us to keep our community safe and moving. We connect you with nearby breakdowns so you can grow your workshop revenue efficiently.' 
+                    : "Your safety is our top priority, and we're here to ensure help is always within reach. We are built to ensure every roadside connection is secure, reliable, and seamless."
+                  }
+                </p>
+              </div>
+
+              <p style="${textStyle}">Please log into your dashboard to update your profile picture, verify your direct contact lines, and prefill any vehicle or garage details to ensure perfect dispatch matching metrics.</p>
+              
+              <div style="text-align: center; margin-top: 28px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue.com'}/auth/login" style="${buttonStyle}">Access Terminal Console</a>
+              </div>
+            </div>
+            <div style="${footerStyle}">RoadRescue Operations Network</div>
+          </div>
+        </div>
       `
 
+      // Fire off endpoint dispatch task explicitly after verifying DB profile writes completed
       await fetch('/api/notifications/email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email,
-          subject: `Welcome to RoadRescue — ${formData.role}`,
-          htmlContent: emailBody,
+          subject: `Welcome to RoadRescue — Secure ${formData.role} Session`,
+          htmlContent: structuredEmailContent,
         }),
       })
 
-      toast.success('Account created. Please verify your email, then sign in once your profile is available.')
+      toast.success('Account created successfully! Please log in to view your dashboard.')
       router.replace('/auth/login')
     } catch (err) {
+      console.error('[SIGNUP PORTAL FAULT]', err)
       toast.error(err?.message || 'Registration failed')
     } finally {
       setLoading(false)
@@ -269,6 +221,7 @@ export default function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Role Selection Tabs */}
       <div>
         <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
           Your Role
@@ -291,88 +244,72 @@ export default function RegisterForm() {
         </div>
       </div>
 
+      {/* MECHANIC OPTIONAL WRAPPER */}
       {isMechanic && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-slate-500">Mechanic Details <span className="text-xs font-medium text-slate-400">(optional)</span></p>
-              <p className="mt-1 text-sm text-slate-500">These details help drivers trust your workshop profile and are editable later in your account screen.</p>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Mechanic Details <span className="text-xs font-medium text-slate-400">(optional)</span>
+              </p>
+              <p className="mt-1 text-xs text-slate-400">These can be configured inside your profile settings panel later.</p>
             </div>
-            <button type="button" onClick={() => setShowOptionalDetails((s) => !s)} className="text-sm font-medium text-slate-700 px-4 py-2">
-              {showOptionalDetails ? 'Hide' : 'expand'}
+            <button 
+              type="button" 
+              onClick={() => setShowOptionalDetails((s) => !s)} 
+              className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-100"
+            >
+              {showOptionalDetails ? 'Hide Options' : 'Add Options Now'}
             </button>
           </div>
 
           {showOptionalDetails && (
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 p-4 border-t border-slate-200 bg-white rounded-b-2xl">
               <div>
-                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Business Name
-                </label>
-                <Input
-                  placeholder="RoadRescue Pro Garage"
-                  value={formData.businessName}
-                  onChange={(e) => updateField('businessName', e.target.value)}
-                />
+                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Business Name</label>
+                <Input placeholder="RoadRescue Pro Garage" value={formData.businessName} onChange={(e) => updateField('businessName', e.target.value)} />
               </div>
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Years of Experience
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="5"
-                    value={formData.yearsExperience}
-                    onChange={(e) => updateField('yearsExperience', e.target.value)}
-                  />
+                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Years of Experience</label>
+                  <Input type="number" min="0" placeholder="5" value={formData.yearsExperience} onChange={(e) => updateField('yearsExperience', e.target.value)} />
                 </div>
-
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Service Area
-                  </label>
-                  <Input
-                    placeholder="Accra, Tema, Kumasi..."
-                    value={formData.serviceArea}
-                    onChange={(e) => updateField('serviceArea', e.target.value)}
-                  />
+                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Service Area Location</label>
+                  <Input placeholder="Accra, Central Region..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} />
                 </div>
               </div>
-
               <div>
-                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Specializations
-                </label>
-                <Textarea
-                  rows={3}
-                  placeholder="Towing, battery jump-start, diagnostics, tyre repair"
-                  value={formData.specializations}
-                  onChange={(e) => updateField('specializations', e.target.value)}
-                />
-                <p className="mt-2 text-xs text-slate-500">Separate multiple specializations with commas.</p>
+                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Specializations</label>
+                <Textarea rows={3} placeholder="Towing, battery jump-start, diagnostics, tyre repair" value={formData.specializations} onChange={(e) => updateField('specializations', e.target.value)} />
+                <p className="mt-1 text-[11px] text-slate-400">Separate values with commas.</p>
               </div>
             </div>
           )}
         </div>
       )}
 
+      {/* DRIVER OPTIONAL WRAPPER */}
       {isDriver && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-slate-500">Driver Details <span className="text-xs font-medium text-slate-400">(optional)</span></p>
-              <p className="mt-1 text-sm text-slate-500">These fields help us prefill rescue requests and support you during dispatch.</p>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Vehicle & Emergency Info <span className="text-xs font-medium text-slate-400">(optional)</span>
+              </p>
+              <p className="mt-1 text-xs text-slate-400">Skip this now if you do not have your vehicle data on hand.</p>
             </div>
-            <button type="button" onClick={() => setShowOptionalDetails((s) => !s)} className="text-sm font-medium text-slate-700 px-4 py-2">
-              {showOptionalDetails ? 'hide' : 'expand'}
+            <button 
+              type="button" 
+              onClick={() => setShowOptionalDetails((s) => !s)} 
+              className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-100"
+            >
+              {showOptionalDetails ? 'Hide Options' : 'Add Options Now'}
             </button>
           </div>
 
           {showOptionalDetails && (
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 p-4 border-t border-slate-200 bg-white rounded-b-2xl">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Make</label>
@@ -384,29 +321,27 @@ export default function RegisterForm() {
                 </div>
                 <div>
                   <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Year</label>
-                  <Input type="number" min="1970" placeholder="2020" value={formData.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} />
+                  <Input type="number" min="1970" placeholder="2022" value={formData.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} />
                 </div>
                 <div>
                   <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Color</label>
-                  <Input placeholder="White" value={formData.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} />
+                  <Input placeholder="Silver" value={formData.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} />
                 </div>
               </div>
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Plate Number</label>
-                  <Input placeholder="GR-2847-21" value={formData.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} />
+                  <Input placeholder="GW-4920-24" value={formData.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Home Area</label>
-                  <Input placeholder="Accra, Tema, Kumasi..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} />
+                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Home Residential Area</label>
+                  <Input placeholder="Kasoa, Cantonments..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} />
                 </div>
               </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 border-t border-slate-100 pt-3">
                 <div>
                   <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Emergency Contact Name</label>
-                  <Input placeholder="Jane Doe" value={formData.emergencyContactName} onChange={(e) => updateField('emergencyContactName', e.target.value)} />
+                  <Input placeholder="John Doe" value={formData.emergencyContactName} onChange={(e) => updateField('emergencyContactName', e.target.value)} />
                 </div>
                 <div>
                   <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Emergency Contact Phone</label>
@@ -418,75 +353,28 @@ export default function RegisterForm() {
         </div>
       )}
 
+      {/* Primary Required Inputs */}
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Full Name
-        </label>
-        <Input
-          placeholder="Kwame Mensah"
-          value={formData.fullName}
-          onChange={(e) => updateField('fullName', e.target.value)}
-        />
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Full Name</label>
+        <Input placeholder="Kwame Mensah" value={formData.fullName} onChange={(e) => updateField('fullName', e.target.value)} />
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Phone Number
-        </label>
-        <Input
-          placeholder="+233..."
-          value={formData.phone}
-          onChange={(e) => updateField('phone', e.target.value)}
-        />
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Phone Number</label>
+        <Input placeholder="+233..." value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} />
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Email
-        </label>
-        <Input
-          type="email"
-          placeholder="you@example.com"
-          value={formData.email}
-          onChange={(e) => updateField('email', e.target.value)}
-        />
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Email Address</label>
+        <Input type="email" placeholder="you@example.com" value={formData.email} onChange={(e) => updateField('email', e.target.value)} />
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Profile Photo
-        </label>
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wider file:text-white hover:file:bg-slate-800"
-          />
-          {avatarPreview ? (
-            <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={avatarPreview} alt="Avatar preview" className="h-14 w-14 rounded-full object-cover" />
-              <p className="text-xs text-slate-500">Preview ready. This will be uploaded after signup.</p>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500">Optional. Add a profile photo now or later from your account.</p>
-          )}
-        </div>
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Password</label>
+        <Input type="password" placeholder="••••••••" value={formData.password} onChange={(e) => updateField('password', e.target.value)} />
       </div>
 
-      <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Password
-        </label>
-        <Input
-          type="password"
-          placeholder="••••••••"
-          value={formData.password}
-          onChange={(e) => updateField('password', e.target.value)}
-        />
-      </div>
-
+      {/* Consent Checkbox */}
       <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <input
           type="checkbox"

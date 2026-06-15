@@ -10,7 +10,7 @@ RoadRescue is a real-time roadside assistance platform connecting stranded drive
 - Instant mechanic matching based on location and availability
 - AI-powered vehicle diagnostics to assess issue severity
 - Live tracking from request creation to job completion
-- Transparent bidding system ensuring fair pricing
+- Direct mechanic acceptance (no bidding)
 - Ratings and verification for trusted service
 
 ## Key Features
@@ -23,11 +23,11 @@ RoadRescue is a real-time roadside assistance platform connecting stranded drive
 - Rate mechanics and save preferred ones
 
 ### For Mechanics
-- Receive alerts for rescue requests in their service area
-- Place competitive bids on requests
+- Accept nearby requests directly (no bidding required)
 - Real-time job location and driver contact info
 - Live job progress tracking (en route, arrived, completed)
 - Build reputation through ratings and completed jobs
+- Manage profile, availability, and service preferences via account page
 
 ### For Administrators
 - Monitor all platform activity and requests
@@ -53,9 +53,9 @@ The system consists of three main layers:
    - Webhook handling for external services
 
 3. **Database** (PostgreSQL on Supabase)
-   - 5 core tables: profiles, mechanic_profiles, rescue_requests, request_bids, notifications
-   - Row-level security for data privacy
-   - Real-time subscriptions for live updates
+    - Core tables: profiles, mechanic_profiles, driver_profiles, rescue_requests, notifications, profile_preferences, profile_change_requests
+    - Row-level security for data privacy
+    - Real-time subscriptions for live updates
 
 ## Tech Stack
 
@@ -72,16 +72,12 @@ The system consists of three main layers:
 Every rescue request follows this state machine:
 
 ```
-PENDING → (mechanic bid accepted) 
-   ↓
-ASSIGNED → (mechanic confirms arrival) 
-   ↓
-IN_PROGRESS → (service completed)
-   ↓
-COMPLETED (driver/mechanic rate each other)
+Pending → Accepted → En Route → Arrived → In Progress → Completed
 
-Optional: CANCELLED (at any stage before completion)
+Optional: Cancelled (at any stage before completion)
 ```
+
+Mechanics accept requests directly; no bidding is used in this implementation.
 
 ## Getting Started
 
@@ -151,17 +147,18 @@ roadrescue/
 
 | Role | Can See | Can Do |
 |------|---------|--------|
-| **Driver** | Own requests, mechanic profiles, assigned mechanic details | Create requests, bid reviews, rate mechanics |
-| **Mechanic** | Profitable requests, assigned jobs, driver location during job | Submit bids, accept jobs, update status, track earnings |
-| **Admin** | All users, all requests, all bids, platform stats | Approve/reject mechanics, escalate roles, resolve disputes |
+| **Driver** | Own requests, mechanic profiles, assigned mechanic details | Create requests, rate mechanics |
+| **Mechanic** | Assigned jobs, driver location during job | Accept jobs, update status, manage profile, toggle availability |
+| **Admin** | All users, all requests, platform stats | Approve/reject mechanics, escalate roles, resolve disputes |
 
 ## Status & Roadmap
 
 ### ✅ Completed
 - User authentication and authorization
-- All three role-based dashboards
+- All three role-based dashboards (driver, mechanic, admin)
 - Request creation and full lifecycle management
-- Mechanic bidding system
+- Direct mechanic acceptance (no bidding)
+- Mechanic profile management with preferences
 - AI vehicle diagnostics
 - Real-time location tracking and updates
 - Admin user management and escalation
