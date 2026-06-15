@@ -27,18 +27,17 @@ RLS ensures users only access data they're authorized to see. Each table has rol
 
 ```markdown
 - Drivers see only their own requests
-- Mechanics see only assigned requests
+- Mechanics see requests assigned to them (mechanic_id = user_id)
 - Admins see all requests
 - Three-way access control at database level
 ```
 
-### request_bids Table
+### profile_preferences Table
 
 ```markdown
-- Mechanics can place bids on pending requests
-- Drivers see bids on their requests
-- Mechanics see bids they placed
-- Admins see all bids
+- Users see and update their own preferences
+- Admins can view all preferences
+- Preferences include theme, language, notification settings
 ```
 
 ### notifications Table
@@ -117,7 +116,7 @@ CREATE POLICY "Drivers view own requests" ON rescue_requests
 -- Mechanics see assigned requests only
 CREATE POLICY "Mechanics view assigned requests" ON rescue_requests
   FOR SELECT USING (
-    assigned_mechanic_id = auth.uid()
+    mechanic_id = auth.uid()
   );
 
 -- Drivers create requests
@@ -130,7 +129,7 @@ CREATE POLICY "Drivers create requests" ON rescue_requests
 -- Mechanics update status on assigned requests
 CREATE POLICY "Mechanics update assigned requests" ON rescue_requests
   FOR UPDATE USING (
-    assigned_mechanic_id = auth.uid()
+    mechanic_id = auth.uid()
   );
 
 -- Admins have full access
@@ -145,38 +144,30 @@ CREATE POLICY "Disable request deletion" ON rescue_requests
   FOR DELETE USING (false);
 ```
 
-### request_bids
+### profile_preferences
 
 ```sql
--- Mechanics place bids
-CREATE POLICY "Mechanics create bids" ON request_bids
+-- Users can read their own preferences
+CREATE POLICY "Users view own preferences" ON profile_preferences
+  FOR SELECT USING (
+    user_id = auth.uid()
+  );
+
+-- Users can update their own preferences
+CREATE POLICY "Users update own preferences" ON profile_preferences
+  FOR UPDATE USING (
+    user_id = auth.uid()
+  );
+
+-- Users can insert their own preferences
+CREATE POLICY "Users create own preferences" ON profile_preferences
   FOR INSERT WITH CHECK (
-    mechanic_id = auth.uid() 
-    AND auth.jwt() ->> 'role' = 'mechanic'
+    user_id = auth.uid()
   );
 
--- Drivers see bids on their requests
-CREATE POLICY "Drivers view bids on own requests" ON request_bids
-  FOR SELECT USING (
-    request_id IN (
-      SELECT id FROM rescue_requests 
-      WHERE driver_id = auth.uid()
-    )
-  );
-
--- Mechanics see their own bids
-CREATE POLICY "Mechanics view own bids" ON request_bids
-  FOR SELECT USING (
-    mechanic_id = auth.uid()
-  );
-
--- Admins see all bids
-CREATE POLICY "Admins view all bids" ON request_bids
+-- Admins can view all preferences
+CREATE POLICY "Admins manage preferences" ON profile_preferences
   FOR SELECT USING (auth.jwt() ->> 'role' = 'admin');
-
--- Disable direct bid deletes (keep audit trail)
-CREATE POLICY "Disable bid deletion" ON request_bids
-  FOR DELETE USING (false);
 ```
 
 ### notifications
@@ -230,11 +221,11 @@ SET jwt.claims.sub = '<mechanic-id>';
 
 -- Should see assigned requests
 SELECT * FROM rescue_requests 
-WHERE assigned_mechanic_id = '<mechanic-id>';
+WHERE mechanic_id = '<mechanic-id>';
 
 -- Should NOT see unassigned requests
 SELECT * FROM rescue_requests 
-WHERE assigned_mechanic_id IS NULL;
+WHERE mechanic_id IS NULL;
 -- Returns 0 rows (RLS blocks)
 
 -- Test as admin with role claim
@@ -245,16 +236,6 @@ SET jwt.claims.role = 'admin';
 SELECT * FROM rescue_requests;
 -- Returns all (admin bypass)
 ```
-
-SELECT * FROM rescue_requests (no WHERE clause)
-
--- 3. Disable users
-UPDATE profiles SET status = 'suspended'
-
--- 4. View all finances (future)
-SELECT * FROM payments WHERE 1=1
-
-```markdown
 
 ---
 

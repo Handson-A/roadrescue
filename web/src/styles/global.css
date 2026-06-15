@@ -163,3 +163,32 @@ a:active {
 .pulse-amber {
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
 }
+/* Container enclosing the entire AI screen view */
+.ai-assist-container {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh; /* Dynamic viewport tracking prevents keyboard layout breaks */
+  overflow: hidden;
+  background-color: #FFF8EA;
+}
+
+/* Inner scrolling message list body element */
+.chat-messages-viewport {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  
+  /* Smooth inertial scrolling handling for iOS Safari rendering */
+  -webkit-overflow-scrolling: touch; 
+}
+
+/* Fixed container block containing recommendations and the form element */
+.chat-input-dock {
+  background-color: #ffffff;
+  border-top: 1px solid #E0D5B7;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom)); /* Accounting for iOS bottom notch indicator bars */
+}

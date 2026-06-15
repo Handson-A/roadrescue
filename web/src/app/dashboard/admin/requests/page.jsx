@@ -1,14 +1,27 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import { timeAgo } from '@/lib/utils'
-import Button from '@/components/ui/Button'
 import { Radar, MapPin, User, HardHat, FileText, ArrowRight } from 'lucide-react'
+
+// FIXED: Component declaration is moved OUTSIDE the render function body scope
+const LiveIncidentsMap = dynamic(
+  () => import('@/components/admin/LiveIncidentsMap'),
+  { 
+    ssr: false, 
+    loading: () => (
+      <div className="w-full h-72 bg-slate-50 border border-dashed rounded-2xl flex items-center justify-center animate-pulse">
+        <Spinner />
+      </div>
+    ) 
+  }
+)
 
 export default function AdminRequestsPage() {
   const [requests, setRequests] = useState([])
@@ -74,6 +87,14 @@ export default function AdminRequestsPage() {
           ))}
         </div>
 
+        {/* Live Map Segment */}
+        {!loading && requests.length > 0 && (
+          <section className="w-full space-y-2">
+            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400 block">Live Spatial Topology Track</span>
+            <LiveIncidentsMap requests={requests} />
+          </section>
+        )}
+
         {/* ================= PRIMARY INCIDENTS LOG CONTAINER FEED ================= */}
         <div className="w-full space-y-3.5">
           {loading ? (
@@ -81,7 +102,6 @@ export default function AdminRequestsPage() {
               <Spinner />
             </Card>
           ) : requests.length === 0 ? (
-            /* Premium visual empty state layout */
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-md mx-auto mt-10">
               <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-3.5 border border-slate-200/60 shadow-sm">
                 <Radar size={20} className="text-slate-400" />

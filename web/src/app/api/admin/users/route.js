@@ -1,11 +1,8 @@
-// web/src/app/api/admin/users/route.js
-// GET  → all users with optional role filter
-// DELETE → suspend a user account
-
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getAllUsers, suspendUser } from '@/lib/admin'
 import { NextResponse } from 'next/server'
 
+// Shared Internal Security Clearance Guard
 async function requireAdmin(supabase) {
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) throw new Error('Unauthorized')
@@ -20,29 +17,56 @@ async function requireAdmin(supabase) {
   return { user }
 }
 
+// ================================================
+// GET PORTAL: FETCH SYSTEM IDENTITIES FRAMEWORK
+// ================================================
 export async function GET(req) {
   try {
     const supabase = await createClient()
     const serviceSupabase = await createServiceClient()
 
+    // Enforce strict administrative clearance checking
     await requireAdmin(supabase)
 
     const { searchParams } = new URL(req.url)
     const role = searchParams.get('role') || null
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const limit = parseInt(searchParams.get('limit') || '50', 10)
+    const offset = parseInt(searchParams.get('offset') || '0', 10)
 
-    const users = await getAllUsers(serviceSupabase, { role, limit, offset })
+    // Build query explicitly through the service client to bypass driver/mechanic profile RLS blocks
+    let query = serviceSupabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
 
-    return NextResponse.json({ users }, { status: 200 })
+    // Apply strict filtering parameters
+    if (role) {
+      // If a single target role classification is selected, match it exactly
+      query = query.eq('role', role)
+    } else {
+      // CRITICAL GUARD: Filter out all global admin entries to keep this dashboard view clean
+      query = query.neq('role', 'admin')
+    }
+
+    const { data: users, error: dbError } = await query
+    if (dbError) throw dbError
+
+    return NextResponse.json({ users: users || [] }, { status: 200 })
 
   } catch (err) {
+    console.error('[SERVER ROUTE FAULT] GET /api/admin/users failed:', err)
+    
     const status = err.message === 'Unauthorized' ? 401
       : err.message === 'Forbidden' ? 403 : 500
-    return NextResponse.json({ error: err.message }, { status })
+      
+    return NextResponse.json({ error: err.message || 'Internal server error processing identity records' }, { status })
   }
 }
 
+// ================================================
+// DELETE PORTAL: SUSPEND & ERASE ACCESS PRIVILEGES
+// ================================================
 export async function DELETE(req) {
   try {
     const supabase = await createClient()
@@ -54,16 +78,20 @@ export async function DELETE(req) {
     const { userId } = body
 
     if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+      return NextResponse.json({ error: 'userId parameter reference is required' }, { status: 400 })
     }
 
+    // Call service-role method to drop the auth record (cascades to core profiles automatically)
     await suspendUser(serviceSupabase, userId)
 
     return NextResponse.json({ success: true }, { status: 200 })
 
   } catch (err) {
+    console.error('[SERVER ROUTE FAULT] DELETE /api/admin/users account erasure blocked:', err)
+    
     const status = err.message === 'Unauthorized' ? 401
       : err.message === 'Forbidden' ? 403 : 500
-    return NextResponse.json({ error: err.message }, { status })
+      
+    return NextResponse.json({ error: err.message || 'Identity drop transaction failed' }, { status })
   }
 }

@@ -1,18 +1,21 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createMockClient, isMockAuthEnabled } from './mockClient' // adjust path to your mock client file
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+// Regular Authenticated Client Factory
 export async function createClient() {
-  // If keys are missing, map server pipelines cleanly to your mock simulator data
-  if (isMockAuthEnabled()) {
-    return createMockClient()
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing public Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.')
   }
 
   const cookieStore = await cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -24,8 +27,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Next.js will sometimes throw errors if cookies are written to 
-            // inside a read-only Server Component layout route. It's safe to drop.
+            // Safe to drop inside read-only layouts
           }
         },
       },
@@ -34,15 +36,16 @@ export async function createClient() {
 }
 
 export async function createServiceClient() {
-  if (isMockAuthEnabled()) {
-    return createMockClient()
+  // Enforce strict server-side validation only when called
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error('Bypass Blocked: Missing backend environment variables. Ensure SUPABASE_SERVICE_ROLE_KEY is active in your .env.local.')
   }
 
   const cookieStore = await cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY, // Master super-admin key
+    supabaseUrl,
+    supabaseServiceRoleKey,
     {
       cookies: {
         getAll() {
@@ -53,7 +56,9 @@ export async function createServiceClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch {}
+          } catch {
+            // Safe to drop inside read-only layouts
+          }
         },
       },
     }

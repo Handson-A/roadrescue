@@ -1,40 +1,17 @@
-/**
- * Webhook Endpoint
- * Future integration point for:
- * - National Roadside Service Association (NRSA) updates
- * - Insurance company webhooks
- * - Third-party service integrations
- */
+import { NextResponse } from 'next/server'
 
 export async function POST(request) {
   try {
-    const { source, eventType, data } = await request.json();
+    const body = await request.json().catch(() => ({}))
 
-    // Verify webhook source (implement webhook signature verification)
-    // const isValid = verifyWebhookSignature(request, secret);
-    // if (!isValid) return new Response('Unauthorized', { status: 401 });
+    const { source, eventType, data } = body
 
-    console.log(`Webhook received from ${source}: ${eventType}`, data);
-
-    // Handle NRSA events
-    if (source === 'nrsa') {
-      // Process NRSA webhook
+    if (!source || !eventType) {
+      return NextResponse.json({ error: 'source and eventType are required' }, { status: 400 })
     }
 
-    // Handle insurance events
-    if (source === 'insurance') {
-      // Process insurance webhook
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Webhook processed' }),
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('Webhook processing error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to process webhook' }),
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true }, { status: 200 })
+  } catch {
+    return NextResponse.json({ error: 'Failed to process webhook' }, { status: 500 })
   }
 }

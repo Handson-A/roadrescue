@@ -31,21 +31,12 @@ export const VERIFICATION_STATUS = {
 
 export const NOTIFICATION_TYPE = {
   NEW_REQUEST: 'new_request',
-  MECHANIC_BID: 'mechanic_bid',
-  BID_ACCEPTED: 'bid_accepted',
-  BID_MISSED: 'bid_missed',
+  MECHANIC_ACCEPTED: 'mechanic_accepted',
   MECHANIC_EN_ROUTE: 'mechanic_en_route',
   MECHANIC_ARRIVED: 'mechanic_arrived',
   JOB_COMPLETED: 'job_completed',
   REQUEST_CANCELLED: 'request_cancelled',
   SYSTEM_ALERT: 'system_alert',
-}
-
-export const BID_STATUS = {
-  PENDING: 'pending',
-  ACCEPTED: 'accepted',
-  MISSED: 'missed',
-  WITHDRAWN: 'withdrawn',
 }
 
 // how far we search for mechanics by default

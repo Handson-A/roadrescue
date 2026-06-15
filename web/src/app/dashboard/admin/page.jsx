@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic' // Added for safe server-side rendering exclusion
 
 import { 
   Bell, CarFront, ClipboardList, Radar, ShieldCheck, 
@@ -13,6 +14,20 @@ import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import PageWrapper from '@/components/layout/PageWrapper'
 import { useAuth } from '@/hooks/useAuth'
+import Spinner from '@/components/ui/Spinner'
+
+// Lazy-load the Leaflet container to completely prevent browser global window crashes during SSR
+const LiveHotspotsMap = dynamic(
+  () => import('@/components/admin/LiveHotspotsMap'),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-80 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-xl">
+        <Spinner />
+      </div>
+    )
+  }
+)
 
 const quickActions = [
   {
@@ -74,7 +89,6 @@ export default function AdminDashboardPage() {
     }
 
     loadAdminDashboard()
-    // 24/7 Persistent Operational Polling
     const interval = setInterval(loadAdminDashboard, 10000)
 
     return () => {
@@ -84,9 +98,10 @@ export default function AdminDashboardPage() {
   }, [])
 
   const dashboardStats = [
-    { label: 'Active Incidents', value: String(stats?.activeRequests ?? 0), note: 'Live breakdown tickets in progress', icon: ClipboardList },
-    { label: 'Deployed Mechanics', value: String(stats?.availableMechanics ?? 0), note: 'Verified & active in field pool', icon: CarFront },
-    { label: 'Pending Clearances', value: String(stats?.pendingVerifications ?? 0), note: 'Awaiting credential validation reviews', icon: ShieldCheck },
+    { label: 'Total Requests', value: String(stats?.totalRequests ?? 0), note: 'All-time breakdown tickets', icon: ClipboardList },
+    { label: 'Active Requests', value: String(stats?.activeRequests ?? 0), note: 'Currently in progress', icon: CarFront },
+    { label: 'Completed', value: String(stats?.completedRequests ?? 0), note: 'Resolved rescues', icon: Bell },
+    { label: 'Cancelled', value: String(stats?.cancelledRequests ?? 0), note: 'Aborted requests', icon: Bell },
   ]
 
   return (
@@ -97,7 +112,7 @@ export default function AdminDashboardPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
         {/* ================= HIGH-LEVEL METRICS OVERVIEW ================= */}
-        <section className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <section className="grid gap-4 grid-cols-1 md:grid-cols-4">
           {dashboardStats.map((stat) => {
             const Icon = stat.icon
 
@@ -106,11 +121,11 @@ export default function AdminDashboardPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{stat.label}</p>
-                    <p className="mt-2 text-4xl font-black text-slate-900 tracking-tight">{stat.value}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">{stat.note}</p>
+                    <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stat.value}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500 truncate">{stat.note}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-slate-700 shadow-sm">
-                    <Icon size={18} strokeWidth={2.2} />
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-700 shadow-sm shrink-0">
+                    <Icon size={16} strokeWidth={2.2} />
                   </div>
                 </div>
               </Card>
@@ -118,7 +133,7 @@ export default function AdminDashboardPage() {
           })}
         </section>
 
-        {/* ================= LIVE ROUTING MONITOR & PERSISTENT STATUS ================= */}
+        {/* ================= LIVE ROUTING MONITOR & MAP MATRIX ================= */}
         <section className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
           <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm p-0">
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3.5">
@@ -131,11 +146,11 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                 <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-xs">Telemetry Node</span>
-                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[#FFD700]">24/7 Monitoring</span>
+                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[#FFD700]">24/7 Live Map</span>
               </div>
             </div>
 
-            {/* Dynamic request logging feeds */}
+            {/* Dynamic Incident Logging Feeds */}
             <div className="divide-y divide-slate-100 border-b border-slate-100 max-h-48 overflow-y-auto">
               {recentRequests.length === 0 ? (
                 <div className="px-4 py-6 text-center text-xs font-medium text-slate-400">No active roadside incidents broadcasted across system sectors.</div>
@@ -154,20 +169,9 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
-            {/* Simulated Live Satellite Navigation Sandbox Canvas Frame */}
+            {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
             <div className="p-4 bg-slate-50/40">
-              <div className="h-80 rounded-xl border border-slate-200/80 bg-[radial-gradient(circle_at_50%_40%,rgba(245,209,8,0.06),transparent_50%)] relative flex flex-col items-center justify-center p-6 text-center overflow-hidden shadow-inner">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30" />
-                <div className="relative z-10 space-y-2">
-                  <div className="mx-auto h-11 w-11 rounded-xl bg-slate-900 flex items-center justify-center text-[#FFD700] border border-slate-800 shadow shadow-[#FFD700]/10">
-                    <Network size={20} className="animate-spin duration-3000" />
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-800">Operational Grid Mapping Sandbox</h4>
-                  <p className="text-[11px] font-medium text-slate-400 max-w-xs mx-auto leading-relaxed">
-                    Continuous pipeline active. System map streams automated asset positions and ongoing responder target trajectories in real time.
-                  </p>
-                </div>
-              </div>
+              <LiveHotspotsMap mechanics={stats?.activeMechanicLocations || []} />
             </div>
           </Card>
 
@@ -187,27 +191,35 @@ export default function AdminDashboardPage() {
             </Card>
 
             <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Platform Parameters</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Active System Infrastructure</h3>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Performance Metrics</span>
+              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Operational KPIs</h3>
               <div className="mt-3.5 space-y-2 text-xs font-semibold">
                 <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
-                  <span>Total System Orders</span> 
-                  <span className="text-slate-900 font-bold">{stats?.totalRequests ?? 0}</span>
+                  <span>Avg response time</span>
+                  <span className="text-slate-900 font-bold">{stats?.avgResponseTime ?? 0} mins</span>
                 </p>
                 <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
-                  <span>Live Dispatches</span> 
-                  <span className="text-slate-900 font-bold">{stats?.activeRequests ?? 0}</span>
+                  <span>Avg completion time</span>
+                  <span className="text-slate-900 font-bold">{stats?.avgCompletionTime ?? 0} mins</span>
                 </p>
                 <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
-                  <span>Registered Identities</span> 
-                  <span className="text-slate-900 font-bold">{stats?.totalUsers ?? 0}</span>
+                  <span>Avg rating</span>
+                  <span className="text-slate-900 font-bold">{stats?.avgRating ?? '—'}</span>
+                </p>
+                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+                  <span>Verified mechanics</span>
+                  <span className="text-slate-900 font-bold">{stats?.verifiedMechanics ?? 0}</span>
+                </p>
+                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+                  <span>Active drivers</span>
+                  <span className="text-slate-900 font-bold">{stats?.totalDrivers ?? 0}</span>
                 </p>
               </div>
             </Card>
           </div>
         </section>
 
-        {/* ================= GRID QUICK ACTIONS GRID ================= */}
+        {/* ================= QUICK ACTIONS GRID ================= */}
         <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => {
             const Icon = action.icon
@@ -217,7 +229,7 @@ export default function AdminDashboardPage() {
                 <Card className="h-full rounded-2xl border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-slate-300 hover:-translate-y-0.5">
                   <div className="flex flex-col h-full justify-between gap-4">
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Task Router</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Visit</span>
                       <h3 className="text-base font-black text-slate-900 tracking-tight group-hover:text-slate-800 transition-colors">{action.label}</h3>
                       <p className="text-xs text-slate-400 font-medium leading-normal pt-1">{action.description}</p>
                     </div>
@@ -231,7 +243,38 @@ export default function AdminDashboardPage() {
           })}
         </section>
 
-        {/* ================= ESCALATION GATEWAY (FIXED INTERACTIVE VARIABLE SETTER) ================= */}
+        {/* ================= INCIDENT ANALYTICS ================= */}
+        {stats?.serviceTypeBreakdown && (
+          <section className="grid gap-4 md:grid-cols-2">
+            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Service Type Breakdown</span>
+              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Most Common Requests</h3>
+              <div className="mt-3 space-y-2">
+                {stats.serviceTypeBreakdown.slice(0, 5).map((item) => (
+                  <div key={item.service_type} className="flex items-center justify-between text-xs font-medium">
+                    <span className="capitalize text-slate-600">{item.service_type.replace('_', ' ')}</span>
+                    <span className="font-bold text-slate-900">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Status Distribution</span>
+              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Request Lifecycle</h3>
+              <div className="mt-3 space-y-2">
+                {stats.statusBreakdown.slice(0, 5).map((item) => (
+                  <div key={item.status} className="flex items-center justify-between text-xs font-medium">
+                    <span className="capitalize text-slate-600">{item.status.replace('_', ' ')}</span>
+                    <span className="font-bold text-slate-900">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </section>
+        )}
+
+        {/* ================= ESCALATION GATEWAY ================= */}
         <div className="rounded-2xl border border-amber-200/70 bg-amber-50/30 overflow-hidden shadow-xs">
           <button 
             onClick={() => setEscalationExpanded(!escalationExpanded)}

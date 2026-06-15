@@ -21,6 +21,7 @@ Developer checklist
 - Ensure `.env.local` exists with Supabase keys to avoid using the mock client if the intent is to test against real data.
 - When updating auth/profile behavior, update `src/providers/AuthProvider.jsx` and `src/lib/auth.js` and add tests for merged profile shapes.
 - If adding new notification types, add a mapping in `src/components/layout/Notifications.jsx` (`getNotificationHref`).
+- Profile preferences API: `/api/profile/preferences` handles GET (fetch) and PUT (update) for user theme, language, notification, and communication preferences.
 
 Where to look
 - Web app: `web/src/` — components, providers, lib

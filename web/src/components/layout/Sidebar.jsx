@@ -118,7 +118,7 @@ export default function Sidebar() {
             href="/dashboard/admin/requests"
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
           >
-            <ClipboardList size={14} /> New Dispatch
+            <ClipboardList size={14} /> Incident Log
           </Link>
         ) : isDriver ? (
           <Link

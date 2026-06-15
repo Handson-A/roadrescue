@@ -264,38 +264,44 @@ export default function Navbar() {
           </div>
         )}
       </div>
-
-      {/* ==================================================================== */}
+{/* ==================================================================== */}
       {/* DESKTOP HEADER DISPLAY GRID                                         */}
       {/* ==================================================================== */}
-      <div className="hidden items-center justify-between gap-4 border-b border-[#D8CCAE] bg-[#F5F0E2] px-4 py-3 md:flex lg:px-6">
-        <div className="min-w-0 flex items-center gap-4">
-          <h1 className="truncate text-3xl font-black text-[#6A5A10] tracking-tight">RoadRescue</h1>
-          <span className="rounded-full border border-[#C8BC9E] bg-[#EFE6D1] px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#6F654D]">
+      <div className="hidden items-center justify-between gap-3 border-b border-[#D8CCAE] bg-[#F5F0E2] px-4 py-3 md:flex lg:px-6">
+        
+        {/* Brand Container - Clamped to prevent pushing items right */}
+        <div className="min-w-0 flex-shrink-0 flex items-center gap-3">
+          <h1 className="text-2xl lg:text-3xl font-black text-[#6A5A10] tracking-tight">RoadRescue</h1>
+          <span className="hidden xl:inline-block rounded-full border border-[#C8BC9E] bg-[#EFE6D1] px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#6F654D]">
             {role === 'admin' ? 'Operations' : role === 'mechanic' ? 'Field Service' : 'Client System'}
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
-          <div className="hidden w-full max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex">
-            <Search size={16} className="text-[#7A7058]" />
+        {/* Action Controls Anchor Group */}
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-3">
+          
+          {/* Global Search Bar (Exits early on tight tablet dimensions to guard padding rows) */}
+          <div className="hidden w-full max-w-xs xl:max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex min-w-0">
+            <Search size={16} className="text-[#7A7058] flex-shrink-0" />
             <input
               type="search"
-              placeholder={role === 'admin' ? 'Search incidents, plates, or mechanics...' : 'Search requests, drivers, or locations...'}
-              className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066]"
+              placeholder={role === 'admin' ? 'Search incidents...' : 'Search requests...'}
+              className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066] min-w-0"
             />
           </div>
 
+          {/* Mute Toggles (Protected from scaling distortion) */}
           <button
             onClick={() => setAudioEnabled((prev) => !prev)}
-            className={`rounded-xl border p-2 transition ${audioEnabled ? 'border-[#C8BC9E] bg-[#EDE2CA] text-[#6A5A10]' : 'border-[#D7CCAD] bg-[#F8F4EA] text-[#7A7058]'}`}
+            className={`rounded-xl border p-2 flex-shrink-0 transition ${audioEnabled ? 'border-[#C8BC9E] bg-[#EDE2CA] text-[#6A5A10]' : 'border-[#D7CCAD] bg-[#F8F4EA] text-[#7A7058]'}`}
             title={audioEnabled ? 'Mute alerts' : 'Unmute alerts'}
           >
             {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
 
-          <div ref={notificationRef} className="relative">
-            <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm">
+          {/* Notification Menu Container */}
+          <div ref={notificationRef} className="relative flex-shrink-0">
+            <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm active:scale-95 transition-transform">
               <Bell size={18} />
               {unreadCount > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
             </button>
@@ -317,12 +323,9 @@ export default function Navbar() {
                       <Link
                         key={notification.id}
                         href={getNotificationHref(notification, profile?.role) || '#'}
-                        aria-disabled={!getNotificationHref(notification, profile?.role)}
                         onClick={async (event) => {
                           const href = getNotificationHref(notification, profile?.role)
-                          if (!href) {
-                            event.preventDefault()
-                          }
+                          if (!href) event.preventDefault()
                           await markAsRead(notification.id)
                           setOpen(false)
                         }}
@@ -342,28 +345,28 @@ export default function Navbar() {
             )}
           </div>
 
+          {/* Profile Quick-Link Widget - Added min-w-0 & max-width clamps to gracefully handle shrinking content */}
           <button
             onClick={handleProfileClick}
-            className="hidden items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] px-3 py-1.5 transition hover:bg-[#EFE6D1] sm:flex"
+            className="hidden sm:flex items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] px-3 py-1.5 transition hover:bg-[#EFE6D1] min-w-0 max-w-[180px] lg:max-w-xs"
           >
-            <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online />
-            <div className="leading-tight text-left">
-              <p className="text-xs font-black text-[#2D271C]">{profile?.full_name || 'Rescue Driver'}</p>
-              {/* Prioritized live data stream binding rule */}
-              <p className="text-[10px] text-[#6E634B] font-medium">{authenticatedEmail}</p>
+            <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online={true} className="flex-shrink-0" />
+            <div className="leading-tight text-left min-w-0 hidden xl:block">
+              <p className="text-xs font-black text-[#2D271C] truncate">{profile?.full_name || 'Rescue Driver'}</p>
+              <p className="text-[10px] text-[#6E634B] font-medium truncate">{authenticatedEmail}</p>
             </div>
           </button>
 
+          {/* Sign Out Trigger Button */}
           <button
             onClick={handleSignOut}
-            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-black uppercase tracking-wider text-red-700 transition hover:bg-red-100"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 lg:px-4 text-xs font-black uppercase tracking-wider text-red-700 flex-shrink-0 transition hover:bg-red-100"
           >
             <LogOut size={14} />
-            <span>Logout</span>
+            <span className="hidden lg:inline">Logout</span>
           </button>
         </div>
       </div>
-
     </header>
   )
 }

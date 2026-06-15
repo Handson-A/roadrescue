@@ -20,18 +20,16 @@ Supabase Realtime (WebSocket)
 ## Event Types by Role
 
 ### Driver Events
-1. **rescue_requests:INSERT** - New request created by driver (status = PENDING)
-2. **request_bids:INSERT** - Mechanic placed bid on driver's request
-3. **rescue_requests:UPDATE** - Request assigned to mechanic
-4. **rescue_requests:UPDATE** - Mechanic status changed (en route, arrived, completed)
-5. **notifications:INSERT** - New notification (bid received, assigned, completed)
-6. **request_bids:UPDATE** - Bid accepted/rejected by driver
+1. **rescue_requests:INSERT** - New request created by driver (status = pending)
+2. **rescue_requests:UPDATE** - Request accepted by mechanic
+3. **rescue_requests:UPDATE** - Mechanic status changed (en_route, arrived, completed)
+4. **notifications:INSERT** - New notification (mechanic accepted, completed, etc.)
 
 ### Mechanic Events
 1. **rescue_requests:INSERT** - New request in service area (via channel filter)
-2. **rescue_requests:UPDATE** - Their bid was accepted (assigned_mechanic_id matches user_id)
-3. **rescue_requests:UPDATE** - Status transitions (ASSIGNED → IN_PROGRESS → COMPLETED)
-4. **notifications:INSERT** - Bid accepted/rejected notification
+2. **rescue_requests:UPDATE** - Their request was accepted (mechanic_id matches user_id)
+3. **rescue_requests:UPDATE** - Status transitions (accepted → en_route → arrived → in_progress → completed)
+4. **notifications:INSERT** - Request accepted or status update notifications
 5. **mechanic_profiles:UPDATE** - Profile or location changes
 
 ### Admin Events

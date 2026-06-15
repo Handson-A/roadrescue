@@ -7,8 +7,8 @@ import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { 
-  Users, Mail, Phone, Shield, Wrench, Car, 
-  X, CheckCircle, Info, Calendar, Award, Star 
+  Users, Mail, Phone, Wrench, Car, 
+  X, CheckCircle, Info, Calendar, Star 
 } from 'lucide-react'
 
 export default function AdminUsersPage() {
@@ -63,6 +63,7 @@ export default function AdminUsersPage() {
                 <Users size={20} />
               </div>
               <h3 className="text-sm font-bold text-slate-900">No Account Registries Found</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">There are currently no active driver or mechanic profiles logged in the system registry database.</p>
             </div>
           ) : (
             users.map((user) => (
@@ -105,7 +106,7 @@ export default function AdminUsersPage() {
           <div className="w-full lg:w-[420px] shrink-0 animate-in fade-in slide-in-from-right-4 duration-200 sticky top-24 self-start">
             <Card className="rounded-2xl border-slate-200 bg-white p-6 shadow-md relative overflow-hidden">
               
-              {/* Close Button Anchor */}
+              {/* Close Button */}
               <button 
                 onClick={() => setInspecting(false)}
                 className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 active:scale-90 transition-transform p-1 rounded-lg bg-slate-50 border border-slate-100"
@@ -113,7 +114,7 @@ export default function AdminUsersPage() {
                 <X size={16} strokeWidth={2.5} />
               </button>
 
-              {/* Inspection Node Header */}
+              {/* Inspection Header */}
               <div className="border-b border-slate-100 pb-5 mb-5 space-y-3">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
                   <Info size={14} /> Profile Inspection Matrix
@@ -130,10 +131,10 @@ export default function AdminUsersPage() {
                 </div>
               </div>
 
-              {/* Dynamic Role Mapping Blocks Render Layer */}
+              {/* Role Inspection Information Fields */}
               <div className="space-y-5">
                 
-                {/* 1. Core Contact Matrix */}
+                {/* Core Contact Matrix */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Contact Validation</span>
                   <div className="rounded-xl border border-slate-50 bg-slate-50/40 p-3.5 space-y-2 text-xs font-medium text-slate-700">
@@ -143,7 +144,7 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                {/* 2. SPECIFIC MECHANIC METRIC CONSOLE BRANCH */}
+                {/* Mechanic deep details pane */}
                 {selectedUser.role === 'mechanic' && (
                   <div className="space-y-3 animate-in fade-in duration-300">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block flex items-center gap-1">
@@ -167,7 +168,7 @@ export default function AdminUsersPage() {
                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                           <span className="text-[10px] text-slate-400 block">Field Experience</span>
                           <p className="text-sm font-black text-slate-800 mt-0.5">
-                            {selectedUser.mechanic_profile?.years_experience ? `${selectedUser.mechanic_profile.years_experience} Years` : '5+ Years'}
+                            {selectedUser.mechanic_profile?.years_experience ? `${selectedUser.mechanic_profile.years_experience} Years` : '0 Years'}
                           </p>
                         </div>
                       </div>
@@ -179,9 +180,7 @@ export default function AdminUsersPage() {
                               <Badge key={s} label={s.replace('_', ' ')} variant="default" />
                             ))
                           ) : (
-                            ['Engine Overhaul', 'Towing Recovery', 'Electrical Diagnostics'].map(s => (
-                              <Badge key={s} label={s} variant="default" />
-                            ))
+                            <span className="text-xs italic text-slate-400 pl-1">No custom skills specified</span>
                           )}
                         </div>
                       </div>
@@ -189,7 +188,7 @@ export default function AdminUsersPage() {
                   </div>
                 )}
 
-                {/* 3. SPECIFIC DRIVER METRIC CONSOLE BRANCH */}
+                {/* Driver deep details pane */}
                 {selectedUser.role === 'driver' && (
                   <div className="space-y-3 animate-in fade-in duration-300">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block flex items-center gap-1">
@@ -201,38 +200,23 @@ export default function AdminUsersPage() {
                         <p className="text-xs font-bold text-slate-800 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 mt-1 capitalize">
                           {selectedUser.driver_profile?.vehicle_make 
                             ? `${selectedUser.driver_profile.vehicle_color || ''} ${selectedUser.driver_profile.vehicle_make} ${selectedUser.driver_profile.vehicle_model || ''}`
-                            : 'Toyota Corolla (Default Sync)'}
+                            : 'No baseline vehicle configured'}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                           <span className="text-[10px] text-slate-400 block">License Plate Reg</span>
                           <p className="text-xs font-mono font-black text-slate-800 mt-0.5 uppercase">
-                            {selectedUser.driver_profile?.vehicle_plate || 'GR-8842-26'}
+                            {selectedUser.driver_profile?.vehicle_plate || '—'}
                           </p>
                         </div>
                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                           <span className="text-[10px] text-slate-400 block">Emergency Contact</span>
                           <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
-                            {selectedUser.driver_profile?.emergency_contact_phone || 'Comms Linked'}
+                            {selectedUser.driver_profile?.emergency_contact_phone || 'None linked'}
                           </p>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. SPECIFIC ADMIN METRIC CONSOLE BRANCH */}
-                {selectedUser.role === 'admin' && (
-                  <div className="space-y-3 animate-in fade-in duration-300">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block flex items-center gap-1">
-                      <Shield size={12} /> Security Administrative Layer
-                    </span>
-                    <div className="rounded-xl border border-amber-100 bg-amber-50/20 p-4 text-xs font-medium text-amber-900 leading-relaxed">
-                      <p className="font-bold flex items-center gap-1 text-amber-800 mb-0.5">
-                        <Award size={13} /> Root Credentials Verified
-                      </p>
-                      This account maintains read and write configuration access vectors across all active platform data channels, system metrics, and identity vetting pipelines.
                     </div>
                   </div>
                 )}

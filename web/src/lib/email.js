@@ -6,7 +6,7 @@
 export async function sendNotificationEmail({
   to,
   subject,
-  type, // 'new_request', 'bid_received', 'bid_accepted', 'job_completed', etc.
+  type, // 'new_request', 'mechanic_accepted', 'job_completed', etc.
   data, // context-specific data (e.g., driver name, mechanic name, request details)
 }) {
   if (!to) {
@@ -81,11 +81,11 @@ function buildEmailTemplate(type, data = {}) {
   `
 
   switch (type) {
-    case 'new_request':
+case 'new_request':
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;"> ! New Rescue Request</h1>
+            <h1 style="margin: 0; font-size: 24px;">🚗 New Rescue Request</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.mechanicName || 'Mechanic'}</strong>,</p>
@@ -95,61 +95,27 @@ function buildEmailTemplate(type, data = {}) {
               <p><strong>Location:</strong> ${data.location || 'Accra'}</p>
               <p><strong>Distance:</strong> ${data.distance || 'N/A'} away</p>
             </div>
-            <p>Check the app to place your bid and help this driver!</p>
+            <p>Accept and head to the driver's location.</p>
             <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">View Request</a>
           </div>
         </div>
       `
 
-    case 'bid_accepted':
+    case 'mechanic_accepted':
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">✅ Bid Accepted!</h1>
+            <h1 style="margin: 0; font-size: 24px;">✅ Mechanic Accepted!</h1>
           </div>
           <div style="${contentStyle}">
-            <p>Hi <strong>${data.mechanicName || 'Mechanic'}</strong>,</p>
-            <p>Great news! Your bid has been accepted by <strong>${data.driverName || 'the driver'}</strong>.</p>
+            <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
+            <p><strong>${data.mechanicName || 'A mechanic'}</strong> accepted your rescue request and is heading to your location.</p>
             <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Driver:</strong> ${data.driverName}</p>
+              <p><strong>Mechanic:</strong> ${data.mechanicName}</p>
               <p><strong>Location:</strong> ${data.location}</p>
-              <p><strong>Your bid:</strong> GHS ${data.bidAmount || 'N/A'}</p>
             </div>
-            <p>Head to the location now!</p>
-            <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">Start Navigation</a>
-          </div>
-        </div>
-      `
-
-    case 'bid_missed':
-      return `
-        <div style="${baseStyle}">
-          <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">ℹ️ Request Assigned</h1>
-          </div>
-          <div style="${contentStyle}">
-            <p>Hi <strong>${data.mechanicName || 'Mechanic'}</strong>,</p>
-            <p>The driver selected another mechanic for this rescue request.</p>
-            <p>Don't worry—more requests are coming your way. Keep your app open!</p>
-            <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">Browse More Requests</a>
-          </div>
-        </div>
-      `
-
-    case 'request_cancelled':
-      return `
-        <div style="${baseStyle}">
-          <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">ℹ️ Request Cancelled</h1>
-          </div>
-          <div style="${contentStyle}">
-            <p>Hi <strong>${data.mechanicName || data.driverName || 'User'}</strong>,</p>
-            <p>A rescue request has been cancelled.</p>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Reason:</strong> ${data.reason || 'Unknown'}</p>
-            </div>
-            <p>Keep an eye out for new requests and continue helping drivers in need!</p>
-            <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">View Requests</a>
+            <p>They'll arrive soon. You can track their progress in the app.</p>
+            <a href="${data.appUrl || 'https://roadrescue.com'}" style="${buttonStyle}">Track Progress</a>
           </div>
         </div>
       `
@@ -158,7 +124,7 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;"> Job Complete!</h1>
+            <h1 style="margin: 0; font-size: 24px;">🎉 Job Complete!</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
