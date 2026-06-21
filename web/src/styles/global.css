@@ -2,6 +2,18 @@
 
 @import "leaflet/dist/leaflet.css";
 
+.custom-leaflet-marker-driver,
+.custom-leaflet-marker-mechanic {
+  background: transparent !important;
+  border: 0 !important;
+  overflow: visible !important;
+}
+
+.custom-leaflet-marker-driver > div,
+.custom-leaflet-marker-mechanic > div {
+  pointer-events: none;
+}
+
 :root {
   --color-background: 253 251 247;
   --color-foreground: 15 23 42;

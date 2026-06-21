@@ -101,47 +101,36 @@ export default function AuthProvider({ children }) {
 
         const extendedProfile = { ...fallbackProfile, ...profile }
 
-        if (profile?.role === 'driver') {
-          const { data: driverProfile } = await supabase
-            .from('driver_profiles')
-            .select('vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, emergency_contact_name, emergency_contact_phone, home_area, rating_avg, total_requests')
-            .eq('user_id', userId)
-            .maybeSingle()
+if (profile?.role === 'driver') {
+           const { data: driverProfile } = await supabase
+             .from('driver_profiles')
+             .select('home_area, preferences')
+             .eq('user_id', userId)
+             .maybeSingle()
 
-          if (driverProfile) {
-            extendedProfile.driver_profile = driverProfile
-            extendedProfile.vehicle_make = driverProfile.vehicle_make || null
-            extendedProfile.vehicle_model = driverProfile.vehicle_model || null
-            extendedProfile.vehicle_year = driverProfile.vehicle_year || null
-            extendedProfile.vehicle_color = driverProfile.vehicle_color || null
-            extendedProfile.vehicle_plate = driverProfile.vehicle_plate || null
-            extendedProfile.emergency_contact_name = driverProfile.emergency_contact_name || null
-            extendedProfile.emergency_contact_phone = driverProfile.emergency_contact_phone || null
-            extendedProfile.home_area = driverProfile.home_area || null
-            extendedProfile.rating_avg = driverProfile.rating_avg ?? null
-            extendedProfile.total_requests = driverProfile.total_requests ?? null
-          }
-        }
+           if (driverProfile) {
+             extendedProfile.driver_profile = driverProfile
+             extendedProfile.home_area = driverProfile.home_area || null
+           }
+         }
 
-        if (profile?.role === 'mechanic') {
-          const { data: mechanicProfile } = await supabase
-            .from('mechanic_profiles')
-            .select('specializations, years_experience, business_name, verification_status, rating_avg, total_jobs, is_available, location_label')
-            .eq('user_id', userId)
-            .maybeSingle()
+         if (profile?.role === 'mechanic') {
+           const { data: mechanicProfile } = await supabase
+             .from('mechanic_profiles')
+             .select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience')
+             .eq('user_id', userId)
+             .maybeSingle()
 
-          if (mechanicProfile) {
-            extendedProfile.mechanic_profile = mechanicProfile
-            extendedProfile.business_name = mechanicProfile.business_name || null
-            extendedProfile.verification_status = mechanicProfile.verification_status || null
-            extendedProfile.specializations = mechanicProfile.specializations || []
-            extendedProfile.years_experience = mechanicProfile.years_experience ?? null
-            extendedProfile.rating_avg = mechanicProfile.rating_avg ?? null
-            extendedProfile.total_jobs = mechanicProfile.total_jobs ?? null
-            extendedProfile.is_available = mechanicProfile.is_available ?? null
-            extendedProfile.location_label = mechanicProfile.location_label || null
-          }
-        }
+           if (mechanicProfile) {
+             extendedProfile.mechanic_profile = mechanicProfile
+             extendedProfile.business_name = mechanicProfile.business_name || null
+             extendedProfile.specializations = mechanicProfile.specializations || []
+             extendedProfile.rating_avg = mechanicProfile.rating_avg ?? null
+             extendedProfile.rating_count = mechanicProfile.rating_count ?? null
+             extendedProfile.is_available = mechanicProfile.is_available ?? null
+             extendedProfile.location_label = mechanicProfile.location_label || null
+           }
+         }
 
         return extendedProfile
       } catch (err) {

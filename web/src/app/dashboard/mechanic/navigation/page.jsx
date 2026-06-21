@@ -8,17 +8,68 @@ import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
+import { useMechanicStatus } from '@/hooks/useMechanicStatus'
+import { useBroadcastLocation } from '@/hooks/useMechanicLocation' // FIXED: Mechanics use the Broadcast hook for active jobs
 import { Navigation, Radio, MapPin, Phone, User, Compass } from 'lucide-react'
 
 export default function MechanicNavigationPage() {
+
   const { user } = useAuth()
   const [activeJob, setActiveJob] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [localCoords, setLocalCoords] = useState(null)
   const userIdRef = useRef(user?.id)
+  const lastDBSyncRef = useRef(0)
 
+  // 1. Monitor the single source of truth for availability from your schema (is_available)
+  const { isAvailable } = useMechanicStatus(user?.id)
+
+  // 2. Initialize active real-time channel broadcasting ONLY if an assigned operational job exists
+  const { broadcastError } = useBroadcastLocation(activeJob?.id, user?.id)
+
+  // PIPELINE A: Handle continuous watchPosition streaming when the mechanic is online
+  useEffect(() => {
+    if (!isAvailable || !user?.id) {
+      setLocalCoords(null)
+      return
+    }
+
+    if (!navigator.geolocation) return
+
+    const supabase = createClient()
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords
+        const currentNow = { lat: latitude, lng: longitude }
+        
+        setLocalCoords(currentNow)
+
+        // Throttle database persistence writes (e.g., update every ~30 seconds to minimize overhead)
+        const timeNow = Date.now()
+        if (timeNow - lastDBSyncRef.current > 30000) {
+          lastDBSyncRef.current = timeNow
+          
+          // Match your PostGIS geometry schema standard exactly: POINT(longitude latitude)
+          await supabase
+            .from('mechanic_profiles')
+            .update({
+              current_location: `POINT(${longitude} ${latitude})`,
+              location_updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+        }
+      },
+      (error) => console.warn('[NAV GEAR FAULT]:', error.message),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    )
+
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [isAvailable, user?.id])
+
+  // PIPELINE B: Poll for incoming accepted or active assignments
   useEffect(() => {
     userIdRef.current = user?.id
-
     if (!userIdRef.current) return
     let mounted = true
 
@@ -36,6 +87,7 @@ export default function MechanicNavigationPage() {
           service_type,
           problem_description,
           incident_address,
+          incident_location,
           created_at,
           driver:driver_id (id, full_name, phone)
         `)
@@ -50,8 +102,6 @@ export default function MechanicNavigationPage() {
     }
 
     loadActiveRoute()
-    
-    // Poll every 5 seconds to keep coordinates highly accurate while driving
     const interval = setInterval(loadActiveRoute, 5000)
     
     return () => {
@@ -72,7 +122,7 @@ export default function MechanicNavigationPage() {
           <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <Compass size={14} className={activeJob ? 'animate-spin' : ''} />
-              {activeJob ? 'Live Vector Matrix' : 'Navigation Grid Standby'}
+              {activeJob ? 'Live Vector Matrix' : isAvailable ? 'Radar Scanner Active (Online)' : 'Navigation Grid Standby (Offline)'}
             </span>
             {activeJob && (
               <Badge label={activeJob.status} variant={activeJob.status} dot />
@@ -83,17 +133,22 @@ export default function MechanicNavigationPage() {
             <div className="h-[50vh] flex items-center justify-center bg-slate-50/40">
               <Spinner />
             </div>
-          ) : activeJob ? (
-            <RescueMap request={activeJob} height="50vh" />
+          ) : activeJob || isAvailable ? (
+            <div className="w-full h-[50vh] relative overflow-hidden z-10">
+              <RescueMap 
+                request={activeJob} 
+                mechanicLocation={localCoords} 
+                height="100%" 
+              />
+            </div>
           ) : (
-            /* Premium layout placeholder when no active job coordinates are ready */
             <div className="h-[50vh] bg-slate-50/40 flex flex-col items-center justify-center p-6 text-center">
               <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-3.5 border border-slate-200/60 shadow-sm">
                 <Radio size={20} className="text-slate-400" />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">No Active Target Routes Mapped</h3>
+              <h3 className="text-sm font-bold text-slate-800">Navigation Console Disconnected</h3>
               <p className="text-xs text-slate-400 max-w-xs mt-1 font-medium leading-relaxed">
-                Accept an incoming breakdown request on the dashboard console to automatically initialize live turn-by-turn navigation streams.
+                Toggle your duty status state to **Online** via the Service Console to activate real-time GPS tracking grids.
               </p>
             </div>
           )}
@@ -129,7 +184,7 @@ export default function MechanicNavigationPage() {
               <div className="space-y-3 flex flex-col justify-between sm:items-end">
                 <div className="text-left sm:text-right">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Reported Issue</span>
-                  <p className="text-sm font-bold text-slate-900 capitalize">{activeJob.service_type.replace('_', ' ')}</p>
+                  <p className="text-sm font-bold text-slate-900 capitalize">{activeJob.service_type?.replace('_', ' ')}</p>
                 </div>
 
                 {activeJob.driver?.phone && (
@@ -145,7 +200,9 @@ export default function MechanicNavigationPage() {
             </div>
           ) : (
             <div className="mt-2 text-sm font-medium text-slate-400 border-t border-slate-50 pt-3">
-              Awaiting dispatch assignment telemetry vectors...
+              {isAvailable 
+                ? '🟢 Radar monitoring system active. Standing by for unassigned corridor breakdown vectors...' 
+                : '🔴 System offline. Awaiting activation from core control hub terminal...'}
             </div>
           )}
         </Card>

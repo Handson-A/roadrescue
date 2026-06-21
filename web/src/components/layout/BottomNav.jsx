@@ -23,7 +23,7 @@ const driverNav = [
     href: '/dashboard/driver/history', 
     label: 'Activity', 
     icon: ArrowUpDown, 
-    isActive: (p) => p.startsWith('/dashboard/driver/history') || p.startsWith('/dashboard/driver/activity') || p.includes('/request') 
+    isActive: (p) => p.startsWith('/dashboard/driver/history') || p.startsWith('/dashboard/driver/activity') 
   },
   { 
     href: '/dashboard/driver/account', 

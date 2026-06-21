@@ -16,6 +16,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [audioEnabled, setAudioEnabled] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const notificationRef = useRef(null)
 
   const pathname = usePathname()
@@ -26,6 +27,23 @@ export default function Navbar() {
   // Destructure BOTH user (Supabase Auth Core) and profile (Public Database Row Table)
   const { user, profile } = useAuth()
   const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
+
+  const role = profile?.role || 'driver'
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) return
+
+    const encoded = encodeURIComponent(searchQuery.trim())
+
+    if (role === 'driver') {
+      router.push(`/dashboard/driver?search=${encoded}`)
+    } else if (role === 'mechanic') {
+      router.push(`/dashboard/mechanic?search=${encoded}`)
+    } else if (role === 'admin') {
+      router.push(`/dashboard/admin?search=${encoded}`)
+    }
+  }
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -49,7 +67,6 @@ export default function Navbar() {
     }
   }, [])
   
-  const role = profile?.role || 'driver'
   const roleBase = `/dashboard/${role}`
   const isDashboardRoot = pathname === roleBase || pathname === `${roleBase}/`
   const firstName = profile?.full_name?.split(' ')?.[0] || 'member'
@@ -76,7 +93,7 @@ export default function Navbar() {
   const getRoleLabel = () => {
     if (role === 'admin') return 'Admin Portal'
     if (role === 'mechanic') return 'Mechanic Console'
-    return 'Driver Panel'
+    return 'User Panel'
   }
 
   const getMobileTitle = () => {
@@ -146,12 +163,14 @@ export default function Navbar() {
             {/* Premium, sleek Search form input */}
             <form
               className="mt-5 flex items-center gap-2.5 rounded-xl bg-white/[0.04] px-3.5 py-2 border border-white/[0.08] focus-within:border-[#FFD700]/40 focus-within:bg-white/[0.06] transition-all duration-200"
-              onSubmit={(event) => event.preventDefault()}
+              onSubmit={handleSearch}
             >
               <Search size={16} className="shrink-0 text-[#A29A84]" />
               <input
                 type="search"
                 placeholder={role === 'mechanic' ? "Search service logs..." : "Search locations or garages..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-sm text-[#EFE8D4] placeholder:text-[#6C6552] outline-none"
               />
               <button
@@ -281,14 +300,19 @@ export default function Navbar() {
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-3">
           
           {/* Global Search Bar (Exits early on tight tablet dimensions to guard padding rows) */}
-          <div className="hidden w-full max-w-xs xl:max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex min-w-0">
+          <form
+            className="hidden w-full max-w-xs xl:max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex min-w-0"
+            onSubmit={handleSearch}
+          >
             <Search size={16} className="text-[#7A7058] flex-shrink-0" />
             <input
               type="search"
               placeholder={role === 'admin' ? 'Search incidents...' : 'Search requests...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066] min-w-0"
             />
-          </div>
+          </form>
 
           {/* Mute Toggles (Protected from scaling distortion) */}
           <button

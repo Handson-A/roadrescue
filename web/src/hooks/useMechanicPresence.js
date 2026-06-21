@@ -18,32 +18,34 @@ export function useMechanicPresence(mechanicId) {
 
     const supabase = createClient()
     const channel = supabase.channel('mechanic-presence', {
-      config: { presence: { key: mechanicId } }
+      config: { presence: { key: mechanicId } },
     })
 
     channel
       .on('presence', { event: 'join' }, () => {
+        // single source of truth is mechanic_profiles.current_status
       })
-      .on('presence', { event: 'leave' }, async ({ key }) => {        // mechanic disconnected — mark them unavailable in DB
-        if (key === mechanicId) {
-          await supabase
-            .from('mechanic_profiles')
-            .update({ is_available: false })
-            .eq('user_id', mechanicId)
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          // declare this mechanic as present
-          await channel.track({ mechanicId, online_at: new Date().toISOString() })
+.on('presence', { event: 'leave' }, async ({ key }) => {
+         // mechanic disconnected — mark them offline in DB
+         if (key === mechanicId) {
+           await supabase
+             .from('mechanic_profiles')
+             .update({ is_available: false })
+             .eq('user_id', mechanicId)
+         }
+       })
+.subscribe(async (status) => {
+         if (status === 'SUBSCRIBED') {
+           // declare this mechanic as present
+           await channel.track({ mechanicId, online_at: new Date().toISOString() })
 
-          // mark available in DB when they connect
-          await supabase
-            .from('mechanic_profiles')
-            .update({ is_available: true })
-            .eq('user_id', mechanicId)
-        }
-      })
+           // mark available in DB when they connect
+           await supabase
+             .from('mechanic_profiles')
+             .update({ is_available: true })
+             .eq('user_id', mechanicId)
+         }
+       })
 
     channelRef.current = channel
 

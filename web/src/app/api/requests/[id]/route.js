@@ -30,7 +30,7 @@ async function fetchRequestDetails(serviceClient, requestId) {
     request.mechanic_id
       ? serviceClient
           .from('mechanic_profiles')
-          .select('rating_avg, total_jobs, business_name, specializations, location_label')
+          .select('rating_avg, rating_count, business_name, specializations, location_label')
           .eq('user_id', request.mechanic_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),

@@ -66,9 +66,9 @@ export default function MechanicAccountPage() {
       // 2. Fetch specialized workplace fields using verified schema columns
       const { data: mechData } = await supabase
         .from('mechanic_profiles')
-        .select('business_name, specializations, location_label, service_radius, hourly_rate, current_status, years_experience, license_number, license_expiry, is_available, created_at')
-        .eq('user_id', currentUserId)
-        .maybeSingle()
+.select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, created_at')
+         .eq('user_id', currentUserId)
+         .maybeSingle()
 
       // 3. Query centralized application app profile preferences table
       let preferenceData = null
@@ -85,29 +85,24 @@ export default function MechanicAccountPage() {
       if (mounted && userIdRef.current) {
         setMechanicProfile(mechData || null)
 
-        setFormData((prev) => ({
-          ...prev,
-          fullName: baseProfile?.full_name || prev.fullName,
-          email: baseProfile?.email || user?.email || prev.email,
-          phone: baseProfile?.phone || prev.phone,
-          avatarUrl: baseProfile?.avatar_url || prev.avatarUrl,
-          businessName: mechData?.business_name || '',
-          specializations: Array.isArray(mechData?.specializations) ? mechData.specializations.join(', ') : (mechData?.specializations || ''),
-          serviceArea: mechData?.location_label || '',
-          serviceRadius: mechData?.service_radius || '',
-          hourlyRate: mechData?.hourly_rate || '',
-          currentStatus: mechData?.current_status || 'offline',
-          yearsExperience: mechData?.years_experience || '',
-          licenseNumber: mechData?.license_number || '',
-          licenseExpiry: mechData?.license_expiry || '',
-          availability: Boolean(mechData?.is_available),
-          
-          theme: preferenceData?.theme || 'system',
-          preferredLanguage: preferenceData?.preferred_language || 'en',
-          secondaryPhone: preferenceData?.secondary_phone || '',
-          notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
-          communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
-        }))
+setFormData((prev) => ({
+           ...prev,
+           fullName: baseProfile?.full_name || prev.fullName,
+           email: baseProfile?.email || user?.email || prev.email,
+           phone: baseProfile?.phone || prev.phone,
+           avatarUrl: baseProfile?.avatar_url || prev.avatarUrl,
+           businessName: mechData?.business_name || '',
+           specializations: Array.isArray(mechData?.specializations) ? mechData.specializations.join(', ') : (mechData?.specializations || ''),
+           serviceArea: mechData?.location_label || '',
+           yearsExperience: mechData?.years_experience || '',
+           availability: mechData?.is_available ?? false,
+           
+           theme: preferenceData?.theme || 'system',
+           preferredLanguage: preferenceData?.preferred_language || 'en',
+           secondaryPhone: preferenceData?.secondary_phone || '',
+           notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
+           communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
+         }))
       }
     }
 
@@ -197,19 +192,16 @@ export default function MechanicAccountPage() {
 
       if (profileError) throw profileError
 
-      const { error: mechanicError } = await supabase
-        .from('mechanic_profiles')
-        .update({
-          years_experience: formData.yearsExperience ? parseInt(formData.yearsExperience, 10) || 0 : 0,
-          service_radius: formData.serviceRadius ? parseInt(formData.serviceRadius, 10) || null : null,
-          hourly_rate: formData.hourlyRate ? Number(formData.hourlyRate) || null : null,
-          current_status: formData.currentStatus || (formData.availability ? 'online' : 'offline'),
-          specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
-          business_name: formData.businessName.trim() || null,
-          location_label: formData.serviceArea.trim() || null,
-          is_available: formData.availability,
-        })
-        .eq('user_id', user?.id)
+const { error: mechanicError } = await supabase
+         .from('mechanic_profiles')
+         .update({
+           years_experience: formData.yearsExperience ? parseInt(formData.yearsExperience, 10) || 0 : 0,
+           is_available: formData.availability,
+           specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
+           business_name: formData.businessName.trim() || null,
+           location_label: formData.serviceArea.trim() || null
+         })
+         .eq('user_id', user?.id)
 
       if (mechanicError) throw mechanicError
 
@@ -229,17 +221,14 @@ export default function MechanicAccountPage() {
         console.warn('Preferences middleware sync bypassed:', prefErr)
       }
 
-      setMechanicProfile((prev) => ({
-        ...prev,
-        business_name: formData.businessName,
-        specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
-        location_label: formData.serviceArea,
-        service_radius: formData.serviceRadius,
-        hourly_rate: formData.hourlyRate,
-        current_status: formData.currentStatus,
-        years_experience: formData.yearsExperience,
-        is_available: formData.availability,
-      }))
+setMechanicProfile((prev) => ({
+         ...prev,
+         business_name: formData.businessName,
+         specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
+         location_label: formData.serviceArea,
+         is_available: formData.availability,
+         years_experience: formData.yearsExperience,
+       }))
 
       toast.success('Profile configurations updated successfully')
       setIsEditing(false)
@@ -298,7 +287,7 @@ export default function MechanicAccountPage() {
                 <div className="mt-2.5 flex items-center gap-2">
                   <Badge label="Terminal Profile Active" variant="success" />
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${formData.availability ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
-                    {formData.availability ? 'Active in Pool' : 'Offline'}
+                    {formData.availability ? 'Online' : 'Offline'}
                   </span>
                 </div>
               </div>
@@ -340,7 +329,7 @@ export default function MechanicAccountPage() {
             <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
               {mechanicProfile?.created_at ? new Date(mechanicProfile.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'June 2026'}
             </p>
-            <p className="mt-1 text-xs font-medium text-slate-500">Account database registration instance</p>
+            <p className="mt-1 text-xs font-medium text-slate-500">Account registrated</p>
           </Card>
         </div>
 
@@ -455,7 +444,7 @@ export default function MechanicAccountPage() {
             <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
               <ShieldAlert size={16} className="text-amber-500" /> Gated System Records
             </h3>
-            <span className="text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200/40 font-bold uppercase tracking-wider">Locked Verification Vector</span>
+            <span className="text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200/40 font-bold uppercase tracking-wider">Locked</span>
           </div>
 
           <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">

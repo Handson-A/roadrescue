@@ -26,7 +26,7 @@ const Marker = dynamic(
 function MapClickHandler({ onClick }) {
   const { useMapEvent } = require('react-leaflet')
   useMapEvent('click', (event) => {
-    onClick(event.latlng.lat, event.lng)
+    onClick(event.latlng.lat, event.latlng.lng)
   })
   return null
 }
@@ -34,11 +34,16 @@ function MapClickHandler({ onClick }) {
 function MapController({ center, zoom }) {
   const { useMap } = require('react-leaflet')
   const map = useMap()
+  
   useEffect(() => {
     if (map) {
       map.setView(center, zoom)
+      setTimeout(() => {
+        map.invalidateSize()
+      }, 100)
     }
   }, [map, center, zoom])
+  
   return null
 }
 
@@ -47,11 +52,29 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
   const [lng, setLng] = useState('')
   const [address, setAddress] = useState('')
   const [mapCenter, setMapCenter] = useState([ACCRA_LAT, ACCRA_LNG])
+  const [customIcon, setCustomIcon] = useState(null)
   const callbackRef = useRef(null)
 
   useEffect(() => {
     callbackRef.current = onSelect || onLocationSelect
   }, [onSelect, onLocationSelect])
+
+  useEffect(() => {
+    const L = require('leaflet')
+    delete L.Icon.Default.prototype._getIconUrl
+    
+    setCustomIcon(
+      new L.Icon({
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      })
+    )
+  }, [])
 
   const reverseGeocode = useCallback(async (latitude, longitude) => {
     try {
@@ -92,24 +115,36 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
     })
   }, [reverseGeocode])
 
+  // FIXED: Added high-accuracy positioning parameters to force actual hardware GPS interrogation
   const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
+      console.warn('Geolocation sensor completely missing on this browser engine.')
       placeMarkerValue(ACCRA_LAT, ACCRA_LNG)
       return
     }
+
     navigator.geolocation.getCurrentPosition(
-      (position) => placeMarkerValue(position.coords.latitude, position.coords.longitude),
+      (position) => {
+        placeMarkerValue(position.coords.latitude, position.coords.longitude)
+      },
       (error) => {
-        console.warn('Geolocation error:', error)
+        console.warn('Geolocation sensor error profile:', error.message)
+        // Only drops to Accra fallback state if sensor query times out or permissions are explicitly denied
         placeMarkerValue(ACCRA_LAT, ACCRA_LNG)
+      },
+      {
+        enableHighAccuracy: true, // Forces mobile smartphones to wake up true GPS hardware
+        timeout: 8000,            // Give it 8 seconds to lock on coordinates
+        maximumAge: 0             // Do not use a stale cached location profile
       }
     )
   }, [placeMarkerValue])
 
-  // Initialize location on mount (deferred to avoid sync setState inside effect)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setTimeout(() => { detectLocation() }, 0)
+      // Slightly extended delay initialization loop to allow Next.js window rendering mechanics to settle
+      const timeoutId = setTimeout(() => { detectLocation() }, 200)
+      return () => clearTimeout(timeoutId)
     }
   }, [detectLocation])
 
@@ -122,7 +157,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 shadow-sm z-0">
         <MapContainer
           center={mapCenter}
           zoom={14}
@@ -134,8 +169,8 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {(lat && lng) && (
-            <Marker position={[Number(lat), Number(lng)]} />
+          {(lat && lng && customIcon) && (
+            <Marker position={[Number(lat), Number(lng)]} icon={customIcon} />
           )}
           <MapClickHandler onClick={placeMarkerValue} />
           <MapController center={mapCenter} zoom={14} />
