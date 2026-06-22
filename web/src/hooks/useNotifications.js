@@ -49,7 +49,8 @@ export function useNotifications(userId) {
       const { data } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', userId)
+        // New schema: notifications uses profile_id (not user_id)
+        .eq('profile_id', userId)
         .order('created_at', { ascending: false })
         .limit(20)
 
@@ -62,7 +63,6 @@ export function useNotifications(userId) {
     fetchNotifications()
 
     // subscribe to new notifications for this user only
-    // filter by user_id so each user only gets their own events
     const channel = supabase
       .channel(`notifications-${userId}`)
       .on(
@@ -71,7 +71,8 @@ export function useNotifications(userId) {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId}`,
+          // New schema: notifications uses profile_id (not user_id)
+          filter: `profile_id=eq.${userId}`,
         },
         (payload) => {
           const newNotification = payload.new
@@ -93,7 +94,7 @@ export function useNotifications(userId) {
       .eq('id', notificationId)
 
     setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+      prev.map(n => (n.id === notificationId ? { ...n, is_read: true } : n))
     )
     setUnreadCount(prev => Math.max(0, prev - 1))
   }
@@ -103,7 +104,8 @@ export function useNotifications(userId) {
     await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('user_id', userId)
+      // New schema: notifications uses profile_id (not user_id)
+      .eq('profile_id', userId)
       .eq('is_read', false)
 
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
@@ -118,3 +120,4 @@ export function useNotifications(userId) {
     getNotificationHref,
   }
 }
+

@@ -79,8 +79,7 @@ export default function RegisterForm() {
   async function saveDriverProfile(userId) {
     if (
       !formData.vehicleMake && !formData.vehicleModel && !formData.vehicleYear && 
-      !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea &&
-      !formData.emergencyContactName && !formData.emergencyContactPhone
+      !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea
     ) {
       return
     }
@@ -88,18 +87,18 @@ export default function RegisterForm() {
     const supabase = createClient()
     const driverPayload = {}
 
-    if (formData.vehicleMake.trim()) driverPayload.vehicle_make = formData.vehicleMake.trim()
-    if (formData.vehicleModel.trim()) driverPayload.vehicle_model = formData.vehicleModel.trim()
-    if (formData.vehicleYear) driverPayload.vehicle_year = parseInt(formData.vehicleYear, 10) || null
-    if (formData.vehicleColor.trim()) driverPayload.vehicle_color = formData.vehicleColor.trim()
-    if (formData.vehiclePlate.trim()) driverPayload.vehicle_plate = formData.vehiclePlate.trim().toUpperCase()
-    if (formData.serviceArea.trim()) driverPayload.home_area = formData.serviceArea.trim()
-    if (formData.emergencyContactName.trim()) driverPayload.emergency_contact_name = formData.emergencyContactName.trim()
-    
-    // FIXED: Form field map realigned back to snake_case schema to block payload drops
-    if (formData.emergencyContactPhone.trim()) driverPayload.emergency_contact_phone = formData.emergencyContactPhone.trim()
+    if (formData.serviceArea.trim()) {
+      driverPayload.home_area = formData.serviceArea.trim()
+    }
 
-    if (Object.keys(driverPayload).length === 0) return
+    // FIXED: Formats details down into JSONB preferences to respect structural table schema constraint limits
+    driverPayload.preferences = {
+      vehicle_make: formData.vehicleMake.trim(),
+      vehicle_model: formData.vehicleModel.trim(),
+      vehicle_year: formData.vehicleYear ? parseInt(formData.vehicleYear, 10) || null : null,
+      vehicle_color: formData.vehicleColor.trim(),
+      vehicle_plate: formData.vehiclePlate.trim().toUpperCase()
+    }
 
     const { error } = await supabase
       .from('driver_profiles')
@@ -107,6 +106,20 @@ export default function RegisterForm() {
       .eq('user_id', userId)
 
     if (error) throw error
+    
+    // Save emergency contacts to dedicated table
+    if (formData.emergencyContactName.trim() && formData.emergencyContactPhone.trim()) {
+      const { error: contactError } = await supabase
+        .from('user_emergency_contacts')
+        .insert({
+          user_id: userId,
+          name: formData.emergencyContactName.trim(),
+          phone: formData.emergencyContactPhone.trim(),
+          is_primary: true,
+        })
+      
+      if (contactError) console.warn('Emergency contact save failed:', contactError)
+    }
   }
 
   async function handleSubmit(e) {
@@ -172,33 +185,34 @@ export default function RegisterForm() {
           <div style="${containerStyle}">
             <div style="${headerStyle}">
               <span style="font-size: 10px; font-weight: 900; color: #F5D108; text-transform: uppercase; letter-spacing: 0.2em; display: block; margin-bottom: 6px;">Clearance Authenticated</span>
-              <h1 style="margin: 0; font-size: 20px; font-weight: 900; color: #ffffff;">Welcome to RoadRescue</h1>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 900; color: #ffffff;">Welcome to RoadRescue!</h1>
             </div>
             <div style="${bodyStyle}">
               <p style="${greetingStyle}">Welcome aboard, ${fullName},</p>
-              <p style="${textStyle}">Your security access token has been verified. Your platform identity configuration is now logged as an active <strong>${roleLabel}</strong> on our priority emergency dispatch network.</p>
+              <p style="${textStyle}">Successfully verified. You are now connected to the RoadRescue network as an active <strong>${roleLabel}</strong> </p>
               
               <div style="${parameterBoxStyle}">
                 <p style="font-size: 13px; line-height: 1.6; color: #1F1B10; margin: 0; font-weight: 500;">
                   ${roleLabel === 'mechanic' 
                     ? 'Thank you for partnering with us to keep our community safe and moving. We connect you with nearby breakdowns so you can grow your workshop revenue efficiently.' 
-                    : "Your safety is our top priority, and we're here to ensure help is always within reach. We are built to ensure every roadside connection is secure, reliable, and seamless."
+                    : "Your safety is our top priority, and we're here to ensure help is always within reach. We are built to ensure every roadside assistance is secure, reliable, and seamless."
                   }
                 </p>
               </div>
 
-              <p style="${textStyle}">Please log into your dashboard to update your profile picture, verify your direct contact lines, and prefill any vehicle or garage details to ensure perfect dispatch matching metrics.</p>
-              
+              <p style="${textStyle}">Please log into your dashboard to request rescues, update your profile picture, verify your direct contact lines, and prefill any vehicle or garage details to ensure perfect dispatch matching metrics.</p>
+              <br>
+              <p style="${textStyle}">If you have any questions or need assistance, please reach out to our support team at <a href="mailto:ayelgumhandson001@gmail.com" style="color: #F5D108; text-decoration: underline;">roadrescuesupportteam@dev</a></p>
+              <p style="${textStyle}">All the best</p>
               <div style="text-align: center; margin-top: 28px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue.com'}/auth/login" style="${buttonStyle}">Access Terminal Console</a>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/auth/login" style="${buttonStyle}">Go to Your Dashboard</a>
               </div>
             </div>
-            <div style="${footerStyle}">RoadRescue Operations Network</div>
+            <div style="${footerStyle}">RoadRescue GH Operations Network</div>
           </div>
         </div>
       `
 
-      // Fire off endpoint dispatch task explicitly after verifying DB profile writes completed
       await fetch('/api/notifications/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -215,6 +229,7 @@ export default function RegisterForm() {
       console.error('[SIGNUP PORTAL FAULT]', err)
       toast.error(err?.message || 'Registration failed')
     } finally {
+      document.body.style.pointerEvents = 'auto'
       setLoading(false)
     }
   }
@@ -375,7 +390,7 @@ export default function RegisterForm() {
       </div>
 
       {/* Consent Checkbox */}
-      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 select-none cursor-pointer">
         <input
           type="checkbox"
           checked={consentAccepted}
@@ -389,7 +404,7 @@ export default function RegisterForm() {
 
       <Button
         type="submit"
-        className="w-full bg-slate-900 text-xs font-black uppercase tracking-wider hover:bg-slate-800"
+        className="w-full bg-slate-900 text-xs font-black uppercase tracking-wider hover:bg-slate-800 py-3 rounded-xl"
         disabled={loading || !consentAccepted}
       >
         {loading ? 'Creating account...' : isMechanic ? 'Submit Mechanic Registration' : 'Submit Driver Registration'}

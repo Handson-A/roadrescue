@@ -2,7 +2,6 @@
  * Email notification helper for Resend
  * Use this to send notifications to drivers, mechanics, admins
  */
-
 export async function sendNotificationEmail({
   to,
   subject,
@@ -18,7 +17,12 @@ export async function sendNotificationEmail({
   const htmlContent = buildEmailTemplate(type, data)
 
   try {
-    const response = await fetch('/api/notifications/email', {
+    // Fallback determination for backend executions lacking window domains
+    const origin = typeof window !== 'undefined' 
+      ? window.location.origin 
+      : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+
+    const response = await fetch(`${origin}/api/notifications/email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,6 +71,7 @@ function buildEmailTemplate(type, data = {}) {
     background: white;
     padding: 30px;
     border-radius: 0 0 12px 12px;
+    color: #334155;
   `
 
   const buttonStyle = `
@@ -81,7 +86,7 @@ function buildEmailTemplate(type, data = {}) {
   `
 
   switch (type) {
-case 'new_request':
+    case 'new_request':
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
@@ -96,7 +101,7 @@ case 'new_request':
               <p><strong>Distance:</strong> ${data.distance || 'N/A'} away</p>
             </div>
             <p>Accept and head to the driver's location.</p>
-            <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">View Request</a>
+            <a href="${data.appUrl || 'https://roadrescue-gh.vercel.app/requests'}" style="${buttonStyle}">View Request</a>
           </div>
         </div>
       `
@@ -112,10 +117,10 @@ case 'new_request':
             <p><strong>${data.mechanicName || 'A mechanic'}</strong> accepted your rescue request and is heading to your location.</p>
             <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <p><strong>Mechanic:</strong> ${data.mechanicName}</p>
-              <p><strong>Location:</strong> ${data.location}</p>
+              <p><strong>Location:</strong> ${data.location || 'Pinned Coordinates'}</p>
             </div>
             <p>They'll arrive soon. You can track their progress in the app.</p>
-            <a href="${data.appUrl || 'https://roadrescue.com'}" style="${buttonStyle}">Track Progress</a>
+            <a href="${data.appUrl || 'https://roadrescue-gh.vercel.app'}" style="${buttonStyle}">Track Progress</a>
           </div>
         </div>
       `
@@ -130,7 +135,40 @@ case 'new_request':
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
             <p><strong>${data.mechanicName || 'The mechanic'}</strong> has completed your rescue request.</p>
             <p>Please take a moment to rate your experience and leave feedback.</p>
-            <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">Rate & Review</a>
+            <a href="${data.appUrl || 'https://roadrescue-gh.vercel.app/requests'}" style="${buttonStyle}">Rate & Review</a>
+          </div>
+        </div>
+      `
+
+    case 'job_completed_with_no_feedback':
+      return `
+        <div style="${baseStyle}">
+          <div style="${headerStyle}">
+            <h1 style="margin: 0; font-size: 24px;">🎉 Until your next smooth mile!</h1>
+          </div>
+          <div style="${contentStyle}">
+            <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
+            <p><strong>${data.mechanicName || 'The mechanic'}</strong> has completed your rescue request.</p>
+            <p>We hope you had a smooth experience! Drive safe.</p>
+          </div>
+        </div>
+      `
+
+    case 'farewell_safety':
+      return `
+        <div style="${baseStyle}">
+          <div style="${headerStyle}">
+            <h1 style="margin: 0; font-size: 24px;">🚗 Safe Travels Ahead</h1>
+          </div>
+          <div style="${contentStyle}">
+            <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
+            <p>Your vehicle maintenance tracking log has been updated successfully.</p>
+            <div style="background: #fffbeb; border-left: 4px solid #f5d108; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0; font-style: italic; font-weight: bold; color: #7c2d12;">
+                "Until your next smooth ride, stay safe and drive responsibly! 🚗💨"
+              </p>
+            </div>
+            <p>Thank you for trusting the RoadRescue dispatch network.</p>
           </div>
         </div>
       `
@@ -139,7 +177,7 @@ case 'new_request':
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;"> Mechanic On The Way</h1>
+            <h1 style="margin: 0; font-size: 24px;">🚀 Mechanic On The Way</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
@@ -149,7 +187,7 @@ case 'new_request':
               <p><strong>Mechanic:</strong> ${data.mechanicName}</p>
             </div>
             <p>Track their location in real-time in the app.</p>
-            <a href="${data.appUrl || 'https://roadrescue.com/requests'}" style="${buttonStyle}">Track Location</a>
+            <a href="${data.appUrl || 'https://roadrescue-gh.vercel.app/requests'}" style="${buttonStyle}">Track Location</a>
           </div>
         </div>
       `
@@ -158,11 +196,11 @@ case 'new_request':
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 20px;"> RoadRescue Notification</h1>
+            <h1 style="margin: 0; font-size: 20px;">RoadRescue Notification</h1>
           </div>
           <div style="${contentStyle}">
             <p>${data.message || 'You have a new notification.'}</p>
-            <a href="${data.appUrl || 'https://roadrescue.com'}" style="${buttonStyle}">Open App</a>
+            <a href="${data.appUrl || 'https://roadrescue-gh.vercel.app'}" style="${buttonStyle}">Open App</a>
           </div>
         </div>
       `

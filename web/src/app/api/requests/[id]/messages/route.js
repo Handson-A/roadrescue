@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
 
     const { data: messages, error: messagesError } = await supabase
       .from('messages')
-      .select('id, sender_id, sender_role, message, created_at')
+      .select('id, sender_id, message, created_at')
       .eq('request_id', requestId)
       .order('created_at', { ascending: true })
 
@@ -87,7 +87,6 @@ export async function POST(request, { params }) {
       .insert({
         request_id: requestId,
         sender_id: user.id,
-        sender_role: senderRole,
         message,
       })
       .select()

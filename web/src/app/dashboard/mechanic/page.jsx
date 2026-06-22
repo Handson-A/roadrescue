@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -13,17 +14,17 @@ import { useAuth } from '@/hooks/useAuth'
 import { timeAgo } from '@/lib/utils'
 import { Radio, AlertCircle, Wrench, DollarSign, ShieldCheck, X, AlertTriangle, MapPin } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useMechanicStatus } from '@/hooks/useMechanicStatus'
 
-// Client-safe Leaflet Map Lazy Loader Container
 const RescueMap = dynamic(
   () => import('@/components/map/RescueMap'),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="w-full h-[370px] flex items-center justify-center bg-slate-50 border rounded-2xl">
         <Spinner />
       </div>
-    )
+    ),
   }
 )
 
@@ -31,110 +32,155 @@ export default function MechanicPage() {
   const { user } = useAuth()
   const [incomingJobs, setIncomingJobs] = useState([])
   const [activeJobs, setActiveJobs] = useState([])
-  const [available, setAvailable] = useState(false)
   const [mechProfile, setMechProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showOfflineModal, setShowOfflineModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [jobSearchResults, setJobSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
+  
   const userIdRef = useRef(user?.id)
+  const searchParams = useSearchParams()
+  const { isAvailable, updateStatus, localCoords } = useMechanicStatus(user?.id)
 
   useEffect(() => {
-  userIdRef.current = user?.id
+    const q = searchParams.get('search') || ''
+    Promise.resolve().then(() => {
+      setSearchQuery(q)
+    })
+  }, [searchParams])
 
-  if (!userIdRef.current) return
-  let mounted = true
+  useEffect(() => {
+    userIdRef.current = user?.id
+    if (!userIdRef.current) return
+    let mounted = true
 
-  async function loadJobs() {
-    const currentUserId = userIdRef.current
-    if (!currentUserId) return
+    async function loadJobs() {
+      const currentUserId = userIdRef.current
+      if (!currentUserId) return
+
+      const supabase = createClient()
+
+      const { data: mechanicData, error: profileErr } = await supabase
+        .from('mechanic_profiles')
+        .select('business_name, years_experience, is_available')
+        .eq('user_id', currentUserId)
+        .maybeSingle()
+
+      if (profileErr) console.error('[DB EXCEPTION] Profile fetch:', profileErr.message)
+
+      const { data: pending, error: pendingErr } = await supabase
+        .from('rescue_requests')
+        .select('id, status, service_type, problem_description, incident_address, incident_location, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (pendingErr) console.error('[DB EXCEPTION] Pending fetch:', pendingErr.message)
+
+      // FIXED: Cleaned and unified the active request tracking assignment query chain
+const { data: active, error: activeErr } = await supabase
+  .from('rescue_requests')
+  .select(`
+    id,
+    status,
+    service_type,
+    problem_description,
+    incident_address,
+    incident_location,
+    created_at,
+    incident_lat,
+    incident_lng,
+    driver:profiles!rescue_requests_driver_id_fkey (id, full_name, phone)
+  `)
+  .eq('mechanic_id', currentUserId)
+  .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
+  .order('created_at', { ascending: false })
+
+      if (activeErr) console.error('[DB EXCEPTION] Active fetch:', activeErr.message)
+
+      if (mounted && userIdRef.current) {
+        setMechProfile(mechanicData || null)
+        setIncomingJobs(pending || [])
+        setActiveJobs(active || [])
+        setLoading(false)
+      }
+    }
+
+    loadJobs()
+    const interval = setInterval(loadJobs, 10000)
 
     const supabase = createClient()
-    
-    // Fetch mechanic profile metrics cleanly
-    const { data: mechanicData, error: profileErr } = await supabase
-      .from('mechanic_profiles')
-      .select('business_name, is_available, years_experience')
-      .eq('user_id', currentUserId)
-      .maybeSingle()
+    const channel = supabase
+      .channel('mechanic-dashboard-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rescue_requests' },
+        () => {
+          loadJobs()
+        }
+      )
+      .subscribe()
 
-    if (profileErr) console.error('[DB EXCEPTION] Profile fetch:', profileErr.message)
-
-    // Fetch pending requests pool
-    const { data: pending, error: pendingErr } = await supabase
-      .from('rescue_requests')
-      .select('id, status, service_type, problem_description, incident_address, created_at')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-
-    if (pendingErr) console.error('[DB EXCEPTION] Pending fetch:', pendingErr.message)
-
-    // Fetch active assignments pool
-    const { data: active, error: activeErr } = await supabase
-      .from('rescue_requests')
-      .select(`
-        id,
-        status,
-        service_type,
-        problem_description,
-        incident_address,
-        created_at,
-        incident_lat,
-        incident_lng,
-        driver:profiles!rescue_requests_driver_id_fkey (id, full_name, phone)
-      `)
-      .eq('mechanic_id', currentUserId)
-      .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
-      .order('created_at', { ascending: false })
-
-    if (activeErr) console.error('[DB EXCEPTION] Active fetch:', activeErr.message)
-
-    if (mounted && userIdRef.current) {
-      setMechProfile(mechanicData || null)
-      
-      // REMOVED THE BUG: No longer resetting state to 0 on every polling cycle
-      if (mechanicData) {
-        setAvailable(Boolean(mechanicData.is_available))
-      }
-      
-      setIncomingJobs(pending || [])
-      setActiveJobs(active || [])
-      setLoading(false)
+    return () => {
+      mounted = false
+      clearInterval(interval)
+      supabase.removeChannel(channel)
     }
-  }
+  }, [user?.id])
 
-  loadJobs()
-  const interval = setInterval(loadJobs, 10000)
-  return () => {
-    mounted = false
-    clearInterval(interval)
-  }
-}, [user?.id])
+  useEffect(() => {
+    if (!searchQuery) {
+      Promise.resolve().then(() => {
+        setJobSearchResults([])
+        setHasSearched(false)
+      })
+      return
+    }
+
+    let mounted = true
+    Promise.resolve().then(() => {
+      setSearchLoading(true)
+      setHasSearched(true)
+    })
+
+    async function searchJobs() {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+        const json = await res.json()
+        if (mounted) setJobSearchResults(json.results || [])
+      } catch (err) {
+        console.error('[MECHANIC SEARCH]:', err)
+      } finally {
+        if (mounted) setSearchLoading(false)
+      }
+    }
+
+    searchJobs()
+    return () => { mounted = false }
+  }, [searchQuery])
 
   const handleAvailabilityToggle = async () => {
-    if (available) {
+    if (isAvailable) {
       setShowOfflineModal(true)
     } else {
-      await executeStatusUpdate(true)
+      try {
+        await updateStatus('available')
+        toast.success('Duty status configured: Online')
+      } catch (e) {
+        toast.error('Failed to go online')
+      }
     }
   }
 
-  const executeStatusUpdate = async (status) => {
-    const currentUserId = userIdRef.current
-    const supabase = createClient()
-    
-    setAvailable(status)
+  const executeStatusUpdate = async (nextAvailable) => {
     setShowOfflineModal(false)
-
     try {
-      const { error } = await supabase
-        .from('mechanic_profiles')
-        .update({ is_available: status })
-        .eq('user_id', currentUserId)
-
-      if (error) throw error
-      toast.success(`Duty status configured: ${status ? 'Online' : 'Offline'}`)
+      await updateStatus(nextAvailable ? 'available' : 'offline')
+      toast.success(`Duty status configured: ${nextAvailable ? 'Online' : 'Offline'}`)
     } catch (err) {
-      console.error('[STATUS FAULT]:', err.message)
-      setAvailable(!status)
+      console.error('[STATUS FAULT]:', err?.message || err)
+      toast.error('Failed to update duty status')
     }
   }
 
@@ -149,6 +195,13 @@ export default function MechanicPage() {
     )
   }
 
+  // FIXED: Logic gateway mapping targeted parameters seamlessly down onto the map frame
+  const targetMapRequest = activeJobs.length > 0 
+    ? activeJobs[0] 
+    : incomingJobs.length > 0 
+      ? incomingJobs[0] 
+      : null
+
   return (
     <PageWrapper 
       title="Service Console" 
@@ -157,16 +210,16 @@ export default function MechanicPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
         {/* ================= TOP DISPATCH POOL CONTROLLER ================= */}
-        <div className={`rounded-2xl border p-5 transition-all duration-300 ${available ? 'bg-emerald-50/60 border-emerald-200/80' : 'bg-slate-100 border-slate-200'}`}>
+        <div className={`rounded-2xl border p-5 transition-all duration-300 ${isAvailable ? 'bg-emerald-50/60 border-emerald-200/80' : 'bg-slate-100 border-slate-200'}`}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3.5">
-              <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${available ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
-                <Radio size={20} className={available ? 'animate-pulse' : ''} />
+              <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${isAvailable ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
+                <Radio size={20} className={isAvailable ? 'animate-pulse' : ''} />
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Duty Status</span>
                 <h2 className="text-xl font-extrabold text-[#111827] tracking-tight">
-                  {available ? 'Online & Receiving Requests' : 'Offline from Dispatch Pool'}
+                  {isAvailable ? 'Online & Receiving Requests' : 'Offline from Dispatch Pool'}
                 </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 font-medium">
                   <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 capitalize">
@@ -178,11 +231,11 @@ export default function MechanicPage() {
               </div>
             </div>
             <Button 
-              variant={available ? 'outline' : 'primary'} 
+              variant={isAvailable ? 'outline' : 'primary'} 
               onClick={handleAvailabilityToggle}
-              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${available ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-[#F5D108] hover:bg-[#F5D108]/90 text-slate-900'}`}
+              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${isAvailable ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-[#F5D108] hover:bg-[#F5D108]/90 text-slate-900'}`}
             >
-              {available ? 'Go Offline' : 'Go Online'}
+              {isAvailable ? 'Go Offline' : 'Go Online'}
             </Button>
           </div>
         </div>
@@ -198,10 +251,10 @@ export default function MechanicPage() {
             <p className="mt-1 text-xs text-slate-500 font-medium">Assigned requests in progress</p>
           </Card>
           
-          <Card className={`rounded-xl p-5 shadow-sm border transition-colors ${incomingJobs.length > 0 && available ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'}`}>
+          <Card className={`rounded-xl p-5 shadow-sm border transition-colors ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Incoming Requests</span>
-              <AlertCircle size={16} className={incomingJobs.length > 0 && available ? 'text-amber-500' : 'text-slate-400'} />
+              <AlertCircle size={16} className={incomingJobs.length > 0 && isAvailable ? 'text-amber-500' : 'text-slate-400'} />
             </div>
             <p className="mt-2 text-4xl font-black text-[#111827] tracking-tight">{incomingJobs.length}</p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Unassigned breakdowns nearby</p>
@@ -209,7 +262,7 @@ export default function MechanicPage() {
 
           <Card className="rounded-xl border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Operation Center</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operation Center</span>
               <DollarSign size={16} className="text-slate-400" />
             </div>
             <p className="mt-2 text-xl font-black text-[#111827] truncate tracking-tight pt-1.5">
@@ -222,13 +275,13 @@ export default function MechanicPage() {
         {/* ================= PRIMARY CONSOLE WORKING INTERFACE ================= */}
         <div className="grid gap-6 lg:grid-cols-12">
           
-          {/* LEFT AREA: FIXED PRECISE OVERFLOW WRAPPING ACCORDING TO image_be026a.jpg */}
+          {/* LEFT AREA: MAP MODULE */}
           <div className="space-y-4 lg:col-span-7">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
               <div className="bg-slate-50 border-b border-slate-200/60 px-4 py-3.5 flex items-center justify-between z-20">
                 <div className="space-y-0.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Live Tracking</span>
-                  <h3 className="text-sm font-black text-slate-900 tracking-tight">Spatial Routing Topology Tracker</h3>
+                  <h3 className="text-sm font-black text-slate-900 m-0">Route and Location Feed</h3>
                 </div>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/50">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -236,19 +289,21 @@ export default function MechanicPage() {
                 </span>
               </div>
               
-              {/* FIXED UI: Absolute hidden overflow wrapping fixes the square clipping blowout seen in image_be026a.jpg */}
               <div className="w-full h-[370px] relative overflow-hidden bg-slate-50 rounded-b-2xl z-10">
+                {/* FIXED: Form parameters match current location metrics explicitly */}
                 <RescueMap 
-                  request={activeJobs.length > 0 ? activeJobs[0] : null} 
+                  request={targetMapRequest} 
+                  mechanicLocation={localCoords}
+                  incomingJobs={incomingJobs}
                   isRadarMode={activeJobs.length === 0}
-                  isOnline={available}
+                  isOnline={isAvailable}
                   height="100%" 
                 />
               </div>
             </div>
 
             {activeJobs.length > 0 && (
-              <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
+              <Card className="rounded-2xl border-slate-200 bg-white shadow-sm p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Active Job Queues</h3>
                   <span className="text-xs font-medium text-emerald-600">Keep these moving</span>
@@ -359,6 +414,36 @@ export default function MechanicPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {hasSearched && (
+        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
+            Job search results for &quot;{searchQuery}&quot;
+          </h3>
+          {searchLoading ? (
+            <div className="flex justify-center py-8"><Spinner /></div>
+          ) : jobSearchResults.length === 0 ? (
+            <p className="text-xs font-medium text-slate-400 text-center py-6">No matching jobs found.</p>
+          ) : (
+            <div className="space-y-3">
+              {jobSearchResults.map((job) => (
+                <Link key={job.id} href={`/dashboard/mechanic/job/${job.id}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 hover:border-slate-200 transition-all">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge label={job.status} variant={job.status} dot />
+                      <span className="text-[11px] font-medium text-slate-400">{timeAgo(job.created_at)}</span>
+                    </div>
+                    <p className="mt-1.5 text-sm font-bold text-slate-900 leading-snug">{job.problem_description}</p>
+                    <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+                      <MapPin size={11} className="text-slate-400" /> {job.incident_address || 'GPS active'}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
       )}
     </PageWrapper>
   )

@@ -1,5 +1,6 @@
 export const REQUEST_STATUS = {
   PENDING: 'pending',
+  OFFERED: 'offered',
   ACCEPTED: 'accepted',
   EN_ROUTE: 'en_route',
   ARRIVED: 'arrived',
@@ -25,18 +26,22 @@ export const USER_ROLE = {
 
 export const VERIFICATION_STATUS = {
   PENDING: 'pending',
-  VERIFIED: 'verified',
+  APPROVED: 'approved',
   REJECTED: 'rejected',
+  MORE_INFO: 'more_info',
 }
 
 export const NOTIFICATION_TYPE = {
+  SYSTEM: 'system',
+  REQUEST: 'request',
+  CHAT: 'chat',
+  VERIFICATION: 'verification',
   NEW_REQUEST: 'new_request',
   MECHANIC_ACCEPTED: 'mechanic_accepted',
   MECHANIC_EN_ROUTE: 'mechanic_en_route',
   MECHANIC_ARRIVED: 'mechanic_arrived',
   JOB_COMPLETED: 'job_completed',
   REQUEST_CANCELLED: 'request_cancelled',
-  SYSTEM_ALERT: 'system_alert',
 }
 
 // how far we search for mechanics by default

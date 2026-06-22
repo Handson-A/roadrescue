@@ -1,105 +1,8 @@
-// /**
-//  * Shared Utility Functions
-//  */
-
-// /**
-//  * Format distance in kilometers to user-friendly string
-//  */
-// export function formatDistance(km) {
-//   if (km < 1) {
-//     return `${Math.round(km * 1000)}m`;
-//   }
-//   return `${km.toFixed(1)}km`;
-// }
-
-// /**
-//  * Calculate great-circle distance between two points
-//  */
-// export function calculateDistance(lat1, lon1, lat2, lon2) {
-//   const R = 6371; // Earth radius in kilometers
-//   const dLat = ((lat2 - lat1) * Math.PI) / 180;
-//   const dLon = ((lon2 - lon1) * Math.PI) / 180;
-//   const a =
-//     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-//     Math.cos((lat1 * Math.PI) / 180) *
-//       Math.cos((lat2 * Math.PI) / 180) *
-//       Math.sin(dLon / 2) *
-//       Math.sin(dLon / 2);
-//   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-//   return R * c;
-// }
-
-// /**
-//  * Format timestamp to readable date time
-//  */
-// export function formatDateTime(date) {
-//   return new Date(date).toLocaleString('en-US', {
-//     year: 'numeric',
-//     month: 'short',
-//     day: 'numeric',
-//     hour: '2-digit',
-//     minute: '2-digit',
-//   });
-// }
-
-// /**
-//  * Validate email format
-//  */
-// export function isValidEmail(email) {
-//   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//   return emailRegex.test(email);
-// }
-
-// /**
-//  * Validate phone format (basic)
-//  */
-// export function isValidPhone(phone) {
-//   const phoneRegex = /^[\d\s\-+()]+$/;
-//   return phoneRegex.test(phone) && phone.length >= 10;
-// }
-
-// /**
-//  * Generate random ID
-//  */
-// export function generateId() {
-//   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-// }
-
-// /**
-//  * Truncate string to max length with ellipsis
-//  */
-// export function truncateText(text, maxLength = 100) {
-//   if (text.length <= maxLength) return text;
-//   return text.substr(0, maxLength) + '...';
-// }
-
-// /**
-//  * Sleep function for delays
-//  */
-// export function sleep(ms) {
-//   return new Promise((resolve) => setTimeout(resolve, ms));
-// }
-
-// /**
-//  * Retry logic for API calls
-//  */
-// export async function retryAsync(fn, maxRetries = 3, delay = 1000) {
-//   let lastError;
-//   for (let i = 0; i < maxRetries; i++) {
-//     try {
-//       return await fn();
-//     } catch (error) {
-//       lastError = error;
-//       if (i < maxRetries - 1) {
-//         await sleep(delay);
-//       }
-//     }
-//   }
-//   throw lastError;
-// }
-
 // web/src/lib/utils.js
 // Shared helpers used across components and lib functions.
+
+import { clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 // format a distance for display
 // e.g. 0.8 → "800 m", 2.4 → "2.4 km"
@@ -152,9 +55,53 @@ export function truncate(str, maxLength = 80) {
   return str.slice(0, maxLength).trimEnd() + '...'
 }
 
-import { clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
 export function cn(...inputs) {
   return twMerge(clsx(inputs))
+}
+
+// ==================================================================== 
+// ADDED GEOSPATIAL HELPERS FOR REAL-TIME DISPATCH MAP INTERFACES      
+// ==================================================================== 
+
+/**
+ * Normalizes loose variant geometries from Supabase PostGIS objects or 
+ * strings down into a structured [lat, lng] layout array.
+ */
+export function normalizeGeoPoint(incidentLocation) {
+  if (!incidentLocation) return [5.6037, -0.1870] // Fallback to central Accra
+
+  // If it's an array already
+  if (Array.isArray(incidentLocation)) {
+    return [Number(incidentLocation[0]), Number(incidentLocation[1])]
+  }
+
+  // If it's a Supabase/Postgres point object { lat, lng } or { x, y }
+  if (typeof incidentLocation === 'object') {
+    const lat = incidentLocation.lat ?? incidentLocation.y
+    const lng = incidentLocation.lng ?? incidentLocation.x
+    if (lat !== undefined && lng !== undefined) {
+      return [Number(lat), Number(lng)]
+    }
+  }
+
+  // If it's returned as a raw WKT string string e.g. "POINT(-0.1870 5.6037)"
+  if (typeof incidentLocation === 'string' && incidentLocation.includes('POINT')) {
+    const matches = incidentLocation.match(/POINT\(([^ ]+)\s+([^)]+)\)/)
+    if (matches && matches[2] && matches[1]) {
+      return [Number(matches[2]), Number(matches[1])] // [lat, lng]
+    }
+  }
+
+  return [5.6037, -0.1870]
+}
+
+/**
+ * Generates transit and ride-hailing alternative routes based on the breakdown pin
+ */
+export function buildTransitLinks(geoPointArray) {
+  const [lat, lng] = geoPointArray || [5.6037, -0.1870]
+  return {
+    primary: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+    fallback: `https://maps.google.com/?q=${lat},${lng}`
+  }
 }

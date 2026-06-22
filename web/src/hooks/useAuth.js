@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/store/authStore'
 
 export function useAuth() {
-  const { user, profile, loading } = useAuthStore()
+  const { user, profile, loading, setProfile } = useAuthStore()
   const role = profile?.role || user?.role || null
 
   return {
@@ -9,6 +9,7 @@ export function useAuth() {
     profile,
     loading,
     role,
+    setProfile,
     isDriver: role === 'driver',
     isMechanic: role === 'mechanic',
     isAdmin: role === 'admin',

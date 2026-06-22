@@ -2,11 +2,13 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic' // Added for safe server-side rendering exclusion
 
 import { 
   Bell, CarFront, ClipboardList, Radar, ShieldCheck, 
-  Users, Wrench, ChevronDown, ChevronUp, Radio, Network 
+  Users, Wrench, ChevronDown, ChevronUp, Radio, Network,
+  MapPin, User, HardHat, ArrowRight
 } from 'lucide-react'
 
 import AdminEscalation from '@/components/admin/AdminEscalation'
@@ -15,6 +17,7 @@ import Card from '@/components/ui/Card'
 import PageWrapper from '@/components/layout/PageWrapper'
 import { useAuth } from '@/hooks/useAuth'
 import Spinner from '@/components/ui/Spinner'
+import { createClient } from '@/lib/supabase/client'
 
 // Lazy-load the Leaflet container to completely prevent browser global window crashes during SSR
 const LiveHotspotsMap = dynamic(
@@ -62,6 +65,11 @@ export default function AdminDashboardPage() {
   const [recentRequests, setRecentRequests] = useState([])
   const [pendingMechanics, setPendingMechanics] = useState([])
   const [escalationExpanded, setEscalationExpanded] = useState(false)
+  const searchParams = useSearchParams()
+  const searchQuery = searchParams.get('search') || ''
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -91,11 +99,55 @@ export default function AdminDashboardPage() {
     loadAdminDashboard()
     const interval = setInterval(loadAdminDashboard, 10000)
 
+    const supabase = createClient()
+    const channel = supabase
+      .channel('admin-dashboard-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rescue_requests' },
+        () => {
+          loadAdminDashboard()
+        }
+      )
+      .subscribe()
+
     return () => {
       mounted = false
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
   }, [])
+
+  useEffect(() => {
+    if (!searchQuery) {
+      Promise.resolve().then(() => {
+        setSearchResults([])
+        setHasSearched(false)
+      })
+      return
+    }
+
+    let mounted = true
+    Promise.resolve().then(() => {
+      setSearchLoading(true)
+      setHasSearched(true)
+    })
+
+    async function adminSearch() {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+        const json = await res.json()
+        if (mounted) setSearchResults(json.results || [])
+      } catch (err) {
+        console.error('[ADMIN SEARCH]:', err)
+      } finally {
+        if (mounted) setSearchLoading(false)
+      }
+    }
+
+    adminSearch()
+    return () => { mounted = false }
+  }, [searchQuery])
 
   const dashboardStats = [
     { label: 'Total Requests', value: String(stats?.totalRequests ?? 0), note: 'All-time breakdown tickets', icon: ClipboardList },
@@ -171,7 +223,10 @@ export default function AdminDashboardPage() {
 
             {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
             <div className="p-4 bg-slate-50/40">
-              <LiveHotspotsMap mechanics={stats?.activeMechanicLocations || []} />
+              <LiveHotspotsMap 
+                mechanics={stats?.activeMechanicLocations || []} 
+                activeIncidents={stats?.activeIncidents || []} 
+              />
             </div>
           </Card>
 
@@ -308,6 +363,36 @@ export default function AdminDashboardPage() {
             <span>Terminal Connected: Authenticated Session Node — </span>
             <span className="font-bold text-slate-800">{profile?.full_name || 'System Administrator'}</span>
           </div>
+        )}
+
+        {hasSearched && (
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
+              Incident search results for &quot;{searchQuery}&quot;
+            </h3>
+            {searchLoading ? (
+              <div className="flex justify-center py-8"><Spinner /></div>
+            ) : searchResults.length === 0 ? (
+              <p className="text-xs font-medium text-slate-400 text-center py-6">No matching incidents found.</p>
+            ) : (
+              <div className="space-y-3">
+                {searchResults.map((req) => (
+                  <Link key={req.id} href={`/dashboard/admin/requests/${req.id}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 hover:border-slate-200 transition-all">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge label={req.status} variant={req.status} dot />
+                        <span className="text-[11px] font-medium text-slate-400">{timeAgo(req.created_at)}</span>
+                      </div>
+                      <p className="mt-1.5 text-sm font-bold text-slate-900 leading-snug">{req.problem_description}</p>
+                      <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+                        <MapPin size={11} className="text-slate-400" /> {req.incident_address || 'GPS active'}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Card>
         )}
       </div>
     </PageWrapper>

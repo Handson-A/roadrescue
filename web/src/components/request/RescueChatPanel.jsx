@@ -14,12 +14,16 @@ export default function RescueChatPanel({
 }) {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!!requestId)
   const [currentUserId, setCurrentUserId] = useState(null)
   const messagesEndRef = useRef(null)
   const supabase = createClient()
 
   useEffect(() => {
+    if (!requestId) {
+      return
+    }
+
     async function loadUserAndMessages() {
       const { data: { user } } = await supabase.auth.getUser()
       setCurrentUserId(user?.id || null)
@@ -36,6 +40,8 @@ export default function RescueChatPanel({
   }, [requestId, supabase])
 
   useEffect(() => {
+    if (!requestId) return
+
     const channel = supabase
       .channel(`messages-${requestId}`)
       .on(
@@ -60,7 +66,7 @@ export default function RescueChatPanel({
   }, [messages])
 
   const sendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || !requestId) return
 
     const response = await fetch(`/api/requests/${requestId}/messages`, {
       method: 'POST',
@@ -102,6 +108,10 @@ export default function RescueChatPanel({
         <div className="space-y-4">
           {loading ? (
             <div className="text-center text-sm text-slate-500">Loading messages...</div>
+          ) : messages.length === 0 && !requestId ? (
+            <div className="text-center text-sm text-slate-500">
+              Admin coordination console is read-only. Select a specific request to chat.
+            </div>
           ) : messages.length === 0 ? (
             <div className="text-center text-sm text-slate-500">No messages yet. Start the conversation.</div>
           ) : (
@@ -130,10 +140,11 @@ export default function RescueChatPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Type a message..."
-            className="min-w-0 flex-1 bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
+            placeholder={requestId ? "Type a message..." : "Select a request to chat..."}
+            disabled={!requestId}
+            className="min-w-0 flex-1 bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
           />
-          <button onClick={sendMessage} disabled={!input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-400 text-slate-950 disabled:opacity-50" aria-label="Send message">
+          <button onClick={sendMessage} disabled={!input.trim() || !requestId} className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-400 text-slate-950 disabled:opacity-50" aria-label="Send message">
             <Send size={16} />
           </button>
         </div>

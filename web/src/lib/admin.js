@@ -1,73 +1,113 @@
 import { VERIFICATION_STATUS } from '@/lib/constants'
 
-// ================================================
-// MECHANIC VERIFICATION
-// ================================================
+// ============================================================================
+// 1. MECHANIC VERIFICATION MECHANICS (FIXED UNIFIED STRUCTURAL JOIN)
+// ============================================================================
 
-// Fetch all mechanics matching a given verification state
+/**
+ * Fetch all mechanics matching a given verification state
+ * Pulls from verification logs, profiles, and workshop metadata tables in one query.
+ */
 export async function getMechanicsByStatus(serviceSupabase, status = 'pending') {
-  // Query status via relational link table mapping
-  const { data, error } = await serviceSupabase
+  // FIXED: Executing an elegant inner relational join strategy instead of repetitive loop queries
+  const { data: verifications, error: verifyError } = await serviceSupabase
     .from('mechanic_verifications')
     .select(`
       id,
       status,
       created_at,
-      mechanic:mechanic_profiles!inner (
-        user_id,
+      mechanic_id,
+      mechanic_profiles!inner(
         business_name,
         years_experience,
         location_label,
-        profile:profiles (
+        specializations,
+        profiles!user_id(
           id,
           full_name,
           phone,
-          avatar_url
+          avatar_url,
+          role
         )
       )
     `)
     .eq('status', status)
     .order('created_at', { ascending: true })
 
-  if (error) throw error
-  
-  // Format flat shape mapping to stay backwards-compatible with your frontend layout views
-  return data.map(item => ({
-    user_id: item.mechanic?.user_id,
-    business_name: item.mechanic?.business_name,
-    years_experience: item.mechanic?.years_experience,
-    location_label: item.mechanic?.location_label,
-    verification_status: item.status,
-    created_at: item.created_at,
-    user: item.mechanic?.profile
-  }))
+  if (verifyError) {
+    console.error('[DB EXCEPTION] Unified join verification pipeline failed:', verifyError.message)
+    throw verifyError
+  }
+
+  // Map the clean database relational nesting straight to your frontend model expectations
+  return (verifications || []).map((item) => {
+    const mechProfile = item.mechanic_profiles
+    const userProfile = mechProfile?.profiles
+
+    // Safe JSON processing for specialized tag objects
+    let specs = []
+    if (mechProfile?.specializations) {
+      if (Array.isArray(mechProfile.specializations)) {
+        specs = mechProfile.specializations
+      } else if (typeof mechProfile.specializations === 'string') {
+        try {
+          specs = JSON.parse(mechProfile.specializations)
+        } catch {
+          specs = []
+        }
+      }
+    }
+
+    return {
+      user_id: item.mechanic_id,
+      business_name: mechProfile?.business_name || 'Independent Operator',
+      years_experience: mechProfile?.years_experience || 0,
+      location_label: mechProfile?.location_label || 'Ghana Grid Node',
+      specializations: specs,
+      verification_status: item.status,
+      created_at: item.created_at,
+      user: userProfile || null // Feeds user.role seamlessly to your page's client filter
+    }
+  })
 }
 
-// Approve or reject a mechanic verification log row
+/**
+ * Approve or reject a mechanic verification log row
+ */
 export async function updateMechanicVerification(
   serviceSupabase,
   mechanicUserId,
   newStatus,
   adminId
 ) {
+  const statusMap = {
+    verified: 'approved',
+    approve: 'approved',
+  }
+  const dbStatus = statusMap[newStatus] || newStatus
+
+  // Commits the review metadata directly to the true log tracking table
   const { data, error } = await serviceSupabase
     .from('mechanic_verifications')
     .update({
-      status: newStatus,
+      status: dbStatus,
       reviewed_by: adminId,
       reviewed_at: new Date().toISOString(),
     })
     .eq('mechanic_id', mechanicUserId)
     .select()
-    .single()
 
   if (error) throw error
-  return data
+
+  // NOTE: Removed the non-existent 'verification_status' column fallback update from mechanic_profiles 
+  // to avoid silently throwing column exceptions on strict PostgreSQL engine configurations.
+
+  return data && data.length > 0 ? data[0] : null
 }
 
-// ================================================
-// COMPREHENSIVE OVERVIEW STATS
-// ================================================
+// ============================================================================
+// 2. COMPREHENSIVE OVERVIEW STATS METRICS
+// ============================================================================
 export async function getAdminStats(serviceSupabase) {
   // 1. Fetch Rescue Metrics counters concurrently
   const [
@@ -119,29 +159,27 @@ export async function getAdminStats(serviceSupabase) {
   ])
 
   // 4. Fetch Top Performing Mechanics ordered by rating metrics
-  const { data: topMechanics } = await serviceSupabase
+  const { data: topMechanicsRaw } = await serviceSupabase
     .from('mechanic_profiles')
-    .select('user_id, business_name, rating_avg, rating_count, profiles(full_name, avatar_url)')
+    .select('user_id, business_name, rating_avg, rating_count')
     .order('rating_avg', { ascending: false })
     .limit(5)
 
-    // Mechanic Metrics: Fetch is_available mechanics along with their live coordinates
-  const { data: activeMechanicLocations } = await serviceSupabase
-    .from('mechanic_profiles')
-    .select(`
-      user_id,
-      business_name,
-      is_available,
-      current_location,
-      profiles (
-        full_name,
-        phone,
-        avatar_url
-      )
-    `)
-    .eq('is_available', true)
-    .not('current_location', 'is', null)
-    
+  // Fetch profile data for each top mechanic
+  const topMechanics = await Promise.all(
+    (topMechanicsRaw || []).map(async (mechanic) => {
+      const { data: profile } = await serviceSupabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', mechanic.user_id)
+        .maybeSingle()
+      return {
+        ...mechanic,
+        profile: profile || null,
+      }
+    })
+  )
+
   // 5. Fetch Total Drivers counter metrics
   const { count: totalDrivers } = await serviceSupabase
     .from('profiles')
@@ -155,7 +193,7 @@ export async function getAdminStats(serviceSupabase) {
 
   const avgRating = reviews && reviews.length > 0
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : 5.0 // Fallback brand default anchor point
+    : 5.0 
 
   const ratingsDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
   if (reviews) {
@@ -183,6 +221,39 @@ export async function getAdminStats(serviceSupabase) {
   const serviceTypeBreakdown = Object.entries(serviceTypeCounts).map(([service_type, count]) => ({ service_type, count }))
   const statusBreakdown = Object.entries(statusCounts).map(([status, count]) => ({ status, count }))
 
+  // 8. Fetch active online mechanic locations and active incident coordinates in real-time
+  const [activeLocationsResult, activeIncidentsResult] = await Promise.all([
+    serviceSupabase
+      .from('mechanic_profiles')
+      .select(`
+        user_id,
+        business_name,
+        current_location,
+        is_available,
+        profiles:user_id (
+          full_name,
+          phone,
+          avatar_url
+        )
+      `)
+      .eq('verification_status', 'approved')
+      .not('current_location', 'is', null),
+    serviceSupabase
+      .from('rescue_requests')
+      .select(`
+        id,
+        status,
+        service_type,
+        problem_description,
+        incident_location,
+        mechanic_id
+      `)
+      .in('status', ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'])
+  ])
+
+  const activeMechanicLocations = activeLocationsResult.data || []
+  const activeIncidents = activeIncidentsResult.data || []
+
   return {
     totalRequests: totalRequests || 0,
     activeRequests: activeRequests || 0,
@@ -200,12 +271,14 @@ export async function getAdminStats(serviceSupabase) {
     statusBreakdown,
     totalUsers: (totalMechanics || 0) + (totalDrivers || 0),
     pendingVerifications: pendingVerifications || 0,
+    activeMechanicLocations,
+    activeIncidents,
   }
 }
 
-// ================================================
-// ALL RESCUE REQUESTS (admin view)
-// ================================================
+// ============================================================================
+// 3. ALL RESCUE REQUESTS MANAGER (ADMIN MODULE)
+// ============================================================================
 export async function getAllRequests(serviceSupabase, { status, limit = 50, offset = 0 } = {}) {
   let query = serviceSupabase
     .from('rescue_requests')
@@ -226,9 +299,9 @@ export async function getAllRequests(serviceSupabase, { status, limit = 50, offs
   return data
 }
 
-// ================================================
-// USER MANAGEMENT
-// ================================================
+// ============================================================================
+// 4. USER IDENTITY ACCOUNT LISTS MANAGEMENT
+// ============================================================================
 export async function getAllUsers(serviceSupabase, { role, limit = 50, offset = 0 } = {}) {
   let query = serviceSupabase
     .from('profiles')

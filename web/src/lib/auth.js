@@ -139,7 +139,7 @@ export async function signUp({ email, password, fullName, phone, role }) {
       data: {
         full_name: fullName,
         phone,
-        role, // 'driver' | 'mechanic' | 'admin'
+        role, // 'driver' | 'mechanic'
       }
     }
   })

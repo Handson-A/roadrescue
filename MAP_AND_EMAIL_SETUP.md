@@ -14,11 +14,11 @@
   - Driver/Mechanic tracking with route visualization
 
 ### Email
-**Status**: ⏳ Not configured
+**Status**: ✅ Resend configured for email notifications
 
-- **No email library** currently installed (SendGrid, Resend, Nodemailer, etc.)
-- **Use Case**: Notifications (job alerts, bid updates, completion confirmations)
-- **Decision Needed**: Which email provider (SendGrid free tier, Resend, or simple SMTP)?
+- **Package**: `resend` SDK installed
+- **API**: `/api/notifications/email` available
+- **Features**: Email notifications for rescue requests and status updates
 
 ---
 

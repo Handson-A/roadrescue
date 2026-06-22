@@ -64,11 +64,11 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
 
     if (requestError) throw requestError
 
-    // 2. Find nearby verified mechanics using PostGIS geospatial function
+    // 2. Find nearby mechanics using PostGIS geospatial function
     const { data: nearbyMechanics, error: matchError } = await supabase.rpc('get_nearby_verified_mechanics', {
-      request_latitude: incidentLat,
-      request_longitude: incidentLng,
-      search_radius_km: DEFAULT_SEARCH_RADIUS_KM,
+      lat: incidentLat,
+      lng: incidentLng,
+      radius_km: DEFAULT_SEARCH_RADIUS_KM,
     })
 
     if (matchError) throw matchError
@@ -81,10 +81,10 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     // 4. Create notifications for each nearby mechanic
     // Use service role because RLS blocks inserts from client
     const notifications = nearbyMechanics.map((mechanic) => ({
-      user_id: mechanic.user_id,
+      profile_id: mechanic.user_id,
       type: NOTIFICATION_TYPE.NEW_REQUEST,
-      message: `New ${serviceType} request ${mechanic.distance_km}km away — ${incidentAddress || 'location pinned'}`,
-      request_id: request.id,
+      title: 'New rescue request',
+      body: `New ${serviceType} request ${mechanic.distance_km}km away — ${incidentAddress || 'location pinned'}`,
     }))
 
     const { error: notifError } = await serviceSupabase
@@ -104,7 +104,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
           issueDescription: problemDescription,
           location: incidentAddress || 'Location pinned',
           distance: `${mechanic.distance_km} km`,
-          appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue.com'}/dashboard/mechanic/requests`,
+          appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/mechanic/requests`,
         },
       }).catch((err) => {
         console.warn(`Email failed for mechanic ${mechanic.user_id}:`, err)
@@ -188,7 +188,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
     const mechanicProfilePromise = request.mechanic_id
       ? serviceSupabase
           .from('mechanic_profiles')
-          .select('rating_avg, total_jobs, business_name, specializations, location_label')
+          .select('rating_avg, rating_count, business_name, specializations, location_label')
           .eq('user_id', request.mechanic_id)
           .maybeSingle()
       : Promise.resolve({ data: null })
@@ -253,6 +253,27 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         throw new Error('Only mechanics can accept requests')
       }
 
+      if (actorRole === 'mechanic') {
+        // Enforce mechanic approval lifecycle:
+        // - pending => cannot accept
+        // - rejected => disabled => cannot accept
+        // - approved => can accept
+        const { data: mechProfile, error: mechErr } = await serviceSupabase
+          .from('mechanic_profiles')
+          .select('verification_status')
+          .eq('user_id', actorId)
+          .maybeSingle()
+
+        if (mechErr) throw mechErr
+
+        const verificationStatus = mechProfile?.verification_status || 'pending'
+
+        if (verificationStatus !== 'approved') {
+          // pending or rejected (or missing)
+          throw new Error('Mechanic account is not verified to accept requests')
+        }
+      }
+
       if (request.status !== REQUEST_STATUS.PENDING) {
         throw new Error('Request is no longer available')
       }
@@ -261,6 +282,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         throw new Error('Another mechanic already accepted this request')
       }
     } else {
+
       if (actorRole !== 'mechanic' && actorRole !== 'admin' && actorRole !== 'driver') {
         throw new Error('Not authorized to update rescue status')
       }
@@ -272,6 +294,15 @@ export async function updateRequestStatus(serviceSupabase, payload) {
 
         if (!isDriverOwner && !isAssignedMechanic && !isAdmin) {
           throw new Error('Not authorized to cancel this request')
+        }
+
+        const forbiddenStatuses = [
+          REQUEST_STATUS.EN_ROUTE,
+          REQUEST_STATUS.ARRIVED,
+          REQUEST_STATUS.IN_PROGRESS,
+        ]
+        if (forbiddenStatuses.includes(request.status)) {
+          throw new Error('Not authorized to cancel this request once the mechanic is en route, has arrived, or has started work')
         }
       } else {
         if (actorRole !== 'mechanic' && actorRole !== 'admin') {
@@ -377,42 +408,42 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       if (newStatus === REQUEST_STATUS.CANCELLED) {
         if (request.mechanic_id && request.driver_id === actorId) {
           notifications.push({
-            user_id: request.mechanic_id,
+            profile_id: request.mechanic_id,
             type: notification.type,
-            message: 'The driver cancelled this rescue request.',
-            request_id: requestId,
+            title: 'Request cancelled',
+            body: 'The driver cancelled this rescue request.',
           })
         } else if (request.driver_id && request.mechanic_id === actorId) {
           notifications.push({
-            user_id: request.driver_id,
+            profile_id: request.driver_id,
             type: notification.type,
-            message: 'The assigned mechanic cancelled this rescue request.',
-            request_id: requestId,
+            title: 'Request cancelled',
+            body: 'The assigned mechanic cancelled this rescue request.',
           })
         } else if (actorRole === 'admin') {
           if (request.driver_id) {
             notifications.push({
-              user_id: request.driver_id,
+              profile_id: request.driver_id,
               type: notification.type,
-              message: 'An admin cancelled this rescue request.',
-              request_id: requestId,
+              title: 'Request cancelled',
+              body: 'An admin cancelled this rescue request.',
             })
           }
           if (request.mechanic_id) {
             notifications.push({
-              user_id: request.mechanic_id,
+              profile_id: request.mechanic_id,
               type: notification.type,
-              message: 'An admin cancelled this rescue request.',
-              request_id: requestId,
+              title: 'Request cancelled',
+              body: 'An admin cancelled this rescue request.',
             })
           }
         }
       } else {
         notifications.push({
-          user_id: request.driver_id,
+          profile_id: request.driver_id,
           type: notification.type,
-          message: notification.message,
-          request_id: requestId,
+          title: 'Request update',
+          body: notification.message,
         })
       }
     }
@@ -439,7 +470,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             driverName: driver.full_name,
             mechanicName: actorRole === 'admin' ? 'An admin' : 'A mechanic',
             location: request.incident_address || 'Rescue location',
-            appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue.com'}/dashboard/driver/request/${requestId}`,
+            appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/driver/request/${requestId}`,
           },
         }).catch((err) => console.warn('Email send failed:', err))
       }
@@ -461,7 +492,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             data: {
               mechanicName: mechanic.full_name,
               reason: cancellationReason || 'No reason provided',
-              appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue.com'}/requests`,
+              appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/requests`,
             },
           }).catch((err) => console.warn('Email send failed:', err))
         }
@@ -482,7 +513,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             data: {
               driverName: driver.full_name,
               reason: 'Assigned mechanic cancelled the request',
-              appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue.com'}/requests`,
+              appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/requests`,
             },
           }).catch((err) => console.warn('Email send failed:', err))
         }
@@ -525,44 +556,51 @@ export async function submitRating(supabase, payload) {
   const { requestId, driverId, rating, review } = payload
 
   try {
-    // 1. Save rating on the completed request
-    const { data: request, error: ratingError } = await supabase
+    // 1. Verify request exists and is completed
+    const { data: request, error: requestError } = await supabase
       .from('rescue_requests')
-      .update({
-        driver_rating: Math.max(1, Math.min(5, rating)), // Clamp 1-5
-        driver_review: review || null,
-      })
+      .select('id, driver_id, mechanic_id, status')
       .eq('id', requestId)
       .eq('driver_id', driverId)
       .eq('status', REQUEST_STATUS.COMPLETED)
-      .select('mechanic_id')
-      .single()
+      .maybeSingle()
 
-    if (ratingError) throw ratingError
+    if (requestError) throw requestError
     if (!request) throw new Error('Request not found or not completed')
 
-    // 2. Recalculate mechanic's average rating from all completed, rated jobs
-    const { data: allRatings, error: fetchError } = await supabase
-      .from('rescue_requests')
-      .select('driver_rating')
+    // 2. Insert rating into request_reviews table
+    const { error: insertError } = await supabase
+      .from('request_reviews')
+      .insert({
+        request_id: requestId,
+        driver_id: driverId,
+        mechanic_id: request.mechanic_id, // Fix missing column mapping
+        rating: Math.max(1, Math.min(5, rating)),
+        review: review || null,
+      })
+
+    if (insertError) throw insertError
+
+    // 3. Recalculate mechanic's average rating from all reviews
+    const { data: allReviews, error: fetchError } = await supabase
+      .from('request_reviews')
+      .select('rating')
       .eq('mechanic_id', request.mechanic_id)
-      .eq('status', REQUEST_STATUS.COMPLETED)
-      .not('driver_rating', 'is', null)
 
     if (fetchError) throw fetchError
 
-    // Handle edge case: no ratings yet (avoid division by zero)
+    // Handle edge case: no reviews yet (avoid division by zero)
     const avgRating =
-      allRatings && allRatings.length > 0
-        ? allRatings.reduce((sum, r) => sum + r.driver_rating, 0) / allRatings.length
+      allReviews && allReviews.length > 0
+        ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
         : 0
 
-    // 3. Update mechanic's profile with new average and total jobs
+    // 4. Update mechanic's profile with new average and rating count
     const { error: updateError } = await supabase
       .from('mechanic_profiles')
       .update({
         rating_avg: Math.round(avgRating * 100) / 100,
-        total_jobs: allRatings?.length || 0,
+        rating_count: allReviews?.length || 0,
       })
       .eq('user_id', request.mechanic_id)
 

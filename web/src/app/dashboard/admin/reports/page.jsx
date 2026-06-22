@@ -6,7 +6,7 @@ import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
-import { BarChart3, TrendingUp, Clock, Users, Star, MapPin, Wrench } from 'lucide-react'
+import { BarChart3, TrendingUp, Clock, Users, Star, MapPin, Wrench, Download, ShieldCheck } from 'lucide-react'
 
 // Dynamic Import: Disables server side instantiation rendering to prevent leaflet window crashes
 const LiveHotspotsMap = dynamic(
@@ -26,6 +26,55 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState(7) // 7 days or 30 days toggle switch wrapper
   const [stats, setStats] = useState(null)
+
+  const handleExportReport = () => {
+    try {
+      if (!stats) {
+        toast.error('No analytics data available for export')
+        return
+      }
+
+      // Format CSV content
+      let csvContent = "data:text/csv;charset=utf-8,"
+      csvContent += "RoadRescue Operations Summary Report 2026\n"
+      csvContent += `Generated At,${new Date().toISOString()}\n\n`
+      
+      csvContent += "Core Metrics,Value\n"
+      csvContent += `Total Incidents Logged,${stats.totalRequests || 0}\n`
+      csvContent += `Actively Ongoing,${stats.activeRequests || 0}\n`
+      csvContent += `Avg Dispatch Response Time (min),${stats.avgResponseTime || 0}\n`
+      csvContent += `Active Operators On-Duty,${stats.activeMechanics || 0}\n`
+      csvContent += `System CSAT Rating,${stats.avgRating || 5.0}\n\n`
+
+      if (stats.statusBreakdown && stats.statusBreakdown.length > 0) {
+        csvContent += "Status Distribution,Count\n"
+        stats.statusBreakdown.forEach(item => {
+          csvContent += `${item.status.toUpperCase()},${item.count || 0}\n`
+        })
+        csvContent += "\n"
+      }
+
+      if (stats.serviceTypeBreakdown && stats.serviceTypeBreakdown.length > 0) {
+        csvContent += "Service Callout Category,Count\n"
+        stats.serviceTypeBreakdown.forEach(item => {
+          csvContent += `${item.service_type.toUpperCase()},${item.count || 0}\n`
+        })
+      }
+
+      const encodedUri = encodeURI(csvContent)
+      const link = document.createElement("a")
+      link.setAttribute("href", encodedUri)
+      link.setAttribute("download", `roadrescue_ops_report_2026.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      toast.success('Operations summary exported successfully!')
+    } catch (err) {
+      console.error('[EXPORT FAULT]:', err)
+      toast.error('Failed to export operational statistics')
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -79,6 +128,8 @@ export default function AdminReportsPage() {
   // Aggregate global cumulative fault calculations
   const totalMechanicalPercentage = Math.min(categoriesPercentages.engine + categoriesPercentages.other, 100)
 
+  const totalVolume = stats.statusBreakdown?.reduce((sum, item) => sum + (item.count || 0), 0) || 0
+
   return (
     <PageWrapper 
       title="Incident Analytics" 
@@ -86,6 +137,20 @@ export default function AdminReportsPage() {
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
+        {/* ================= ACTIONS TOOLBAR ================= */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">System Live Feeds Connected</span>
+          </div>
+          <button
+            onClick={handleExportReport}
+            className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-wider text-white hover:bg-slate-800 transition active:scale-95 shadow-sm cursor-pointer"
+          >
+            <Download size={14} /> Export Operations Summary
+          </button>
+        </div>
+
         {/* ================= HIGH LEVEL ANALYTICS SUMMARY GRID ================= */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -188,8 +253,9 @@ export default function AdminReportsPage() {
           </Card>
         </div>
 
-        {/* ================= STATE FACTOR BAR VISUALIZER CHANNELS ================= */}
-        <div className="w-full">
+        {/* ================= STATE FACTOR BAR VISUALIZER & COMPLIANCE PIPELINES ================= */}
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] w-full">
+          {/* Operational Distribution Load */}
           <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -234,6 +300,66 @@ export default function AdminReportsPage() {
                   )
                 })
               )}
+            </div>
+          </Card>
+
+          {/* Regulatory Compliance Pipelines */}
+          <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="mb-6">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Regulatory Compliance Pipelines</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Upcoming integration gateways for national transport agencies</p>
+              </div>
+
+              <div className="space-y-4">
+                {/* DVLA Integration */}
+                <div className="relative rounded-xl border border-slate-100 bg-slate-50/50 p-4 overflow-hidden">
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded shadow-sm">
+                      Compliance Lock
+                    </span>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="p-2 bg-amber-50 rounded-lg text-amber-600 h-fit">
+                      <ShieldCheck size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-800">DVLA Verification Gateway</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        Automated real-time vehicle validation mapping license plate and chassis numbers against the national Driver and Vehicle Licensing Authority registry.
+                      </p>
+                      <div className="mt-3 flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                        API Endpoint: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-500">/api/compliance/dvla/verify</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NSRA Integration */}
+                <div className="relative rounded-xl border border-slate-100 bg-slate-50/50 p-4 overflow-hidden">
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-slate-200 text-slate-600 px-2 py-0.5 rounded shadow-sm">
+                      Future Pipeline
+                    </span>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="p-2 bg-slate-100 rounded-lg text-slate-500 h-fit">
+                      <BarChart3 size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-800">NSRA Accident Analytics</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        Direct transmission of anonymous operational breakdown incident logs to the National Road Safety Authority portal for traffic and safety studies.
+                      </p>
+                      <div className="mt-3 flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                        Webhook Destination: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-500">nsra-portal.gov.gh/ingest</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
         </div>

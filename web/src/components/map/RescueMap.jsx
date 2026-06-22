@@ -1,7 +1,12 @@
 'use client'
 
+
 import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useState } from 'react'
+
+// FIXED: Import useMap directly via standard module paths
+import { useMap } from 'react-leaflet' 
+
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -23,10 +28,6 @@ const Popup = dynamic(
   { ssr: false }
 )
 
-const useMap = dynamic(
-  () => import('react-leaflet').then((mod) => mod.useMap),
-  { ssr: false }
-)
 
 const Polyline = dynamic(
   () => import('react-leaflet').then((mod) => mod.Polyline),
@@ -59,17 +60,18 @@ function normalizePoint(point) {
   return null
 }
 
-export default function RescueMap({ request, driverLocation, mechanicLocation, height = '360px' }) {
+export default function RescueMap({ request, driverLocation, mechanicLocation, incomingJobs = [], isRadarMode = false, height = '360px' }) {
   const driver = normalizePoint(driverLocation) || normalizePoint(request?.incident_location)
   const mechanic = normalizePoint(mechanicLocation)
   const [driverIcon, setDriverIcon] = useState(null)
   const [mechanicIcon, setMechanicIcon] = useState(null)
+  const [strandedIcon, setStrandedIcon] = useState(null)
 
   useEffect(() => {
     // Require leaflet and create icons synchronously but set state in a microtask
     const L = require('leaflet')
     delete L.Icon.Default.prototype._getIconUrl
-    const driver = new L.Icon({
+    const drv = new L.Icon({
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -78,9 +80,16 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
       popupAnchor: [1, -34],
       shadowSize: [41, 41]
     })
-    const mechanic = new L.Icon({
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    const mech = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    })
+    const strnd = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       iconSize: [25, 41],
       iconAnchor: [12, 41],
@@ -89,8 +98,9 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
     })
     // Defer state updates to avoid setState during render/effect synchronous phase
     Promise.resolve().then(() => {
-      setDriverIcon(driver)
-      setMechanicIcon(mechanic)
+      setDriverIcon(drv)
+      setMechanicIcon(mech)
+      setStrandedIcon(strnd)
     })
   }, [])
 
@@ -98,15 +108,24 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
     if (driver?.lat && driver?.lng) {
       return [driver.lat, driver.lng]
     }
+    if (mechanic?.lat && mechanic?.lng) {
+      return [mechanic.lat, mechanic.lng]
+    }
     return [5.6037, -0.1870]
-  }, [driver])
+  }, [driver, mechanic])
 
   const positions = useMemo(() => {
     const pos = []
     if (driver?.lat && driver?.lng) pos.push([driver.lat, driver.lng])
     if (mechanic?.lat && mechanic?.lng) pos.push([mechanic.lat, mechanic.lng])
+    if (isRadarMode && incomingJobs && incomingJobs.length > 0) {
+      incomingJobs.forEach((job) => {
+        const coords = normalizePoint(job.incident_location)
+        if (coords?.lat && coords?.lng) pos.push([coords.lat, coords.lng])
+      })
+    }
     return pos
-  }, [driver, mechanic])
+  }, [driver, mechanic, incomingJobs, isRadarMode])
 
   const routePositions = useMemo(() => {
     if (!driver || !mechanic) return []
@@ -114,73 +133,98 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
   }, [driver, mechanic])
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-border bg-white shadow-soft" style={{ minHeight: height }}>
-      <div className="flex items-center justify-between border-b border-border px-4 py-3 lg:px-6">
+  <div className="w-full h-full relative flex flex-col justify-between" style={{ minHeight: height }}>
+    <MapContainer
+      center={mapCenter}
+      zoom={14}
+      style={{ height: '100%', width: '100%', flex: '1 1 auto' }}
+      className="relative z-0"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      
+      <FitBounds positions={positions} />
+
+      {driver && driverIcon && (
+        <Marker position={[driver.lat, driver.lng]} icon={driverIcon}>
+          <Popup>
+            <div className="p-1 min-w-[120px]">
+              <p className="font-bold text-red-600 text-xs uppercase tracking-wider">Driver Position</p>
+              <p className="font-semibold text-sm mt-1">{request?.vehicle_make || 'Vehicle Breakdown'}</p>
+              <p className="text-[10px] font-mono text-gray-500 mt-0.5">{driver.lat.toFixed(4)}, {driver.lng.toFixed(4)}</p>
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {mechanic && mechanicIcon && (
+        <Marker position={[mechanic.lat, mechanic.lng]} icon={mechanicIcon}>
+          <Popup>
+            <div className="p-1 min-w-[120px]">
+              <p className="font-bold text-blue-600 text-xs uppercase tracking-wider">Assigned Mechanic</p>
+              <p className="font-semibold text-sm mt-1">En Route</p>
+              <p className="text-[10px] font-mono text-gray-500 mt-0.5">{mechanic.lat.toFixed(4)}, {mechanic.lng.toFixed(4)}</p>
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {isRadarMode && incomingJobs && incomingJobs.map((job) => {
+        const jobCoords = normalizePoint(job.incident_location)
+        if (!jobCoords || !strandedIcon) return null
+        return (
+          <Marker 
+            key={`incoming-job-${job.id}`} 
+            position={[jobCoords.lat, jobCoords.lng]} 
+            icon={strandedIcon}
+          >
+            <Popup>
+              <div className="p-1 min-w-[170px] font-sans">
+                <h4 className="font-bold text-sm text-red-600 m-0 uppercase tracking-wide">
+                  ⚠️ Breakdown Alert
+                </h4>
+                <p className="font-bold text-slate-800 text-xs mt-1.5 mb-0 capitalize">
+                  {job.service_type?.replace('_', ' ')}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 mb-2 leading-normal">
+                  {job.problem_description || 'Awaiting assistance.'}
+                </p>
+                <a
+                  href={`/dashboard/mechanic/job/${job.id}`}
+                  className="block w-full text-center py-1.5 rounded bg-slate-900 text-white font-bold text-[10px] uppercase hover:bg-slate-800 no-underline"
+                >
+                  View Details
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        )
+      })}
+
+      {routePositions.length === 2 && (
+        <Polyline positions={routePositions} color="#0ea5e9" dashArray="8, 12" />
+      )}
+    </MapContainer>
+
+    {/* Live coordinate info panel footer */}
+    <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/80 backdrop-blur-xs z-20">
+      <div className="grid grid-cols-2 gap-4 text-xs">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-muted">Live tracking</p>
-          <h3 className="mt-1 font-semibold">Route and location feed</h3>
+          <p className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">Incident Coordinates</p>
+          <p className="font-mono font-bold text-slate-800 mt-0.5">
+            {driver ? `${driver.lat.toFixed(4)}, ${driver.lng.toFixed(4)}` : 'Waiting'}
+          </p>
         </div>
-        <span className="rounded-full bg-success/10 px-3 py-1 text-xs font-semibold text-success">Realtime</span>
-      </div>
-
-      <MapContainer
-        center={mapCenter}
-        zoom={14}
-        style={{ height: '420px', width: '100%' }}
-        className="relative"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        
-        <FitBounds positions={positions} />
-
-        {driver && driverIcon && (
-          <Marker position={[driver.lat, driver.lng]} icon={driverIcon}>
-            <Popup>
-              <div className="text-xs">
-                <strong>Driver</strong>
-                <br />
-                {driver.lat.toFixed(4)}, {driver.lng.toFixed(4)}
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {mechanic && mechanicIcon && (
-          <Marker position={[mechanic.lat, mechanic.lng]} icon={mechanicIcon}>
-            <Popup>
-              <div className="text-xs">
-                <strong>Mechanic</strong>
-                <br />
-                {mechanic.lat.toFixed(4)}, {mechanic.lng.toFixed(4)}
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {routePositions.length === 2 && (
-          <Polyline positions={routePositions} color="#0ea5e9" dashArray="8, 12" />
-        )}
-      </MapContainer>
-
-      <div className="px-4 py-3 lg:px-6 border-t border-border bg-slate-50/50">
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div>
-            <p className="text-muted uppercase tracking-wider text-[10px]">Driver</p>
-            <p className="font-medium text-foreground">
-              {driver ? `${driver.lat.toFixed(4)}, ${driver.lng.toFixed(4)}` : 'Waiting'}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted uppercase tracking-wider text-[10px]">Mechanic</p>
-            <p className="font-medium text-foreground">
-              {mechanic ? `${mechanic.lat.toFixed(4)}, ${mechanic.lng.toFixed(4)}` : 'Broadcasting soon'}
-            </p>
-          </div>
+        <div>
+          <p className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">Your Location</p>
+          <p className="font-mono font-bold text-slate-800 mt-0.5">
+            {mechanic ? `${mechanic.lat.toFixed(4)}, ${mechanic.lng.toFixed(4)}` : 'Broadcasting Active'}
+          </p>
         </div>
       </div>
     </div>
-  )
+  </div>
+);
 }

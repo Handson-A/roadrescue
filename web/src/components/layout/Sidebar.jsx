@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
-import { ChartColumn, Gauge, History, Home, LifeBuoy, LogOut, Radar, Settings, ShieldCheck, User, ClipboardList, WifiSync, Brain, PlusCircle } from 'lucide-react'
+import { ChartColumn, Gauge, History, Home, LifeBuoy, LogOut, Radar, Settings, ShieldCheck, User, ClipboardList, WifiSync, Brain, PlusCircle, MapPin } from 'lucide-react'
 
 import Avatar from '@/components/ui/Avatar'
 import { useAuth } from '@/hooks/useAuth'
@@ -22,6 +22,7 @@ const navByRole = {
     { href: '/dashboard/mechanic/requests', label: 'Active Jobs', icon: Radar },
     { href: '/dashboard/mechanic/history', label: 'Job History', icon: History },
     { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
+    { href: '/dashboard/mechanic/navigation', label: 'Navigation', icon: MapPin },
     { href: '/dashboard/mechanic/account', label: 'Profile', icon: User },
   ],
   admin: [
@@ -79,7 +80,7 @@ export default function Sidebar() {
           className="mx-auto rounded-full h-auto w-auto shadow-sm"
         />
         <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.2em] ${isAdmin ? 'text-[#C1B596]' : 'text-[#786D53]'}`}>
-          {isAdmin ? 'Ghana Operations' : isMechanic ? 'Mechanic Pro' : 'Driver Terminal'}
+          {isAdmin ? 'Ghana Operations' : isMechanic ? 'Mechanic Hub' : 'Driver Hub'}
         </p>
       </div>
 
@@ -132,7 +133,7 @@ export default function Sidebar() {
             type="button"
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
           >
-            <WifiSync size={14} /> Go Online
+            <WifiSync size={14} />
           </button>
         )}
 

@@ -1,6 +1,6 @@
 # RoadRescue
 
-RoadRescue is a real-time roadside assistance platform connecting stranded drivers with nearby mechanics. The platform automates rescue request dispatch, mechanic bidding, live tracking, and AI-assisted diagnostics in one integrated system.
+RoadRescue is a real-time roadside assistance platform connecting stranded drivers with nearby mechanics. The platform automates rescue request dispatch, mechanic acceptance, live tracking, and AI-assisted diagnostics in one integrated system.
 
 ## Overview
 
@@ -16,493 +16,90 @@ RoadRescue is a real-time roadside assistance platform connecting stranded drive
 ## Key Features
 
 ### For Drivers
-- Create rescue requests with vehicle details and issue description
-- Receive AI diagnostics to understand the problem
-- View nearby mechanic bids and choose the best option
-- Real-time tracking of assigned mechanic's location
-- Rate mechanics and save preferred ones
+*   **Request Creation**: Easily log a rescue request, select breakdown coordinates on an interactive map picker, and add vehicle parameters (make, model, year, plate).
+*   **AI diagnostics**: Converse with an AI diagnostic assistant powered by Google Gemini 2.5 Flash to identify potential issues, severities, and receive safety protocols.
+*   **Fuel/EV Finder**: Toggle active fuel stations and EV charging hubs dynamically fetched from the database to map breakdowns precisely to refueling points.
+*   **Live Tracker**: Track the assigned mechanic's GPS movement in real-time as they proceed from `accepted` -> `en_route` -> `arrived` -> `in_progress` -> `completed`.
+*   **Safety Evacuation**: Access hardcoded commute gateways (Uber, Yango, Bolt) directly from the UI for scene evacuation if the vehicle cannot be fixed immediately.
+*   **Reviews**: Review and rate assigned mechanics on a 1-5 scale upon job completion.
 
 ### For Mechanics
-- Accept nearby requests directly (no bidding required)
-- Real-time job location and driver contact info
-- Live job progress tracking (en route, arrived, completed)
-- Build reputation through ratings and completed jobs
-- Manage profile, availability, and service preferences via account page
+*   **Radar Mode**: Toggle "Online" availability to broadcast GPS locations via WebSockets and view nearby breakdown pins.
+*   **Direct Acceptance**: Claim pending nearby requests instantly with zero bidding overhead.
+*   **Job Navigator**: Access driver vehicle cards and contact info, view paths, and update job progress logs.
+*   **Account Settings**: Manage experience levels, business details, specializations, base hourly rates, and service radius limits.
 
 ### For Administrators
-- Monitor all platform activity and requests
-- Verify and manage mechanic profiles
-- Escalate user roles (create new admins)
-- View platform statistics and performance metrics
-- Handle disputes and user support
+*   **Operations Console**: Monitor active incidents, verify mechanics, manage change requests, and escalate profile fields.
+*   **Realtime Incident Map**: View active coordinate overlays of all standby mechanics and incidents.
+*   **Cascade Cleanups**: Suspend bad-actor accounts with safe cascades to prevent data anomalies.
 
-## Platform Architecture
+---
 
-The system consists of three main layers:
+## Request Lifecycle State Machine
 
-1. **Frontend** (Next.js + React)
-   - Responsive UI for web clients
-   - Role-based dashboards (driver, mechanic, admin)
-   - Real-time updates via WebSocket subscriptions
-   - AI diagnostic chat interface
+Rescue requests follow a strict transaction-enforced state flow:
 
-2. **Backend** (Next.js API Routes)
-   - RESTful API for all operations
-   - Request validation and error handling
-   - Integration with OpenAI for diagnostics
-   - Webhook handling for external services
+```text
+pending ──> offered ──> accepted ──> en_route ──> arrived ──> in_progress ──> completed
+   │                       │
+   └───[cancelled] <───────┘
+```
 
-3. **Database** (PostgreSQL on Supabase)
-    - Core tables: profiles, mechanic_profiles, driver_profiles, rescue_requests, notifications, profile_preferences, profile_change_requests
-    - Row-level security for data privacy
-    - Real-time subscriptions for live updates
+*   **Cancellation Policy**: Drivers and mechanics can cancel requests only during `pending` or `accepted` states. If the request progresses to `en_route`, `arrived`, or `in_progress`, cancellation is disabled at both the API and database levels, returning a `403 Forbidden` response.
+*   **Concurrence Protection**: Optimistic updates ensure no two mechanics can accept the same request simultaneously.
+
+---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | Next.js 16, React 18, Tailwind CSS, Lucide Icons |
-| **Backend** | Node.js, Next.js Route Handlers |
-| **Database** | PostgreSQL, Supabase Auth & Realtime |
-| **AI** | OpenAI GPT-4 for vehicle diagnostics |
-| **Deployment** | Vercel (frontend), Supabase Cloud (database) |
+*   **Frontend**: Next.js 16 (App Router, React 19, React Compiler), Tailwind CSS v4, Framer Motion, Leaflet Maps
+*   **Backend**: Next.js Route Handlers, Node.js, RBAC guards
+*   **Database**: Supabase PostgreSQL with PostGIS geographic operators, RLS, and Realtime WebSocket broadcast channels
+*   **AI Engine**: Google Gemini 2.5 Flash API with strict JSON schema validation
+*   **Emails**: Resend API
+*   **Deployment**: Vercel (Web Application), Supabase Cloud (Database)
 
-## Request Lifecycle
-
-Every rescue request follows this state machine:
-
-```
-Pending → Accepted → En Route → Arrived → In Progress → Completed
-
-Optional: Cancelled (at any stage before completion)
-```
-
-Mechanics accept requests directly; no bidding is used in this implementation.
+---
 
 ## Getting Started
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-- Supabase account
-- OpenAI API key
-
 ### Installation
-
-1. **Clone and install dependencies**
+1. Clone and install dependencies inside the `web` workspace:
    ```bash
    cd roadrescue/web
    npm install
    ```
 
-2. **Configure environment variables**
-   Create `.env.local`:
-   ```
+2. Create a `.env.local` file inside `web/` using this template:
+   ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_key
-   OPENAI_API_KEY=your_openai_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   GEMINI_API_KEY=your_gemini_api_key
+   RESEND_API_KEY=your_resend_api_key
    ```
 
-3. **Run development server**
+3. Run the Next.js development server:
    ```bash
    npm run dev
    ```
-   Visit `http://localhost:3000`
 
-4. **Set up database** (first time only)
-   - Run Supabase migrations in `supabase/migrations/`
-   - Seed test data: `20260521000008_seed_data.sql`
+4. Apply the database schemas sequentially by running the scripts in `supabase/migrations/` using your Supabase SQL Editor.
+
+---
 
 ## Documentation
 
-- **[Architecture](docs/architecture.md)** - System design and component relationships
-- **[API Reference](docs/api-reference.md)** - Complete endpoint documentation
-- **[Database Schema](docs/db-schema.md)** - Table structures and relationships
-- **[State Machine](docs/state-machine.md)** - Request lifecycle and transitions
-- **[Real-time Flow](docs/realtime-flow.md)** - WebSocket events and subscriptions
-- **[RLS Policies](docs/rls-policies.md)** - Row-level security rules
-- **[AI Diagnostics](docs/ai-diagnostic.md)** - Vehicle diagnostic flow
+Comprehensive project documentation is available inside the `docs/` folder:
+*   [Component Architecture](docs/architecture.md)
+*   [API Endpoint Reference](docs/api-reference.md)
+*   [Database Schema Specs](docs/db-schema.md)
+*   [Real-time WebSocket Flow](docs/realtime-flow.md)
+*   [Row-Level Security Policies](docs/rls-policies.md)
+*   [AI Diagnostic Operations](docs/ai-diagnostic.md)
+*   [System Technical Briefcase](TECHNICAL_BRIEFCASE.md)
 
-## Project Structure
-
-```
-roadrescue/
-├── web/                    # Next.js application
-│   ├── src/
-│   │   ├── app/           # Route handlers and pages
-│   │   ├── components/    # React components (auth, map, request, admin)
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── lib/           # Utilities, API clients, constants
-│   │   ├── providers/     # Context providers (Auth, Toast)
-│   │   └── styles/        # Global CSS
-│   └── package.json
-├── supabase/              # Database setup
-│   └── migrations/        # SQL migrations (schema, RLS, seed)
-├── docs/                  # Architecture and API documentation
-└── .github/               # CI/CD workflows
-```
-
-## User Roles & Data Access
-
-| Role | Can See | Can Do |
-|------|---------|--------|
-| **Driver** | Own requests, mechanic profiles, assigned mechanic details | Create requests, rate mechanics |
-| **Mechanic** | Assigned jobs, driver location during job | Accept jobs, update status, manage profile, toggle availability |
-| **Admin** | All users, all requests, platform stats | Approve/reject mechanics, escalate roles, resolve disputes |
-
-## Status & Roadmap
-
-### ✅ Completed
-- User authentication and authorization
-- All three role-based dashboards (driver, mechanic, admin)
-- Request creation and full lifecycle management
-- Direct mechanic acceptance (no bidding)
-- Mechanic profile management with preferences
-- AI vehicle diagnostics
-- Real-time location tracking and updates
-- Admin user management and escalation
-- Onboarding flow
-- Rate limiting and request validation
-- Error handling and user feedback
-
-### 🚧 In Progress / Planned
-- Email notifications for key events
-- Payment processing and earnings reports
-- Two-factor authentication
-- Mobile app (React Native)
-- Advanced routing optimization
-- Machine learning for mechanic matching
-
-## Testing
-
-- Manual testing possible via development server at `localhost:3000`
-- Test credentials available in seed data
-- Admin portal at `/dashboard/admin` (requires admin role)
-
-## Deployment
-
-1. **Frontend**: Push to GitHub → Vercel auto-deploys
-2. **Database**: Supabase handles PostgreSQL automatically
-3. **Environment secrets**: Store in Vercel and Supabase project settings
-
-See [Architecture docs](docs/architecture.md) for deployment details.
-
-## Support
-
-For questions or issues, refer to:
-- API documentation in `docs/api-reference.md`
-- Database schema in `docs/db-schema.md`
-- State machine in `docs/state-machine.md`
-
-## License
+---
 
 RoadRescue © 2026. All rights reserved.
-
-
-<!-- Redesign and restructure the mobile PWA navigation and UI architecture for the RoadRescue application while STRICTLY maintaining the provided color palette and visual identity from the attached design reference.
-
-## Primary Goal
-
-Create a modern emergency-response mobile UX optimized for:
-
-* fast roadside interactions
-* thumb-friendly navigation
-* clarity under stress
-* clean PWA responsiveness
-* role-based navigation
-
-The desktop version can keep the full sidebar with all routes, but the mobile version must use a simplified bottom navigation architecture.
-
----
-
-# Mobile Bottom Navigation Structure
-
-Implement a 5-tab bottom navigation for mobile ONLY.
-
-## Tabs
-
-### 1. Home
-
-Purpose:
-
-* Main dashboard
-* Quick overview
-* Fast access to emergency actions
-
-Include:
-
-* Active request summary
-* Nearby mechanics snapshot
-* AI diagnostic shortcut
-* Vehicle overview
-* Safety tips
-* Recent activity
-
-Suggested icon:
-
-* Home
-
----
-
-### 2. Rescue
-
-Purpose:
-Core roadside emergency coordination.
-
-Include:
-
-* Request roadside assistance
-* Tow requests
-* Mechanic matching
-* Live tracking
-* Emergency status
-* ETA updates
-* Incident reporting
-
-This tab should feel operational and high priority.
-
-Suggested icon:
-
-* Wrench / SOS / Alert
-
----
-
-### 3. AI Assist
-
-Purpose:
-AI-assisted diagnostics experience.
-
-Include:
-
-* Symptom chat input
-* AI diagnostics
-* Tow vs repair recommendation
-* Urgency assessment
-* Repair suggestions
-* Vehicle issue history
-
-Suggested icon:
-
-* Sparkles / Bot / Brain
-
----
-
-### 4. Activity
-
-Purpose:
-Operational history and communication.
-
-Include:
-
-* Notifications
-* Messages/chat
-* Request history
-* Completed jobs
-* Reviews
-* Saved mechanics
-
-Suggested icon:
-
-* Bell / Activity / Inbox
-
----
-
-### 5. Profile
-
-Purpose:
-User management and settings.
-
-Include:
-
-* User profile
-* Vehicles
-* Verification
-* Security settings
-* Help/support
-* Logout
-
-Suggested icon:
-
-* User / Shield
-
----
-
-# Floating Emergency Action Button (IMPORTANT)
-
-Add a persistent floating action button (FAB) on mobile:
-
-* visible across primary screens
-* emergency-focused
-* opens “Request Rescue”
-* should stand out visually
-* positioned bottom-right or centered above nav
-
-Label examples:
-
-* SOS
-* Request Help
-* Rescue
-
----
-
-# Role-Based Navigation
-
-The navigation should adapt based on user role.
-
-## Driver Navigation
-
-* Home
-* Rescue
-* AI Assist
-* Activity
-* Profile
-
-## Mechanic Navigation
-
-Replace driver-focused screens with:
-
-* Jobs
-* Requests
-* Navigation
-* Activity
-* Profile
-also it can have a desktop version too with detailed navlinks on the sidebar
-## Admin
-
-Do NOT use bottom navigation heavily.
-Use a dashboard/sidebar layout instead.
-
----
-
-# STRICT DESIGN SYSTEM REQUIREMENTS
-
-Use ONLY the following colors from the provided palette.
-
-## Primary Color
-
-#FFD700
-
-Use for:
-
-* active states
-* primary buttons
-* FAB
-* highlights
-* active nav item
-* loading accents
-
----
-
-## Secondary Color
-
-#111827
-
-Use for:
-
-* backgrounds
-* dark sections
-* nav bars
-* cards
-* typography emphasis
-
----
-
-## Tertiary Color
-
-#F3F4F6
-
-Use for:
-
-* light surfaces
-* cards
-* section backgrounds
-* inputs
-
----
-
-## Neutral Color
-
-#7C7767
-
-Use for:
-
-* secondary text
-* borders
-* muted states
-* placeholders
-
----
-
-# Visual Style Requirements
-
-Maintain:
-
-* soft rounded corners
-* modern minimal layout
-* premium emergency-tech feel
-* clean spacing
-* subtle shadows
-* uncluttered interfaces
-
-Typography:
-
-* clean sans-serif
-* strong hierarchy
-* large readable emergency actions
-
----
-
-# Mobile UX Requirements
-
-Optimize for:
-
-* one-handed use
-* accessibility
-* fast emergency interactions
-* low cognitive load
-* responsive PWA behavior
-
-Ensure:
-
-* bottom nav remains fixed
-* FAB does not overlap important content
-* smooth transitions
-* mobile-first responsiveness
-
----
-
-# Technical Requirements
-
-If using React/Next.js:
-
-* use responsive conditional rendering
-* mobile bottom nav only on small screens
-* desktop retains sidebar
-* support dark/light surfaces using the defined palette only
-
-Structure the navigation cleanly for scalability and future integrations.
-
-Avoid overcrowding the bottom nav with too many routes.
-
-Use nested routes/screens for secondary features instead of adding more tabs.
-
----
-
-# Final Instruction
-
-The redesign should feel like:
-“Uber + roadside emergency platform + AI assistant”
-
-Prioritize:
-
-* clarity
-* speed
-* trust
-* professionalism
-* emergency usability
-
-Stick STRICTLY to the provided color palette and aesthetic direction from the attached image.
-
-once the role === mechanic, where on large screen or desktop, the sos shouldnt exist. 
- -->

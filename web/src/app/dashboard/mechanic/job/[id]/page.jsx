@@ -8,8 +8,12 @@ import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import RequestTimeline from '@/components/request/RequestTimeline'
 import Button from '@/components/ui/Button'
+import ReportModal from '@/components/report/ReportModal'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
+import RescueMap from '@/components/map/RescueMap'
+import { useBroadcastLocation } from '@/hooks/useMechanicLocation'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -17,7 +21,38 @@ export default function JobDetailPage() {
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const supabase = createClient()
+  const { user } = useAuth()
+  const [localCoords, setLocalCoords] = useState(null)
+
+  // Start active location broadcasting if this job is assigned to the current mechanic and is active
+  const isActive = job && job.mechanic_id === user?.id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(job.status)
+  useBroadcastLocation(isActive ? jobId : null, user?.id)
+
+  useEffect(() => {
+    if (!isActive) {
+      Promise.resolve().then(() => {
+        setLocalCoords(null)
+      })
+      return
+    }
+
+    if (!navigator.geolocation) return
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocalCoords({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+      },
+      (error) => console.warn('[JOB DETAIL GPS FAULT]:', error.message),
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    )
+
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [isActive])
 
   useEffect(() => {
     async function loadJob() {
@@ -73,12 +108,17 @@ export default function JobDetailPage() {
   }
 
   const cancelJob = async () => {
-    if (!confirm('Cancel this rescue request?')) return
+    const reason = prompt('Please enter a cancellation reason (optional):')
+    if (reason === null) return // User cancelled the prompt
     setUpdating(true)
     const response = await fetch('/api/requests/status', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId: jobId, newStatus: 'cancelled' }),
+      body: JSON.stringify({ 
+        requestId: jobId, 
+        newStatus: 'cancelled',
+        cancellationReason: reason.trim() || 'Mechanic cancelled job'
+      }),
     })
 
     const result = await response.json()
@@ -115,11 +155,17 @@ export default function JobDetailPage() {
             <Card className="rounded-2xl border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 p-6 text-center">
               <h2 className="text-lg font-black text-amber-900 mb-2">Ready to Accept?</h2>
               <p className="text-sm text-amber-700 mb-4">Be the first to accept this rescue request. Race conditions are handled automatically.</p>
-              <Button onClick={acceptJob} disabled={updating} className="bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-wider">
-                {updating ? 'Accepting...' : 'Accept This Job'}
+              <Button onClick={acceptJob} disabled={true} className="bg-amber-400 text-white font-black uppercase tracking-wider">
+                Dispatch locked
               </Button>
+              <p className="mt-3 text-xs text-amber-900/70 font-medium">
+                Only verified mechanics can accept incoming requests.
+              </p>
             </Card>
           )}
+
+
+
 
           <Card>
             <div className="flex items-center justify-between gap-3 mb-4">
@@ -184,13 +230,24 @@ export default function JobDetailPage() {
             <a href={`tel:${job.driver?.phone}`} className="block">
               <Button className="w-full">Call driver</Button>
             </a>
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="mt-3 text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors"
+            >
+              Report Issue to Admin
+            </button>
           </Card>
 
           <Card>
             <h2 className="text-lg font-semibold mb-4">Location</h2>
             <p className="text-sm">{job.incident_address}</p>
-            <div className="mt-3 flex aspect-square items-center justify-center rounded-2xl border border-dashed border-border bg-surfaceAlt text-xs text-muted">
-              Map view coming soon
+            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 h-[280px]">
+              <RescueMap 
+                request={job} 
+                mechanicLocation={localCoords} 
+                height="100%" 
+              />
             </div>
           </Card>
 
@@ -216,6 +273,13 @@ export default function JobDetailPage() {
           </Card>
         </div>
       </div>
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        requestId={jobId}
+        reporterId={user?.id}
+      />
     </PageWrapper>
   )
 }

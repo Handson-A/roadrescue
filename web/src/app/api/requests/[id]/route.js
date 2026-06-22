@@ -30,7 +30,7 @@ async function fetchRequestDetails(serviceClient, requestId) {
     request.mechanic_id
       ? serviceClient
           .from('mechanic_profiles')
-          .select('rating_avg, total_jobs, business_name, specializations, location_label')
+          .select('rating_avg, rating_count, business_name, specializations, location_label')
           .eq('user_id', request.mechanic_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -69,7 +69,14 @@ export async function GET(request, { params }) {
     }
 
     const { user, profile, serviceClient } = context
-    const requestId = params?.id
+    
+    // FIXED: Explicitly await dynamic params promise before accessing id property
+    const resolvedParams = await params
+    const requestId = resolvedParams?.id
+
+    if (!requestId) {
+      return Response.json({ error: 'Missing request identification parameter' }, { status: 400 })
+    }
 
     const { data: rescueRequest, error } = await serviceClient
       .from('rescue_requests')

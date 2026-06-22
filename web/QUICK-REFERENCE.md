@@ -1,26 +1,26 @@
 # Quick Reference: RBAC & Navigation Setup
 
-## New RBAC System
+## RBAC System
 
 ### Three Layers of Protection
 
 ```
 ┌─────────────────────────────────────────────┐
-│ Layer 1: MIDDLEWARE (Edge)                  │
-│ Check: User auth + role + dashboard match   │
-│ Blocks: Cross-role dashboard access         │
+│ Layer 1: COMPONENTS (Page Level)            │
+│ Check: User role matches allowedRoles        │
+│ Blocks: Cross-role page access               │
 └─────────────────────────────────────────────┘
-                    ↓
+                     ↓
 ┌─────────────────────────────────────────────┐
 │ Layer 2: API ROUTES                         │
 │ Check: User role matches endpoint           │
 │ Blocks: Driver accessing /api/admin/stats   │
 └─────────────────────────────────────────────┘
-                    ↓
+                     ↓
 ┌─────────────────────────────────────────────┐
-│ Layer 3: COMPONENTS                         │
-│ Check: User role matches page allowedRoles  │
-│ Blocks: Unauthorized UI sections            │
+│ Layer 3: DATABASE                           │
+│ Check: RLS policies filter data by role      │
+│ Blocks: Unauthorized data access            │
 └─────────────────────────────────────────────┘
 ```
 
@@ -28,21 +28,21 @@
 
 ## 📱 Navigation Structure
 
-### Mobile (4 Tabs per Role)
+### Mobile (< 768px)
 
 ```
 DRIVER                  MECHANIC                ADMIN
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ 🏠 Dashboard    │    │ 🏠 Dashboard    │    │ 📊 Dashboard    │
-│ 🚗 Requests     │    │ 🔧 Jobs         │    │ 🛠️  System      │
-│ ⚙️  Settings    │    │ 📜 History      │    │ 📈 Reports      │
-│ 👤 Account      │    │ 👤 Account      │    │ ⚙️  Settings    │
-│ ⚙️  Settings    │    │ ⚙️  Settings    │    │ 👤 Account      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+│ 🏠 Home        │    │ 🔧 Jobs         │    │ 📊 Dashboard    │
+│ 🤖 AI Assist   │    │ 📋 Requests     │    │ 🛠️  System      │
+│ ⚡ Activity    │    │ 🧭 Navigation   │    │ 📈 Reports      │
+│ 👤 Profile     │    │ ⚡ Activity    │    │ 👤 Profile      │
+│ SOS (center)   │    └─────────────────┘    │ ⚙️  Settings    │
+└─────────────────┘                        └─────────────────┘
 ```
 
 All tabs contain nested routes:
-- `/dashboard/driver/settings` 
+- `/dashboard/driver/settings`
 - `/dashboard/mechanic/job/[id]`
 - `/dashboard/admin/reports`
 - etc.
@@ -105,10 +105,10 @@ export default function MixedPage() {
 
 | User | Tries | Result |
 |------|-------|--------|
-| Driver | `/dashboard/mechanic` | 403 + log + redirect |
+| Driver | `/dashboard/mechanic` | Redirect to /404 |
 | Driver | `/api/admin/stats` | 403 Forbidden |
 | Mechanic | Place new request | Component hidden + API 403 |
-| User | Access `/dashboard/*` unauthenticated | 401 Redirect to login |
+| User | Access `/dashboard/*` unauthenticated | Redirect to /auth/login |
 
 ---
 
@@ -126,9 +126,6 @@ export default function MixedPage() {
   - All users, requests, mechanics
   - Can view/edit platform settings
 
-- [x] **Cross-role access log recorded**
-  - `[SECURITY] Cross-role access attempt: User X (role) tried to access Y`
-
 ---
 
 ## 🧪 Quick Test
@@ -137,7 +134,7 @@ export default function MixedPage() {
 # Test 1: Can a driver visit /dashboard/mechanic?
 1. Login as driver@roadrescue.gh
 2. Manually visit: http://localhost:3000/dashboard/mechanic
-3. Should redirect to: http://localhost:3000/unauthorized ✅
+3. Should redirect to: http://localhost:3000/404 ✅
 
 # Test 2: Can API be accessed by wrong role?
 curl -H "Authorization: Bearer DRIVER_TOKEN" \
@@ -159,8 +156,9 @@ curl -H "Authorization: Bearer DRIVER_TOKEN" \
 |------|---------|
 | `lib/rbac.js` | RBAC protection functions |
 | `components/auth/RBACProtected.jsx` | Component protection wrappers |
-| `middleware.js` | Route-level RBAC enforcement |
-| `components/layout/BottomNav.jsx` | Mobile navigation (4 tabs) |
+| `components/layout/BottomNav.jsx` | Mobile navigation (role-based tabs) |
+| `ResponsiveWrappers.jsx` | MainContainer, MobileOnly, DesktopOnly |
+| `MobileOptimized.jsx` | Mobile-friendly components |
 | `RBAC-IMPLEMENTATION.md` | Full RBAC documentation |
 
 ---
@@ -168,37 +166,30 @@ curl -H "Authorization: Bearer DRIVER_TOKEN" \
 ## 🎯 Next Priority Checkpoints
 
 1. **Verify all API routes use RBAC protection**
-   - [ ] Check `/api/admin/*` has `requireAdmin()`
-   - [ ] Check `/api/mechanics/*` has `requireMechanic()` 
-   - [ ] Check `/api/requests/*` has `requireDriver()`
-   - [ ] Check `/api/profile/preferences` has proper auth
+   - [x] `/api/admin/*` has `requireAdmin()`
+   - [x] `/api/mechanics/*` has `requireMechanic()` 
+   - [ ] `/api/requests/*` has `requireDriver()`
 
 2. **Test cross-role access blocking**
-   - [ ] Driver can't access mechanic routes
-   - [ ] Mechanic can't call admin APIs
-   - [ ] Admin-only UIs are hidden for other roles
+   - [x] Driver can't access mechanic routes
+   - [x] Mechanic can't call admin APIs
+   - [x] Admin-only UIs are hidden for other roles
 
 3. **Verify database RLS policies**
-   - [ ] Drivers see only own requests
-   - [ ] Mechanics see only assigned jobs
-   - [ ] Each role can only update own data
-
-4. **Monitor security logs**
-   - [ ] Set up monitoring for `[SECURITY]` logs
-   - [ ] Alert on repeated cross-role attempts
+   - [x] Drivers see only own requests
+   - [x] Mechanics see only assigned jobs
+   - [x] Each role can only update own data
 
 ---
 
 ## ⚠️ Common Mistakes to Avoid
 
 ❌ Forget to check role in API route
-❌ Rely only on component hiding (use middleware)
+❌ Rely only on component hiding (use RBACProtectedPage)
 ❌ Trust client-side role values
-❌ Forget to redirect after role change
 ❌ Skip `RBACProtectedPage` wrapper on sensitive pages
 
 ✅ Always use `requireRole()` in APIs
-✅ Use middleware for route protection
+✅ Use `RBACProtectedPage` for page protection
 ✅ Verify role server-side
 ✅ Log security events
-✅ Test cross-role access

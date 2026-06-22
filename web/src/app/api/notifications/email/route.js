@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { protectApiRoute } from '@/lib/rbac'
 
 let resend
 function getResend() {
@@ -25,6 +26,11 @@ async function sendEmail({ to, subject, html }) {
 
 export async function POST(request) {
   try {
+    const authResult = await protectApiRoute()
+    if (authResult.error) {
+      return Response.json({ error: authResult.error }, { status: authResult.status })
+    }
+
     const { to, subject, message, htmlContent, templateData } = await request.json()
 
     if (!to) {
