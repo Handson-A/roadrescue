@@ -5,8 +5,7 @@ import RequestForm from '@/components/request/RequestForm'
 
 export default function NewRequestPage() {
   return (
-    // FIXED: Appended lg:pl-64 layout structural alignment utility classes
-    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 lg:pl-64 flex justify-center items-start pb-24 lg:pb-8">
+    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 flex justify-center items-start pb-24 lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         <div className="flex items-center gap-3 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">

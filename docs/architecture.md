@@ -66,8 +66,8 @@ pending, accepted, en_route, arrived, in_progress
 All status changes go through `PATCH /api/requests/status`. Mechanics cannot update `rescue_requests` directly from the browser.
 
 ### Mechanic Matching
-- PostGIS distance search through `get_nearby_verified_mechanics`
-- Only verified and available mechanics are returned
+- PostGIS distance search through `get_nearby_verified_mechanics` RPC function
+- Only verified (`verification_status = 'approved'`) and available mechanics are returned
 - Drivers are notified when nearby mechanics are found
 
 ### AI Diagnostics
@@ -132,16 +132,17 @@ Main endpoints:
 
 ## Key Features Implemented
 
-1. Role-based authentication
+1. Role-based authentication with RBAC component protection
 2. Request creation and geospatial mechanic matching
 3. Server-side lifecycle transition validation
 4. Mechanic acceptance without bidding
-5. AI diagnostic chat
-6. Real-time mechanic location tracking
-7. Admin user and profile management
-8. In-app notifications
-9. Request chat
-10. Driver ratings
+5. Mechanic approval lifecycle with `blocked_emails` blocking
+6. AI diagnostic chat (Google Gemini)
+7. Real-time mechanic location tracking
+8. Admin user and profile management
+9. In-app notifications
+10. Request chat
+11. Driver ratings
 
 ## Features Deferred
 

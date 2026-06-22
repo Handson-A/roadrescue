@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Camera, ImagePlus } from 'lucide-react'
+import { Camera, ImagePlus, Wrench, Truck, Disc, Zap, Fuel, HelpCircle } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -17,12 +17,12 @@ import { SERVICE_TYPE } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
 
 const serviceOptions = [
-  { value: SERVICE_TYPE.REPAIR, label: 'General Repair' },
-  { value: SERVICE_TYPE.TOWING, label: 'Towing' },
-  { value: SERVICE_TYPE.TYRE_CHANGE, label: 'Tyre Change' },
-  { value: SERVICE_TYPE.BATTERY_JUMP, label: 'Battery Jump' },
-  { value: SERVICE_TYPE.FUEL_DELIVERY, label: 'Fuel Delivery' },
-  { value: SERVICE_TYPE.OTHER, label: 'Other' },
+  { value: SERVICE_TYPE.REPAIR, label: 'General Repair', icon: Wrench, description: 'Engine diagnostics, mechanical, or electrical failures' },
+  { value: SERVICE_TYPE.TOWING, label: 'Towing & Recovery', icon: Truck, description: 'Flatbed towing to nearest service center' },
+  { value: SERVICE_TYPE.TYRE_CHANGE, label: 'Tyre Change', icon: Disc, description: 'Puncture repair or spare tyre installation' },
+  { value: SERVICE_TYPE.BATTERY_JUMP, label: 'Battery Jump', icon: Zap, description: 'Jumpstart or battery performance diagnostics' },
+  { value: SERVICE_TYPE.FUEL_DELIVERY, label: 'Fuel Delivery', icon: Fuel, description: 'Emergency petrol or diesel top-up delivery' },
+  { value: SERVICE_TYPE.OTHER, label: 'Other Assistance', icon: HelpCircle, description: 'Vehicle lockouts or unspecified distress assistance' },
 ]
 
 export default function RequestForm() {
@@ -279,12 +279,45 @@ export default function RequestForm() {
              hint="Detailed descriptions improve the precision of the AI diagnostic engine."
            />
 
-           <Select
-             label="Service Type"
-             value={form.serviceType}
-             onChange={(e) => updateField('serviceType', e.target.value)}
-             options={serviceOptions}
-           />
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#7C6B44]">
+                Service Type
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {serviceOptions.map((opt) => {
+                  const Icon = opt.icon
+                  const isSelected = form.serviceType === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => updateField('serviceType', opt.value)}
+                      className={`flex items-start gap-3.5 rounded-xl border p-3 text-left transition-all ${
+                        isSelected
+                          ? 'border-[#F5D108] bg-amber-50/40 ring-1 ring-[#F5D108]/30 shadow-xs'
+                          : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50/85'
+                      }`}
+                    >
+                      <div className={`rounded-xl p-2.5 transition-colors shrink-0 ${
+                        isSelected ? 'bg-[#1F1B10] text-[#F5D108]' : 'bg-slate-200/60 text-slate-600'
+                      }`}>
+                        <Icon size={18} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-xs font-bold transition-colors leading-snug ${
+                          isSelected ? 'text-[#1F1B10]' : 'text-slate-800'
+                        }`}>
+                          {opt.label}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-slate-500 leading-tight">
+                          {opt.description}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
            <button
              type="button"

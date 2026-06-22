@@ -60,17 +60,18 @@ function normalizePoint(point) {
   return null
 }
 
-export default function RescueMap({ request, driverLocation, mechanicLocation, height = '360px' }) {
+export default function RescueMap({ request, driverLocation, mechanicLocation, incomingJobs = [], isRadarMode = false, height = '360px' }) {
   const driver = normalizePoint(driverLocation) || normalizePoint(request?.incident_location)
   const mechanic = normalizePoint(mechanicLocation)
   const [driverIcon, setDriverIcon] = useState(null)
   const [mechanicIcon, setMechanicIcon] = useState(null)
+  const [strandedIcon, setStrandedIcon] = useState(null)
 
   useEffect(() => {
     // Require leaflet and create icons synchronously but set state in a microtask
     const L = require('leaflet')
     delete L.Icon.Default.prototype._getIconUrl
-    const driver = new L.Icon({
+    const drv = new L.Icon({
       iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
       iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -79,9 +80,16 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
       popupAnchor: [1, -34],
       shadowSize: [41, 41]
     })
-    const mechanic = new L.Icon({
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    const mech = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    })
+    const strnd = new L.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
       shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       iconSize: [25, 41],
       iconAnchor: [12, 41],
@@ -90,8 +98,9 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
     })
     // Defer state updates to avoid setState during render/effect synchronous phase
     Promise.resolve().then(() => {
-      setDriverIcon(driver)
-      setMechanicIcon(mechanic)
+      setDriverIcon(drv)
+      setMechanicIcon(mech)
+      setStrandedIcon(strnd)
     })
   }, [])
 
@@ -99,15 +108,24 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
     if (driver?.lat && driver?.lng) {
       return [driver.lat, driver.lng]
     }
+    if (mechanic?.lat && mechanic?.lng) {
+      return [mechanic.lat, mechanic.lng]
+    }
     return [5.6037, -0.1870]
-  }, [driver])
+  }, [driver, mechanic])
 
   const positions = useMemo(() => {
     const pos = []
     if (driver?.lat && driver?.lng) pos.push([driver.lat, driver.lng])
     if (mechanic?.lat && mechanic?.lng) pos.push([mechanic.lat, mechanic.lng])
+    if (isRadarMode && incomingJobs && incomingJobs.length > 0) {
+      incomingJobs.forEach((job) => {
+        const coords = normalizePoint(job.incident_location)
+        if (coords?.lat && coords?.lng) pos.push([coords.lat, coords.lng])
+      })
+    }
     return pos
-  }, [driver, mechanic])
+  }, [driver, mechanic, incomingJobs, isRadarMode])
 
   const routePositions = useMemo(() => {
     if (!driver || !mechanic) return []
@@ -152,6 +170,38 @@ export default function RescueMap({ request, driverLocation, mechanicLocation, h
           </Popup>
         </Marker>
       )}
+
+      {isRadarMode && incomingJobs && incomingJobs.map((job) => {
+        const jobCoords = normalizePoint(job.incident_location)
+        if (!jobCoords || !strandedIcon) return null
+        return (
+          <Marker 
+            key={`incoming-job-${job.id}`} 
+            position={[jobCoords.lat, jobCoords.lng]} 
+            icon={strandedIcon}
+          >
+            <Popup>
+              <div className="p-1 min-w-[170px] font-sans">
+                <h4 className="font-bold text-sm text-red-600 m-0 uppercase tracking-wide">
+                  ⚠️ Breakdown Alert
+                </h4>
+                <p className="font-bold text-slate-800 text-xs mt-1.5 mb-0 capitalize">
+                  {job.service_type?.replace('_', ' ')}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 mb-2 leading-normal">
+                  {job.problem_description || 'Awaiting assistance.'}
+                </p>
+                <a
+                  href={`/dashboard/mechanic/job/${job.id}`}
+                  className="block w-full text-center py-1.5 rounded bg-slate-900 text-white font-bold text-[10px] uppercase hover:bg-slate-800 no-underline"
+                >
+                  View Details
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        )
+      })}
 
       {routePositions.length === 2 && (
         <Polyline positions={routePositions} color="#0ea5e9" dashArray="8, 12" />

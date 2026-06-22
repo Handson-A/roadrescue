@@ -6,9 +6,14 @@ Auth & Profiles
 - `AuthProvider` merges role-specific tables (`driver_profiles`, `mechanic_profiles`) into the main `profile` object. This flattens vehicle and mechanic-specific fields so UI components can read `profile.vehicle_make`, `profile.total_earnings`, etc.
 - The app will use a local mock Supabase client when either `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` are absent, or when `NEXT_PUBLIC_USE_MOCK_AUTH=true`.
 
+Mechanic Approval Lifecycle
+- `updateRequestStatus()` validates `mechanic_profiles.verification_status === 'approved'` before allowing acceptance
+- Admin rejection inserts email into `blocked_emails` table and deletes auth user
+- Rejected mechanics cannot sign up again due to trigger on `blocked_emails`
+
 Routing & UX
-- Login/Register flows: UI will not auto-route into dashboards until a DB-backed role/profile is confirmed. This prevents accidental sign-ins when using mock auth.
-- Sign-out: uses client-side navigation (`router.replace('/auth/login')`) after `signOut()` to ensure React state is reset without a full hard reload.
+- Login/Register flows require DB-backed role before auto-routing into role dashboards
+- Sign-out: uses client-side navigation (`router.replace('/auth/login')` after `signOut()`
 
 Mechanic Dashboard
 - The `Earnings` entry was removed from the mechanic sidebar; earnings are now displayed inside the mechanic Account page as a dedicated earnings card. Edit actions were added to profile cards for inline edits.

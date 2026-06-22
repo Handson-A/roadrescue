@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity } from 'lucide-react'
 
 export default function DriverAccountPage() {
-  const { user, profile } = useAuth()
+  const { user, profile, setProfile } = useAuth()
   const [driverProfile, setDriverProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -120,6 +120,7 @@ export default function DriverAccountPage() {
 
       if (updateError) throw updateError
 
+      setProfile({ ...profile, avatar_url: publicUrl })
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }))
       toast.success('Avatar image synchronized successfully')
     } catch (err) {

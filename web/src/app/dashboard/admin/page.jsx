@@ -17,6 +17,7 @@ import Card from '@/components/ui/Card'
 import PageWrapper from '@/components/layout/PageWrapper'
 import { useAuth } from '@/hooks/useAuth'
 import Spinner from '@/components/ui/Spinner'
+import { createClient } from '@/lib/supabase/client'
 
 // Lazy-load the Leaflet container to completely prevent browser global window crashes during SSR
 const LiveHotspotsMap = dynamic(
@@ -98,22 +99,39 @@ export default function AdminDashboardPage() {
     loadAdminDashboard()
     const interval = setInterval(loadAdminDashboard, 10000)
 
+    const supabase = createClient()
+    const channel = supabase
+      .channel('admin-dashboard-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rescue_requests' },
+        () => {
+          loadAdminDashboard()
+        }
+      )
+      .subscribe()
+
     return () => {
       mounted = false
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
   }, [])
 
   useEffect(() => {
     if (!searchQuery) {
-      setSearchResults([])
-      setHasSearched(false)
+      Promise.resolve().then(() => {
+        setSearchResults([])
+        setHasSearched(false)
+      })
       return
     }
 
     let mounted = true
-    setSearchLoading(true)
-    setHasSearched(true)
+    Promise.resolve().then(() => {
+      setSearchLoading(true)
+      setHasSearched(true)
+    })
 
     async function adminSearch() {
       try {
@@ -205,7 +223,10 @@ export default function AdminDashboardPage() {
 
             {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
             <div className="p-4 bg-slate-50/40">
-              <LiveHotspotsMap mechanics={stats?.activeMechanicLocations || []} />
+              <LiveHotspotsMap 
+                mechanics={stats?.activeMechanicLocations || []} 
+                activeIncidents={stats?.activeIncidents || []} 
+              />
             </div>
           </Card>
 
@@ -347,7 +368,7 @@ export default function AdminDashboardPage() {
         {hasSearched && (
           <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
-              Incident search results for "{searchQuery}"
+              Incident search results for &quot;{searchQuery}&quot;
             </h3>
             {searchLoading ? (
               <div className="flex justify-center py-8"><Spinner /></div>

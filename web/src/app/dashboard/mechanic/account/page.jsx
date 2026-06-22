@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 export default function MechanicAccountPage() {
-  const { user, profile } = useAuth()
+  const { user, profile, setProfile } = useAuth()
   const [mechanicProfile, setMechanicProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -145,6 +145,7 @@ setFormData((prev) => ({
 
       if (updateError) throw updateError
 
+      setProfile({ ...profile, avatar_url: publicUrl })
       setFormData(prev => ({ ...prev, avatarUrl: publicUrl }))
       toast.success('Profile avatar image updated successfully')
     } catch (err) {

@@ -80,15 +80,14 @@ export async function PATCH(req) {
       user.id   // adminId tracking parameter for database logs audit trail
     )
 
-    // 2. FIXED: Map verification state boolean flags straight to the true matching schema field column
-    const isApproved = dbStatus === 'approved'
+    // 2. Map verification status straight to the true matching schema field column
     const { error: profileLinkError } = await serviceSupabase
       .from('mechanic_profiles')
-      .update({ is_verified: isApproved })
+      .update({ verification_status: dbStatus })
       .eq('user_id', mechanicUserId)
 
     if (profileLinkError) {
-      console.error('[SCHEMA CRASH] Failed to sync verification flag parameters to mechanic_profiles:', profileLinkError.message)
+      console.error('[SCHEMA CRASH] Failed to sync verification status parameters to mechanic_profiles:', profileLinkError.message)
     }
 
     // ========================================================================

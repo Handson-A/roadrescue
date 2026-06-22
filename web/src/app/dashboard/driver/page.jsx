@@ -54,14 +54,18 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     if (!searchQuery) {
-      setMechanicResults([])
-      setHasSearched(false)
+      Promise.resolve().then(() => {
+        setMechanicResults([])
+        setHasSearched(false)
+      })
       return
     }
 
     let mounted = true
-    setSearchLoading(true)
-    setHasSearched(true)
+    Promise.resolve().then(() => {
+      setSearchLoading(true)
+      setHasSearched(true)
+    })
 
     async function loadMechanics() {
       try {
@@ -102,8 +106,7 @@ export default function DriverDashboard() {
   const recentItems = requests.slice(0, 2)
 
   return (
-    // FIXED: Added lg:pl-64 to clear the desktop/tablet sidebar frame area cleanly
-    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 lg:pl-64 flex justify-center items-start pb-24 lg:pb-8">
+    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 flex justify-center items-start pb-24 lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         {/* ==================================================================== */}
@@ -170,7 +173,7 @@ export default function DriverDashboard() {
                 Live Dispatch Unit: {activeRequest.status}
               </span>
               <div className="mt-3 space-y-1">
-                <h4 className="font-mono text-base font-black text-amber-400">Emergency Node #{activeRequest.id?.substring(0,8)}</h4>
+                <h4 className="font-mono text-base font-black text-amber-400">Emergency ID #{activeRequest.id?.substring(0,8)}</h4>
                 <p className="text-xs text-white/70 leading-relaxed">{activeRequest.problem_description}</p>
                 <p className="text-[11px] font-mono text-white/40 pt-1">📍 {activeRequest.incident_address || 'Location coordinates active'}</p>
               </div>

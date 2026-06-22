@@ -84,15 +84,15 @@ import { MobileOnly, DesktopOnly } from '@/components/responsive/ResponsiveWrapp
 
 ### Navigation Updates
 
-- [ ] New role/route? Update `BottomNav.jsx` `roleNavItems` object
-- [ ] New navigation item? Add to both `BottomNav` and Navbar `roleLinks`
-- [ ] Update middleware if new protected route added
+- [ ] New role/route? Update `BottomNav.jsx` `driverNav` or `mechanicNav` arrays
+- [ ] New navigation item? Add to `BottomNav.jsx`
+- [ ] Protect page routes with `RBACProtectedPage` wrapper
 
 ### Testing Requirements
 
 #### Mobile (< 768px)
-- [ ] Bottom nav shows all items
-- [ ] Active route highlighted in amber
+- [ ] Bottom nav shows all items for role
+- [ ] Active route highlighted in gold (#F5D108)
 - [ ] No content overlap with bottom nav
 - [ ] All buttons are touchable (44x44px minimum)
 - [ ] Text is readable (at least 16px base font size)
@@ -151,4 +151,4 @@ Before deploying:
 - **Responsive Wrappers**: `@/components/responsive/ResponsiveWrappers.jsx`
 - **Mobile Optimized Components**: `@/components/mobile/MobileOptimized.jsx`
 - **Bottom Navigation**: `@/components/layout/BottomNav.jsx`
-- **Middleware**: `@/src/middleware.js` (route protection)
+- **RBAC Protection**: `@/components/auth/RBACProtected.jsx`

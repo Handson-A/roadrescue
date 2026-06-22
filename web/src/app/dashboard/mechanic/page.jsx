@@ -40,40 +40,16 @@ export default function MechanicPage() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   
-  // FIXED: Add local location state tracking parameter vectors
-  const [localCoords, setLocalCoords] = useState(null)
-  
   const userIdRef = useRef(user?.id)
   const searchParams = useSearchParams()
-  const { isAvailable, updateStatus } = useMechanicStatus(user?.id)
+  const { isAvailable, updateStatus, localCoords } = useMechanicStatus(user?.id)
 
   useEffect(() => {
     const q = searchParams.get('search') || ''
-    setSearchQuery(q)
+    Promise.resolve().then(() => {
+      setSearchQuery(q)
+    })
   }, [searchParams])
-
-  // FIXED: Local client tracking hook to follow device coordinates for the map view canvas
-  useEffect(() => {
-    if (!isAvailable) {
-      setLocalCoords(null)
-      return
-    }
-
-    if (!navigator.geolocation) return
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocalCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        })
-      },
-      (error) => console.warn('[DASHBOARD LOCATION FAULT]:', error.message),
-      { enableHighAccuracy: true, maximumAge: 10000 }
-    )
-
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [isAvailable])
 
   useEffect(() => {
     userIdRef.current = user?.id
@@ -133,22 +109,40 @@ const { data: active, error: activeErr } = await supabase
 
     loadJobs()
     const interval = setInterval(loadJobs, 10000)
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel('mechanic-dashboard-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rescue_requests' },
+        () => {
+          loadJobs()
+        }
+      )
+      .subscribe()
+
     return () => {
       mounted = false
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
   }, [user?.id])
 
   useEffect(() => {
     if (!searchQuery) {
-      setJobSearchResults([])
-      setHasSearched(false)
+      Promise.resolve().then(() => {
+        setJobSearchResults([])
+        setHasSearched(false)
+      })
       return
     }
 
     let mounted = true
-    setSearchLoading(true)
-    setHasSearched(true)
+    Promise.resolve().then(() => {
+      setSearchLoading(true)
+      setHasSearched(true)
+    })
 
     async function searchJobs() {
       try {
@@ -300,6 +294,7 @@ const { data: active, error: activeErr } = await supabase
                 <RescueMap 
                   request={targetMapRequest} 
                   mechanicLocation={localCoords}
+                  incomingJobs={incomingJobs}
                   isRadarMode={activeJobs.length === 0}
                   isOnline={isAvailable}
                   height="100%" 
@@ -424,7 +419,7 @@ const { data: active, error: activeErr } = await supabase
       {hasSearched && (
         <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
-            Job search results for "{searchQuery}"
+            Job search results for &quot;{searchQuery}&quot;
           </h3>
           {searchLoading ? (
             <div className="flex justify-center py-8"><Spinner /></div>
