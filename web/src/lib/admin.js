@@ -21,14 +21,14 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
         business_name,
         years_experience,
         location_label,
-        specializations
-      ),
-      profiles:mechanic_id(
-        id,
-        full_name,
-        phone,
-        avatar_url,
-        role
+        specializations,
+        profiles!user_id(
+          id,
+          full_name,
+          phone,
+          avatar_url,
+          role
+        )
       )
     `)
     .eq('status', status)
@@ -42,7 +42,7 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
   // Map the clean database relational nesting straight to your frontend model expectations
   return (verifications || []).map((item) => {
     const mechProfile = item.mechanic_profiles
-    const userProfile = item.profiles
+    const userProfile = mechProfile?.profiles
 
     // Safe JSON processing for specialized tag objects
     let specs = []
@@ -221,6 +221,39 @@ export async function getAdminStats(serviceSupabase) {
   const serviceTypeBreakdown = Object.entries(serviceTypeCounts).map(([service_type, count]) => ({ service_type, count }))
   const statusBreakdown = Object.entries(statusCounts).map(([status, count]) => ({ status, count }))
 
+  // 8. Fetch active online mechanic locations and active incident coordinates in real-time
+  const [activeLocationsResult, activeIncidentsResult] = await Promise.all([
+    serviceSupabase
+      .from('mechanic_profiles')
+      .select(`
+        user_id,
+        business_name,
+        current_location,
+        is_available,
+        profiles:user_id (
+          full_name,
+          phone,
+          avatar_url
+        )
+      `)
+      .eq('verification_status', 'approved')
+      .not('current_location', 'is', null),
+    serviceSupabase
+      .from('rescue_requests')
+      .select(`
+        id,
+        status,
+        service_type,
+        problem_description,
+        incident_location,
+        mechanic_id
+      `)
+      .in('status', ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'])
+  ])
+
+  const activeMechanicLocations = activeLocationsResult.data || []
+  const activeIncidents = activeIncidentsResult.data || []
+
   return {
     totalRequests: totalRequests || 0,
     activeRequests: activeRequests || 0,
@@ -238,6 +271,8 @@ export async function getAdminStats(serviceSupabase) {
     statusBreakdown,
     totalUsers: (totalMechanics || 0) + (totalDrivers || 0),
     pendingVerifications: pendingVerifications || 0,
+    activeMechanicLocations,
+    activeIncidents,
   }
 }
 

@@ -84,6 +84,64 @@ export function useMechanicStatus(mechanicId) {
 
   const isAvailable = useMemo(() => status === 'available', [status])
   const isBusy = useMemo(() => status === 'busy', [status])
+  const [localCoords, setLocalCoords] = useState(null)
+
+  useEffect(() => {
+    if (!isAvailable || !mechanicId) {
+      Promise.resolve().then(() => {
+        setLocalCoords(null)
+      })
+      return
+    }
+
+    if (!navigator.geolocation) return
+
+    const supabase = supabaseRef.current || createClient()
+    const channel = supabase.channel('online-mechanics')
+    channel.subscribe()
+
+    let lastDBSync = 0
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords
+        const currentNow = { lat: latitude, lng: longitude }
+        setLocalCoords(currentNow)
+
+        // 1. Broadcast coordinates to 'online-mechanics' channel
+        channel.send({
+          type: 'broadcast',
+          event: 'location_update',
+          payload: {
+            mechanicId,
+            latitude,
+            longitude,
+            timestamp: Date.now()
+          }
+        })
+
+        // 2. Persist to DB (throttle 30s)
+        const timeNow = Date.now()
+        if (timeNow - lastDBSync > 30000) {
+          lastDBSync = timeNow
+          await supabase
+            .from('mechanic_profiles')
+            .update({
+              current_location: `POINT(${longitude} ${latitude})`,
+              location_updated_at: new Date().toISOString()
+            })
+            .eq('user_id', mechanicId)
+        }
+      },
+      (error) => console.warn('[useMechanicStatus GPS FAULT]:', error.message),
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    )
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+      supabase.removeChannel(channel)
+    }
+  }, [isAvailable, mechanicId])
 
   const updateStatus = useCallback(
     async (nextStatus) => {
@@ -116,6 +174,7 @@ export function useMechanicStatus(mechanicId) {
     isAvailable,
     isBusy,
     loading,
+    localCoords,
     updateStatus,
   }
 }

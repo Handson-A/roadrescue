@@ -69,7 +69,14 @@ export async function GET(request, { params }) {
     }
 
     const { user, profile, serviceClient } = context
-    const requestId = params?.id
+    
+    // FIXED: Explicitly await dynamic params promise before accessing id property
+    const resolvedParams = await params
+    const requestId = resolvedParams?.id
+
+    if (!requestId) {
+      return Response.json({ error: 'Missing request identification parameter' }, { status: 400 })
+    }
 
     const { data: rescueRequest, error } = await serviceClient
       .from('rescue_requests')

@@ -146,7 +146,7 @@ export async function insertNotifications(serviceClient, notifications) {
 }
 
 export async function getNearbyMechanics(serviceClient, latitude, longitude, searchRadiusKm = 10) {
-  const { data, error } = await serviceClient.rpc('get_nearby_mechanics', {
+  const { data, error } = await serviceClient.rpc('get_nearby_verified_mechanics', {
     lat: latitude,
     lng: longitude,
     radius_km: searchRadiusKm,

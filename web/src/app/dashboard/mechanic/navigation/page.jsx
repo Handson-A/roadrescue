@@ -17,55 +17,13 @@ export default function MechanicNavigationPage() {
   const { user } = useAuth()
   const [activeJob, setActiveJob] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [localCoords, setLocalCoords] = useState(null)
   const userIdRef = useRef(user?.id)
-  const lastDBSyncRef = useRef(0)
 
-  // 1. Monitor the single source of truth for availability from your schema (is_available)
-  const { isAvailable } = useMechanicStatus(user?.id)
+  // 1. Monitor the single source of truth for availability and location from your schema
+  const { isAvailable, localCoords } = useMechanicStatus(user?.id)
 
   // 2. Initialize active real-time channel broadcasting ONLY if an assigned operational job exists
   const { broadcastError } = useBroadcastLocation(activeJob?.id, user?.id)
-
-  // PIPELINE A: Handle continuous watchPosition streaming when the mechanic is online
-  useEffect(() => {
-    if (!isAvailable || !user?.id) {
-      setLocalCoords(null)
-      return
-    }
-
-    if (!navigator.geolocation) return
-
-    const supabase = createClient()
-
-    const watchId = navigator.geolocation.watchPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords
-        const currentNow = { lat: latitude, lng: longitude }
-        
-        setLocalCoords(currentNow)
-
-        // Throttle database persistence writes (e.g., update every ~30 seconds to minimize overhead)
-        const timeNow = Date.now()
-        if (timeNow - lastDBSyncRef.current > 30000) {
-          lastDBSyncRef.current = timeNow
-          
-          // Match your PostGIS geometry schema standard exactly: POINT(longitude latitude)
-          await supabase
-            .from('mechanic_profiles')
-            .update({
-              current_location: `POINT(${longitude} ${latitude})`,
-              location_updated_at: new Date().toISOString()
-            })
-            .eq('user_id', user.id)
-        }
-      },
-      (error) => console.warn('[NAV GEAR FAULT]:', error.message),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-    )
-
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [isAvailable, user?.id])
 
   // PIPELINE B: Poll for incoming accepted or active assignments
   useEffect(() => {

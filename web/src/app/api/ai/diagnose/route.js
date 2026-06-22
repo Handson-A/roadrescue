@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI, Type } from '@google/genai'
+import { diagnoseLimiter } from '@/lib/rateLimit'
 
 const MODEL = 'gemini-2.5-flash'
 const SEVERITIES = new Set(['low', 'medium', 'high', 'critical'])
@@ -102,6 +103,15 @@ async function generateContentWithRetry(params, retries = 3, delay = 1000) {
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'anonymous'
+    const limit = diagnoseLimiter(ip)
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many diagnostic requests. Please try again in a minute.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
     const symptoms = normalizeString(body.symptoms)
     const vehicleMake = normalizeString(body.vehicleMake)

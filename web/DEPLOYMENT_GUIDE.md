@@ -4,11 +4,11 @@
 
 ### Step 1.1: Verify Environment Variables
 - [ ] `.env.local` created from `.env.example` ✓
-- [ ] All 7 required variables filled in:
+- [ ] All required variables filled in:
   - [ ] NEXT_PUBLIC_SUPABASE_URL
   - [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
   - [ ] SUPABASE_SERVICE_ROLE_KEY
-  - [ ] OPENAI_API_KEY
+  - [ ] GEMINI_API_KEY (for AI diagnostics)
   - [ ] RESEND_API_KEY
   - [ ] NEXT_PUBLIC_APP_URL (set to production domain)
 - [ ] `.env` file is in `.gitignore` (check: manually never commit it)
@@ -38,9 +38,9 @@ npm run lint
 # Check these critical files exist:
 ls -la src/providers/AuthProvider.jsx        # ✓ Enhanced
 ls -la src/store/authStore.js               # ✓ Enhanced
-ls -la src/hooks/useMechanicLocation.js     # ✓ Consolidated
-ls -la src/lib/request.js                   # ✓ Consolidated
-ls -la src/styles/global.css                # ✓ Warm cream theme
+ls -la src/hooks/useMechanicLocation.js     # ✓ Consolidation
+ls -la src/lib/request.js                   # ✓ Status transitions
+ls -la src/lib/rbac.js                      # ✓ RBAC protection
 ls -la .env.example                         # ✓ Updated
 ls -la .gitignore                           # ✓ Production-ready
 ls -la vercel.json                          # ✓ Deployment config
@@ -169,20 +169,14 @@ Related: Request lifecycle management"
 ```bash
 git commit -m "chore(config): prepare for Vercel deployment
 
-- Added a minimal vercel.json for Next.js deployment compatibility
+- Added vercel.json for Next.js deployment compatibility
 - Updated .env.example with comprehensive documentation
 - Updated .gitignore for production security
   - Added .env.local, .env.production exclusions
   - Added IDE files (.vscode, .idea)
   - Comprehensive OS file ignores
-- Keep deployment settings in Vercel project config; avoid unsupported fields like nodeVersion in vercel.json
-  - X-Content-Type-Options: nosniff
-  - X-Frame-Options: DENY
-  - X-XSS-Protection: 1; mode=block
-  - Referrer-Policy: strict-origin-when-cross-origin
-- Configured 60s timeout for API functions (payment webhooks, heavy compute)
-
-Related: Academic defense deployment"
+- Configured 60s timeout for API functions
+- Security headers via Vercel dashboard (no middleware dependency)"
 ```
 
 ### Step 2.4: Verify Commits

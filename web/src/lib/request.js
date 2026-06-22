@@ -65,7 +65,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     if (requestError) throw requestError
 
     // 2. Find nearby mechanics using PostGIS geospatial function
-    const { data: nearbyMechanics, error: matchError } = await supabase.rpc('get_nearby_mechanics', {
+    const { data: nearbyMechanics, error: matchError } = await supabase.rpc('get_nearby_verified_mechanics', {
       lat: incidentLat,
       lng: incidentLng,
       radius_km: DEFAULT_SEARCH_RADIUS_KM,
@@ -294,6 +294,15 @@ export async function updateRequestStatus(serviceSupabase, payload) {
 
         if (!isDriverOwner && !isAssignedMechanic && !isAdmin) {
           throw new Error('Not authorized to cancel this request')
+        }
+
+        const forbiddenStatuses = [
+          REQUEST_STATUS.EN_ROUTE,
+          REQUEST_STATUS.ARRIVED,
+          REQUEST_STATUS.IN_PROGRESS,
+        ]
+        if (forbiddenStatuses.includes(request.status)) {
+          throw new Error('Not authorized to cancel this request once the mechanic is en route, has arrived, or has started work')
         }
       } else {
         if (actorRole !== 'mechanic' && actorRole !== 'admin') {
@@ -565,6 +574,7 @@ export async function submitRating(supabase, payload) {
       .insert({
         request_id: requestId,
         driver_id: driverId,
+        mechanic_id: request.mechanic_id, // Fix missing column mapping
         rating: Math.max(1, Math.min(5, rating)),
         review: review || null,
       })

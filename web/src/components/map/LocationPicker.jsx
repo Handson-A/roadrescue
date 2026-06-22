@@ -2,8 +2,11 @@
 
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Fuel } from 'lucide-react'
+import toast from 'react-hot-toast' // Added hot-toast import
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import { createClient } from '@/lib/supabase/client'
 
 const ACCRA_LAT = 5.6037
 const ACCRA_LNG = -0.1870
@@ -20,6 +23,11 @@ const TileLayer = dynamic(
 
 const Marker = dynamic(
   () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+)
+
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
 )
 
@@ -53,7 +61,36 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
   const [address, setAddress] = useState('')
   const [mapCenter, setMapCenter] = useState([ACCRA_LAT, ACCRA_LNG])
   const [customIcon, setCustomIcon] = useState(null)
+  const [showStations, setShowStations] = useState(false)
+  const [stationIcons, setStationIcons] = useState({ fuel: null, ev: null })
+  const [stations, setStations] = useState([])
   const callbackRef = useRef(null)
+
+  useEffect(() => {
+    if (!showStations) return
+
+    let isMounted = true
+    async function loadStations() {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('fuel_ev_stations')
+          .select('id, name, type, latitude, longitude, address')
+        
+        if (error) throw error
+        if (isMounted && data) {
+          setStations(data)
+        }
+      } catch (err) {
+        console.error('Error fetching fuel/EV stations:', err)
+        toast.error('Failed to load stations')
+      }
+    }
+    loadStations()
+    return () => {
+      isMounted = false
+    }
+  }, [showStations])
 
   useEffect(() => {
     callbackRef.current = onSelect || onLocationSelect
@@ -63,17 +100,37 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
     const L = require('leaflet')
     delete L.Icon.Default.prototype._getIconUrl
     
-    setCustomIcon(
-      new L.Icon({
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
+    Promise.resolve().then(() => {
+      setCustomIcon(
+        new L.Icon({
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        })
+      )
+      setStationIcons({
+        fuel: new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        }),
+        ev: new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        })
       })
-    )
+    })
   }, [])
 
   const reverseGeocode = useCallback(async (latitude, longitude) => {
@@ -91,7 +148,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
     }
   }, [])
 
-  const placeMarkerValue = useCallback((latitude, longitude) => {
+  const placeMarkerValue = useCallback((latitude, longitude, showToast = false) => {
     const nextLat = Number(latitude.toFixed(6))
     const nextLng = Number(longitude.toFixed(6))
 
@@ -112,10 +169,14 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           address: label,
         })
       }
+
+      // Trigger user toast feedback if explicitly designated by human control parameters
+      if (showToast) {
+        toast.success('Location confirmed')
+      }
     })
   }, [reverseGeocode])
 
-  // FIXED: Added high-accuracy positioning parameters to force actual hardware GPS interrogation
   const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
       console.warn('Geolocation sensor completely missing on this browser engine.')
@@ -125,24 +186,22 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        placeMarkerValue(position.coords.latitude, position.coords.longitude)
+        placeMarkerValue(position.coords.latitude, position.coords.longitude, true)
       },
       (error) => {
         console.warn('Geolocation sensor error profile:', error.message)
-        // Only drops to Accra fallback state if sensor query times out or permissions are explicitly denied
         placeMarkerValue(ACCRA_LAT, ACCRA_LNG)
       },
       {
-        enableHighAccuracy: true, // Forces mobile smartphones to wake up true GPS hardware
-        timeout: 8000,            // Give it 8 seconds to lock on coordinates
-        maximumAge: 0             // Do not use a stale cached location profile
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 0
       }
     )
   }, [placeMarkerValue])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Slightly extended delay initialization loop to allow Next.js window rendering mechanics to settle
       const timeoutId = setTimeout(() => { detectLocation() }, 200)
       return () => clearTimeout(timeoutId)
     }
@@ -151,8 +210,12 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
   function confirmManualLocation() {
     const nextLat = Number(lat)
     const nextLng = Number(lng)
-    if (!Number.isFinite(nextLat) || !Number.isFinite(nextLng)) return
-    placeMarkerValue(nextLat, nextLng)
+    if (!Number.isFinite(nextLat) || !Number.isFinite(nextLng)) {
+      toast.error('Invalid coordinates supplied')
+      return
+    }
+    // Set flag parameter to true to trigger confirmation toast alert banner
+    placeMarkerValue(nextLat, nextLng, true)
   }
 
   return (
@@ -172,14 +235,60 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           {(lat && lng && customIcon) && (
             <Marker position={[Number(lat), Number(lng)]} icon={customIcon} />
           )}
-          <MapClickHandler onClick={placeMarkerValue} />
+          {showStations && stations.map((station) => {
+            const icon = station.type === 'ev' ? stationIcons.ev : stationIcons.fuel
+            if (!icon) return null
+            return (
+              <Marker
+                key={station.id}
+                position={[station.latitude, station.longitude]}
+                icon={icon}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[170px] font-sans">
+                    <h4 className="font-bold text-sm text-slate-800 m-0">{station.name}</h4>
+                    <p className="text-[10px] text-slate-500 mt-1 mb-0">{station.address}</p>
+                    <p className="mt-1.5 mb-2">
+                      <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        station.type === 'ev' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {station.type === 'ev' ? '⚡ EV Charging Hub' : '⛽ Fuel Station'}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => placeMarkerValue(station.latitude, station.longitude, true)}
+                      className="w-full text-center py-1.5 rounded-lg bg-[#1F1B10] text-[#F5D108] font-bold text-[10px] uppercase hover:bg-slate-800 transition-colors"
+                    >
+                      Select as Pickup
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            )
+          })}
+          <MapClickHandler onClick={(latitude, longitude) => placeMarkerValue(latitude, longitude, true)} />
           <MapController center={mapCenter} zoom={14} />
         </MapContainer>
       </div>
 
-      <Button variant="outline" fullWidth onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider">
-        📍 Detect My Location
-      </Button>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider flex-1">
+          📍 Detect Location
+        </Button>
+        <button
+          type="button"
+          onClick={() => setShowStations(!showStations)}
+          className={`h-11 px-4 rounded-xl text-xs font-bold uppercase tracking-wider border flex items-center justify-center gap-1.5 transition-all ${
+            showStations
+              ? 'border-amber-500 bg-amber-50 text-amber-600 ring-1 ring-amber-500/20'
+              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <Fuel size={14} />
+          {showStations ? 'Hide Fuel/EV Stations' : 'Show Fuel/EV Stations'}
+        </button>
+      </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Position Parameter Descriptors</p>
@@ -203,7 +312,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           disabled={!lat || !lng}
           className="bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider h-11"
         >
-          Confirm Destination Target
+          Confirm Location
         </Button>
       </div>
     </div>

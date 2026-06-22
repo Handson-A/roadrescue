@@ -331,7 +331,7 @@ alter publication supabase_realtime add table public.notifications;
 -- GEOSPATIAL SEARCH FUNCTION
 -- =========================================================
 
-create or replace function public.get_nearby_mechanics(
+create or replace function public.get_nearby_verified_mechanics(
   lat double precision,
   lng double precision,
   radius_km double precision default 10
@@ -364,6 +364,11 @@ as $$
       radius_km * 1000
     )
   order by distance_km asc;
+$$;
+
+-- =========================================================
+-- SYSTEM REPORTS
+-- =========================================================
 
 CREATE TYPE public.report_category AS ENUM (
   'pricing_dispute', 
@@ -395,5 +400,40 @@ CREATE POLICY "Users can file system reports"
 -- Allow Admins to review them
 CREATE POLICY "Admins can view all system reports" 
   ON public.system_reports FOR SELECT TO authenticated 
-  USING (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));  
-$$;
+  USING (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+-- =========================================================
+-- REQUEST REVIEWS (RATING SYSTEM)
+-- =========================================================
+
+CREATE TABLE public.request_reviews (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id uuid REFERENCES public.rescue_requests(id) ON DELETE CASCADE,
+  driver_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  mechanic_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  rating int CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+  review text,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+
+CREATE INDEX idx_reviews_mechanic ON public.request_reviews(mechanic_id);
+CREATE INDEX idx_reviews_request ON public.request_reviews(request_id);
+
+ALTER TABLE public.request_reviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read reviews"
+  ON public.request_reviews FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Drivers can insert reviews"
+  ON public.request_reviews FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = driver_id);
+
+-- =========================================================
+-- ADDITIONAL REALTIME TABLE REGISTRATIONS
+-- =========================================================
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.mechanic_profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.request_reviews;

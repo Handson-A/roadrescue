@@ -72,21 +72,15 @@ This document outlines the UI/UX consistency standards for RoadRescue across des
 ## Color & Styling Consistency
 
 ### Active Navigation State
-- **Color**: `text-amber-600`
-- **Background**: `bg-amber-50`
-- **Border**: Top border `border-t-2 border-amber-600`
-- **Icon Size**: `text-xl` (1.25rem)
-- **Label**: `text-xs font-semibold`
+- **Color**: `text-[#F5D108]` (gold)
+- **Background**: `bg-[#F5D108]` for active pill
+- **Icon Size**: `size={19}` (1.2rem)
+- **Label**: `text-[9.5px] font-black uppercase tracking-wider`
 
 ### Navigation Item Sizes
-- **Height**: `h-20` (full bottom nav height)
-- **Width**: Equal distribution (divide by number of items)
-- **Padding**: Vertical centering with `flex items-center justify-center`
-
-### Responsive Text
-- Mobile: `text-xs` for labels, `text-xl` for icons
-- Desktop: `text-sm` for navigation labels
-- Navbar: Logo `text-2xl font-black`
+- **Driver mode**: 4 tabs with center SOS button
+- **Mechanic mode**: 5 tabs evenly distributed
+- **Admin mode**: No bottom nav (uses top navbar)
 
 ---
 
@@ -115,9 +109,9 @@ export default function Page() {
 - **Props**: None (uses `useAuth()` for role, `usePathname()` for active link)
 - **Visibility**: `md:hidden` (hidden on desktop)
 - **Role-based items**:
-  - **Driver**: Dashboard, History
-  - **Mechanic**: Jobs, History
-  - **Admin**: Dashboard, Requests, Mechanics, Users
+  - **Driver**: Home, AI Assist, Activity, Profile (plus center SOS button)
+  - **Mechanic**: Jobs, Requests, Navigation, Activity, Profile
+  - **Admin**: No bottom nav
 
 ### Navbar Component
 - **Location**: `@/components/layout/Navbar.jsx`

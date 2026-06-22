@@ -6,6 +6,7 @@ import { Wrench, Phone, AlertTriangle, User, ShieldCheck } from 'lucide-react'
 import L from 'leaflet'
 
 import 'leaflet/dist/leaflet.css'
+import Badge from '@/components/ui/Badge'
 
 // ============================================================================
 // HIGH-VISIBILITY COLOR MAP MARKER DESIGNS
@@ -41,6 +42,26 @@ const dispatchedMechanicIcon = new L.Icon({
 
 export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }) {
   const defaultPosition = [5.6037, -0.1870] // Accra Operations Baseline Hub Center Coordinates
+  const [liveLocations, setLiveLocations] = useState({})
+
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+    const channel = supabase
+      .channel('online-mechanics-map')
+      .on('broadcast', { event: 'location_update' }, (payload) => {
+        const { mechanicId, latitude, longitude } = payload.payload
+        setLiveLocations((prev) => ({
+          ...prev,
+          [mechanicId]: { lat: latitude, lng: longitude }
+        }))
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   // Robust parsing utility targeting multiple relational database string patterns
   const extractCoords = (locationField) => {
@@ -116,7 +137,8 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
 
       {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
       {mechanics?.map((m) => {
-        const mechCoords = extractCoords(m.current_location)
+        const liveLoc = liveLocations[m.user_id]
+        const mechCoords = liveLoc || extractCoords(m.current_location)
         if (!mechCoords) return null
 
         const activeAssignment = activeIncidents.find(
@@ -162,7 +184,8 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
 
       {/* ======================= LAYER 3: ROUTING VECTOR PASSES (SEPARATE FLATTENED STREAM) ======================= */}
       {mechanics?.map((m) => {
-        const mechCoords = extractCoords(m.current_location)
+        const liveLoc = liveLocations[m.user_id]
+        const mechCoords = liveLoc || extractCoords(m.current_location)
         if (!mechCoords) return null
 
         const activeAssignment = activeIncidents.find(

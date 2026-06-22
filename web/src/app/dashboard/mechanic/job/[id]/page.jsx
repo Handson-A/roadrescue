@@ -12,6 +12,8 @@ import ReportModal from '@/components/report/ReportModal'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
+import RescueMap from '@/components/map/RescueMap'
+import { useBroadcastLocation } from '@/hooks/useMechanicLocation'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -22,6 +24,35 @@ export default function JobDetailPage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const supabase = createClient()
   const { user } = useAuth()
+  const [localCoords, setLocalCoords] = useState(null)
+
+  // Start active location broadcasting if this job is assigned to the current mechanic and is active
+  const isActive = job && job.mechanic_id === user?.id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(job.status)
+  useBroadcastLocation(isActive ? jobId : null, user?.id)
+
+  useEffect(() => {
+    if (!isActive) {
+      Promise.resolve().then(() => {
+        setLocalCoords(null)
+      })
+      return
+    }
+
+    if (!navigator.geolocation) return
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocalCoords({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+      },
+      (error) => console.warn('[JOB DETAIL GPS FAULT]:', error.message),
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    )
+
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [isActive])
 
   useEffect(() => {
     async function loadJob() {
@@ -77,12 +108,17 @@ export default function JobDetailPage() {
   }
 
   const cancelJob = async () => {
-    if (!confirm('Cancel this rescue request?')) return
+    const reason = prompt('Please enter a cancellation reason (optional):')
+    if (reason === null) return // User cancelled the prompt
     setUpdating(true)
     const response = await fetch('/api/requests/status', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId: jobId, newStatus: 'cancelled' }),
+      body: JSON.stringify({ 
+        requestId: jobId, 
+        newStatus: 'cancelled',
+        cancellationReason: reason.trim() || 'Mechanic cancelled job'
+      }),
     })
 
     const result = await response.json()
@@ -206,8 +242,12 @@ export default function JobDetailPage() {
           <Card>
             <h2 className="text-lg font-semibold mb-4">Location</h2>
             <p className="text-sm">{job.incident_address}</p>
-            <div className="mt-3 flex aspect-square items-center justify-center rounded-2xl border border-dashed border-border bg-surfaceAlt text-xs text-muted">
-              Map view coming soon
+            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 h-[280px]">
+              <RescueMap 
+                request={job} 
+                mechanicLocation={localCoords} 
+                height="100%" 
+              />
             </div>
           </Card>
 

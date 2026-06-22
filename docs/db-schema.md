@@ -165,6 +165,33 @@ profile_change_requests {
 }
 ```
 
+### blocked_emails
+Email addresses permanently blocked from registration (e.g., rejected mechanics).
+
+```sql
+blocked_emails {
+  email: text primary key
+  reason: text
+  blocked_at: timestamptz
+  blocked_by: uuid references profiles(id)
+}
+```
+
+### request_reviews
+Driver ratings for completed mechanics.
+
+```sql
+request_reviews {
+  id: uuid primary key
+  request_id: uuid references rescue_requests(id)
+  driver_id: uuid references profiles(id)
+  mechanic_id: uuid references profiles(id)
+  rating: integer (1-5 scale)
+  review: text
+  created_at: timestamptz
+}
+```
+
 ## Entity Relationship Diagram
 
 ```
@@ -176,21 +203,16 @@ profiles
   ├─ notifications.user_id
   ├─ messages.sender_id
   ├─ profile_preferences.user_id
-  └─ profile_change_requests.user_id
+  ├─ profile_change_requests.user_id
+  ├─ request_reviews.mechanic_id
+  └─ blocked_emails.blocked_by
 
 rescue_requests
   ├─ notifications.request_id
-  └─ messages.request_id
+  ├─ messages.request_id
+  └─ request_reviews.request_id
 ```
-
-## Lifecycle Transitions
-
-```
-pending → accepted → en_route → arrived → in_progress → completed
-```
-
-Cancellation is allowed from `pending`, `accepted`, `en_route`, `arrived`, and `in_progress`.
 
 ## Geospatial Queries
 
-Mechanic matching uses `mechanic_profiles.current_location` with PostGIS and the `get_nearby_verified_mechanics` SQL function.
+Mechanic matching uses `mechanic_profiles.current_location` with PostGIS via `get_nearby_verified_mechanics` RPC function.
