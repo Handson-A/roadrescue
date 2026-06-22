@@ -31,8 +31,6 @@ export default function MechanicHistoryPage() {
           service_type,
           problem_description,
           completed_at,
-          driver_rating,
-          driver_review,
           created_at,
           driver:driver_id (id, full_name)
         `)

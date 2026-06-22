@@ -10,13 +10,19 @@ import Spinner from '@/components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
 import { Radio, RefreshCw, AlertTriangle, ArrowRight, MapPin } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+import { useMechanicVerificationAccess } from '@/hooks/useMechanicVerificationAccess'
 
 export default function MechanicRequestsPage() {
+
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  // Isolated data fetching engine
+  const { user } = useAuth()
+  const { isApproved, isRejected, loading: accessLoading } = useMechanicVerificationAccess(user?.id)
+
+
   async function loadRequests() {
     const supabase = createClient()
     const { data } = await supabase
@@ -54,6 +60,29 @@ export default function MechanicRequestsPage() {
     await loadRequests()
   }
 
+  if (!accessLoading && !isApproved) {
+    return (
+      <PageWrapper 
+        title="Live Dispatch" 
+        description="Incoming requests are available only after mechanic verification."
+      >
+        <div className="mx-auto max-w-2xl space-y-4 pb-12">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-md mx-auto">
+            <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-3.5">
+              <AlertTriangle size={20} className="text-slate-400" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900">Dispatch locked</h3>
+            <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
+              {isRejected
+                ? 'Your account has been disabled. You cannot accept new requests.'
+                : 'Your profile is pending verification. Please wait for admin approval.'}
+            </p>
+          </div>
+        </div>
+      </PageWrapper>
+    )
+  }
+
   return (
     <PageWrapper 
       title="Live Dispatch" 
@@ -83,6 +112,20 @@ export default function MechanicRequestsPage() {
 
         {/* ================= INCIDENT CONTROLLER LOG FEED ================= */}
         <div className="space-y-3.5">
+          {!accessLoading && !isApproved && (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-md mx-auto mt-8">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-3.5">
+                <AlertTriangle size={20} className="text-slate-400" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900">Dispatch locked</h3>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
+                {isRejected
+                  ? 'Your account has been disabled. You cannot accept new requests.'
+                  : 'Your profile is pending verification. Please wait for admin approval.'}
+              </p>
+            </div>
+          )}
+
           {loading ? (
             <Card className="rounded-2xl border-slate-200 bg-white py-16 flex justify-center shadow-sm">
               <Spinner />

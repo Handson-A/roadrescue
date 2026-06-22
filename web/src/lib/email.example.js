@@ -53,7 +53,7 @@ export async function PATCH(request, { params }) {
   //   to: driver.email,
   //   subject: '🎉 Your Rescue Service Is Complete!',
   //   type: 'job_completed',
-  //   data: { driverName: driver.full_name, mechanicName: mechanic.full_name, appUrl: 'https://roadrescue.com/requests' },
+  //   data: { driverName: driver.full_name, mechanicName: mechanic.full_name, appUrl: 'https://roadrescue-gh.vercel.app/requests' },
   // })
 
   return Response.json({ success: true })

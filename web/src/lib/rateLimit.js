@@ -34,7 +34,7 @@ export function rateLimit({ windowMs = 60000, max = 10 } = {}) {
 }
 
 // pre-configured limiters for different route types
-// diagnose is expensive (costs OpenAI tokens) so limit it hard
+// diagnose is expensive (uses Gemini model calls) so limit it hard
 export const diagnoseLimiter = rateLimit({ windowMs: 60000, max: 5 })
 
 // request creation — a driver shouldn't spam requests

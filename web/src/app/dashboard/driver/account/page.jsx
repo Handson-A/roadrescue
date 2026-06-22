@@ -6,7 +6,7 @@ import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2 } from 'lucide-react'
+import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity } from 'lucide-react'
 
 export default function DriverAccountPage() {
   const { user, profile } = useAuth()
@@ -152,7 +152,7 @@ export default function DriverAccountPage() {
         vehicle_color: formData.vehicleColor.trim(),
         vehicle_plate: formData.vehiclePlate.trim().toUpperCase(),
         emergency_contact_name: formData.emergencyContactName.trim(),
-        emergencyContactPhone: formData.emergencyContactPhone.trim(),
+        emergency_contact_phone: formData.emergencyContactPhone.trim(),
         home_area: formData.homeArea.trim(),
       }
 
@@ -211,7 +211,7 @@ export default function DriverAccountPage() {
 
           <div className="text-center sm:text-left flex-1">
             <h1 className="text-lg font-black tracking-tight text-[#1F1B10]">{formData.fullName || 'Active Driver'}</h1>
-            <p className="text-xs text-[#7C6B44] font-medium">RoadRescue Driver Terminal Instance</p>
+            <p className="text-xs text-[#7C6B44] font-medium">RoadRescue Driver Hub</p>
           </div>
         </div>
 
@@ -251,12 +251,12 @@ export default function DriverAccountPage() {
             {/* IMMUTABLE LOCKED COMPONENT ENTRY */}
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[#7C6B44]">
-                <Mail size={12} /> Registered Email Address (Immutable)
+                <Mail size={12} /> Registered Email Address
               </label>
               <p className="text-sm font-bold text-slate-400 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 select-none">
                 {formData.email || 'Not configured'}
               </p>
-              <p className="mt-1 text-[9px] font-medium text-slate-400">Security architecture constraint: Email updates must be explicitly processed via Admin Terminal</p>
+              <p className="mt-1 text-[9px] font-medium text-slate-400">Security constraint: Email cannot be change. Report for a review</p>
             </div>
 
             <div>

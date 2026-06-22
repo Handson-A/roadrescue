@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { BusFront, Clock3, ExternalLink, MapPin, PhoneCall } from 'lucide-react'
+import { Clock3, MapPin, PhoneCall } from 'lucide-react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -10,51 +11,21 @@ import Avatar from '@/components/ui/Avatar'
 import Spinner from '@/components/ui/Spinner'
 import RescueMap from '@/components/map/RescueMap'
 import RequestTimeline from '@/components/request/RequestTimeline'
+import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import { useRequestStatus } from '@/hooks/useRequestStatus'
 import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
+import { useAuth } from '@/hooks/useAuth'
+import ReportModal from '@/components/report/ReportModal'
 import { timeAgo } from '@/lib/utils'
 
 const ACTIVE_DRIVER_REQUEST_STATUSES = ['accepted', 'en_route', 'arrived', 'in_progress']
-
-function normalizeGeoPoint(point) {
-  if (!point) return null
-
-  if (typeof point.latitude === 'number' && typeof point.longitude === 'number') {
-    return { lat: point.latitude, lng: point.longitude }
-  }
-
-  if (typeof point.lat === 'number' && typeof point.lng === 'number') {
-    return { lat: point.lat, lng: point.lng }
-  }
-
-  if (Array.isArray(point.coordinates) && point.coordinates.length === 2) {
-    return { lat: point.coordinates[1], lng: point.coordinates[0] }
-  }
-
-  if (typeof point === 'string') {
-    const match = point.match(/POINT\((-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\)/i)
-    if (match) {
-      return { lat: Number(match[2]), lng: Number(match[1]) }
-    }
-  }
-
-  return null
-}
-
-function buildTransitLinks(point) {
-  if (!point) return { primary: '', fallback: '' }
-
-  const encodedLocation = encodeURIComponent(`${point.lat},${point.lng}`)
-  return {
-    primary: `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${point.lat}&pickup[longitude]=${point.lng}`,
-    fallback: `https://www.openstreetmap.org/?mlat=${point.lat}&mlon=${point.lng}&zoom=16`,
-  }
-}
 
 export default function DriverRequestTrackingPage() {
   const { id } = useParams()
   const { request, loading } = useRequestStatus(id)
   const { mechanicLocation } = useWatchMechanicLocation(id)
+  const { user } = useAuth()
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
 
   if (loading) {
     return (
@@ -165,6 +136,13 @@ export default function DriverRequestTrackingPage() {
               <PhoneCall size={14} />
               Call {mechanic?.phone || 'mechanic'}
             </a>
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="mt-2 text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors"
+            >
+              Report Issue to Admin
+            </button>
           </div>
 
           <div className="mx-4 mb-4 rounded-[1.25rem] bg-[#F3F4F6] p-4">
@@ -228,6 +206,13 @@ export default function DriverRequestTrackingPage() {
                 <PhoneCall size={14} />
                 Call {mechanic?.phone || 'mechanic'}
               </a>
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                className="mt-2 text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors"
+              >
+                Report Issue to Admin
+              </button>
             </Card>
           )}
 
@@ -239,6 +224,10 @@ export default function DriverRequestTrackingPage() {
               Back to dashboard
             </Link>
           </Card>
+
+          {request.ai_diagnostic_result && (
+            <DiagnosticResult diagnosis={request.ai_diagnostic_result} />
+          )}
         </div>
 
         <div className="space-y-4 lg:col-span-2">
@@ -283,6 +272,13 @@ export default function DriverRequestTrackingPage() {
           </Card>
         </div>
       </div>
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        requestId={id}
+        reporterId={user?.id}
+      />
     </PageWrapper>
   )
 }

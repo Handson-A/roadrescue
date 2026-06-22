@@ -2,13 +2,15 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { CarFront, Fuel, Wrench, Search } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { CarFront, Fuel, Wrench, Search, MapPin, Star } from 'lucide-react'
 
 import RequestForm from '@/components/request/RequestForm'
 import RequestStatusBadge from '@/components/request/RequestStatusBadge'
 import RescueMap from '@/components/map/RescueMap'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
+import Badge from '@/components/ui/Badge'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
 import { timeAgo } from '@/lib/utils'
@@ -17,6 +19,11 @@ export default function DriverDashboard() {
   const { user, profile } = useAuth()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
+  const searchQuery = searchParams.get('search') || ''
+  const [mechanicResults, setMechanicResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -45,6 +52,33 @@ export default function DriverDashboard() {
     }
   }, [user?.id])
 
+  useEffect(() => {
+    if (!searchQuery) {
+      setMechanicResults([])
+      setHasSearched(false)
+      return
+    }
+
+    let mounted = true
+    setSearchLoading(true)
+    setHasSearched(true)
+
+    async function loadMechanics() {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+        const json = await res.json()
+        if (mounted) setMechanicResults(json.results || [])
+      } catch (err) {
+        console.error('[DRIVER SEARCH]:', err)
+      } finally {
+        if (mounted) setSearchLoading(false)
+      }
+    }
+
+    loadMechanics()
+    return () => { mounted = false }
+  }, [searchQuery])
+
   const activeRequest = requests.find((request) => !['completed', 'cancelled'].includes(request.status))
 
   const progressByStatus = {
@@ -62,7 +96,7 @@ export default function DriverDashboard() {
   const membershipId = profile?.vehicle_plate || profile?.id?.substring(0, 8) || '—'
   const quickTiles = [
     { label: 'Vehicle Info', value: vehicleLabel, href: '/dashboard/driver/account', icon: CarFront },
-    { label: 'Find Fuel/EV', value: 'Locate refueling grids', href: '/dashboard/driver', icon: Fuel },
+    { label: 'Find Fuel/EV', value: 'Locate refueling grids', href: '/dashboard/driver/request/new', icon: Fuel },
   ]
 
   const recentItems = requests.slice(0, 2)
@@ -198,6 +232,49 @@ export default function DriverDashboard() {
             </p>
           </div>
         </div>
+
+        {hasSearched && (
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-[#7C6B44]">
+              Mechanic search results {searchQuery && `for "${searchQuery}"`}
+            </h4>
+            {searchLoading ? (
+              <Card className="rounded-2xl border border-[#DCCDA9] bg-white p-6 flex justify-center shadow-sm">
+                <Spinner />
+              </Card>
+            ) : mechanicResults.length === 0 ? (
+              <Card className="rounded-2xl border border-[#DCCDA9] bg-white p-6 text-center shadow-sm">
+                <p className="text-xs font-medium text-slate-400">No mechanics matched your search.</p>
+              </Card>
+            ) : (
+              mechanicResults.map((mech) => (
+                <Card key={mech.user_id} className="rounded-2xl border border-[#DCCDA9] bg-white p-5 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-[#1F1B10]">{mech.business_name || 'Independent Specialist'}</p>
+                      <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+                        <MapPin size={12} className="text-slate-400" /> {mech.location_label || 'Zone active'}
+                      </p>
+                      {mech.specializations && mech.specializations.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {mech.specializations.map((spec, idx) => (
+                            <Badge key={idx} label={spec} variant="default" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center gap-1 text-xs font-bold text-amber-700">
+                        <Star size={12} className="fill-amber-500 text-amber-500" />
+                        {mech.rating_avg?.toFixed(1) || 'New'}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
 
       </div>
     </div>

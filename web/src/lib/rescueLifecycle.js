@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export const REQUEST_STATUS_FLOW = {
   pending: ['accepted', 'cancelled'],
+  offered: ['accepted', 'cancelled'],
   accepted: ['en_route', 'cancelled'],
   en_route: ['arrived', 'cancelled'],
   arrived: ['in_progress', 'cancelled'],
@@ -145,10 +146,10 @@ export async function insertNotifications(serviceClient, notifications) {
 }
 
 export async function getNearbyMechanics(serviceClient, latitude, longitude, searchRadiusKm = 10) {
-  const { data, error } = await serviceClient.rpc('get_nearby_verified_mechanics', {
-    request_latitude: latitude,
-    request_longitude: longitude,
-    search_radius_km: searchRadiusKm,
+  const { data, error } = await serviceClient.rpc('get_nearby_mechanics', {
+    lat: latitude,
+    lng: longitude,
+    radius_km: searchRadiusKm,
   })
 
   if (error) throw error
@@ -158,20 +159,18 @@ export async function getNearbyMechanics(serviceClient, latitude, longitude, sea
 
 export async function getRatingSummary(serviceClient, mechanicId) {
   const { data, error } = await serviceClient
-    .from('rescue_requests')
-    .select('driver_rating')
+    .from('request_reviews')
+    .select('rating')
     .eq('mechanic_id', mechanicId)
-    .eq('status', 'completed')
 
   if (error) throw error
 
-  const completedRequests = data ?? []
-  const ratedRequests = completedRequests.filter((request) => request.driver_rating !== null)
-  const ratingTotal = ratedRequests.reduce((sum, request) => sum + Number(request.driver_rating), 0)
+  const reviews = data ?? []
+  const ratingTotal = reviews.reduce((sum, review) => sum + Number(review.rating), 0)
 
   return {
-    totalJobs: completedRequests.length,
-    ratingAvg: ratedRequests.length ? Number((ratingTotal / ratedRequests.length).toFixed(2)) : 0,
+    totalJobs: reviews.length,
+    ratingAvg: reviews.length ? Number((ratingTotal / reviews.length).toFixed(2)) : 0,
   }
 }
 

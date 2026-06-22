@@ -8,8 +8,10 @@ import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import RequestTimeline from '@/components/request/RequestTimeline'
 import Button from '@/components/ui/Button'
+import ReportModal from '@/components/report/ReportModal'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function JobDetailPage() {
   const params = useParams()
@@ -17,7 +19,9 @@ export default function JobDetailPage() {
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const supabase = createClient()
+  const { user } = useAuth()
 
   useEffect(() => {
     async function loadJob() {
@@ -115,11 +119,17 @@ export default function JobDetailPage() {
             <Card className="rounded-2xl border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 p-6 text-center">
               <h2 className="text-lg font-black text-amber-900 mb-2">Ready to Accept?</h2>
               <p className="text-sm text-amber-700 mb-4">Be the first to accept this rescue request. Race conditions are handled automatically.</p>
-              <Button onClick={acceptJob} disabled={updating} className="bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-wider">
-                {updating ? 'Accepting...' : 'Accept This Job'}
+              <Button onClick={acceptJob} disabled={true} className="bg-amber-400 text-white font-black uppercase tracking-wider">
+                Dispatch locked
               </Button>
+              <p className="mt-3 text-xs text-amber-900/70 font-medium">
+                Only verified mechanics can accept incoming requests.
+              </p>
             </Card>
           )}
+
+
+
 
           <Card>
             <div className="flex items-center justify-between gap-3 mb-4">
@@ -184,6 +194,13 @@ export default function JobDetailPage() {
             <a href={`tel:${job.driver?.phone}`} className="block">
               <Button className="w-full">Call driver</Button>
             </a>
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="mt-3 text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors"
+            >
+              Report Issue to Admin
+            </button>
           </Card>
 
           <Card>
@@ -216,6 +233,13 @@ export default function JobDetailPage() {
           </Card>
         </div>
       </div>
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        requestId={jobId}
+        reporterId={user?.id}
+      />
     </PageWrapper>
   )
 }
