@@ -41,6 +41,9 @@ async function fetchRequestDetails(serviceClient, requestId) {
         ...mechanicResult.data,
         mechanic_profiles: mechanicProfileResult.data
           ? {
+              rating_avg: mechanicProfileResult.data.rating_avg,
+              rating_count: mechanicProfileResult.data.rating_count,
+              specializations: mechanicProfileResult.data.specializations,
               business_name: mechanicProfileResult.data.business_name,
               location_label: mechanicProfileResult.data.location_label,
             }
@@ -80,7 +83,7 @@ export async function GET(request, { params }) {
 
     const { data: rescueRequest, error } = await serviceClient
       .from('rescue_requests')
-      .select('id, driver_id, mechanic_id')
+      .select('id, driver_id, mechanic_id, status')
       .eq('id', requestId)
       .maybeSingle()
 
@@ -92,7 +95,8 @@ export async function GET(request, { params }) {
     const hasAccess =
       profile.role === 'admin' ||
       rescueRequest.driver_id === user.id ||
-      rescueRequest.mechanic_id === user.id
+      rescueRequest.mechanic_id === user.id ||
+      (profile.role === 'mechanic' && !rescueRequest.mechanic_id && (rescueRequest.status === 'pending' || rescueRequest.status === 'offered'))
 
     if (!hasAccess) {
       return Response.json({ error: 'Not authorized to view this request' }, { status: 403 })

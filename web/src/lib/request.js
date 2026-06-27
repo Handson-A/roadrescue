@@ -1,7 +1,7 @@
 /**
  * request.js — DEFINITIVE VERSION
  * All rescue request operations (create, update status, cancel, rate)
- * 
+ *
  * These functions are called from API route handlers, NOT directly from components.
  * They handle:
  * - Request creation with geospatial matching
@@ -254,10 +254,6 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       }
 
       if (actorRole === 'mechanic') {
-        // Enforce mechanic approval lifecycle:
-        // - pending => cannot accept
-        // - rejected => disabled => cannot accept
-        // - approved => can accept
         const { data: mechProfile, error: mechErr } = await serviceSupabase
           .from('mechanic_profiles')
           .select('verification_status')
@@ -269,7 +265,6 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         const verificationStatus = mechProfile?.verification_status || 'pending'
 
         if (verificationStatus !== 'approved') {
-          // pending or rejected (or missing)
           throw new Error('Mechanic account is not verified to accept requests')
         }
       }
@@ -282,7 +277,6 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         throw new Error('Another mechanic already accepted this request')
       }
     } else {
-
       if (actorRole !== 'mechanic' && actorRole !== 'admin' && actorRole !== 'driver') {
         throw new Error('Not authorized to update rescue status')
       }
@@ -321,9 +315,15 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       )
     }
 
+    // ============================================================================
+    // STATE TRANSITION WRITE
+    // ============================================================================
     const updatePayload = { status: newStatus }
 
     if (newStatus === REQUEST_STATUS.ACCEPTED) {
+      if (request.mechanic_id && request.mechanic_id !== 'null') {
+        throw new Error('Another mechanic already accepted this request')
+      }
       updatePayload.mechanic_id = actorId
       updatePayload.accepted_at = new Date().toISOString()
     }
@@ -342,12 +342,8 @@ export async function updateRequestStatus(serviceSupabase, payload) {
 
     if (newStatus === REQUEST_STATUS.COMPLETED) {
       updatePayload.completed_at = new Date().toISOString()
-      if (completionNotes) {
-        updatePayload.completion_notes = completionNotes
-      }
-      if (performedServices?.length) {
-        updatePayload.performed_services = performedServices
-      }
+      if (completionNotes) updatePayload.completion_notes = completionNotes
+      if (performedServices?.length) updatePayload.performed_services = performedServices
     }
 
     if (newStatus === REQUEST_STATUS.CANCELLED) {
@@ -356,27 +352,49 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       updatePayload.cancellation_reason = cancellationReason || null
     }
 
-    let updateQuery = serviceSupabase
+    // Use .select() so Supabase returns the updated rows.
+    // If RLS or a trigger silently blocks the write, `updatedRows` will be an
+    // empty array instead of throwing — we catch that explicitly below.
+    const { data: updatedRows, error: updateError } = await serviceSupabase
       .from('rescue_requests')
       .update(updatePayload)
       .eq('id', requestId)
-      .eq('status', request.status)
+      .select('id, status, mechanic_id')
 
-    if (isAcceptedTransition) {
-      updateQuery = updateQuery.eq('mechanic_id', null)
-    } else if (!isCancelledTransition && actorRole !== 'admin') {
-      updateQuery = updateQuery.eq('mechanic_id', request.mechanic_id)
+    if (updateError) {
+      console.error('[updateRequestStatus] DB update error:', updateError)
+      throw updateError
     }
 
-    const { data: updatedRequest, error: updateError } = await updateQuery
-      .select('id, status')
-      .single()
+    // 0 rows updated = RLS blocked the write or wrong requestId
+    if (!updatedRows || updatedRows.length === 0) {
+      // Diagnose: re-fetch to see the current state
+      const { data: currentRow } = await serviceSupabase
+        .from('rescue_requests')
+        .select('id, status, mechanic_id')
+        .eq('id', requestId)
+        .maybeSingle()
 
-    if (updateError) throw updateError
-    if (!updatedRequest) {
-      throw new Error('Request status changed before the update could be applied')
+      console.error('[updateRequestStatus] 0 rows affected. Current row:', currentRow)
+
+      if (!currentRow) throw new Error(`Request ${requestId} not found — cannot update status`)
+      throw new Error(
+        `Status update blocked (0 rows affected). ` +
+        `Current status: "${currentRow.status}", attempted: "${newStatus}". ` +
+        `This is usually an RLS policy blocking the service-role write — ` +
+        `check that createServiceClient() uses SUPABASE_SERVICE_ROLE_KEY and not the anon key.`
+      )
     }
 
+    const verifiedRequest = updatedRows[0]
+
+    if (verifiedRequest.status !== newStatus) {
+      throw new Error(
+        `Status write failed: expected "${newStatus}" but database has "${verifiedRequest.status}"`
+      )
+    }
+
+    // ── FIX 1: mechanic availability update — was unreachable (after early return) ──
     if (newStatus === REQUEST_STATUS.ACCEPTED) {
       await serviceSupabase
         .from('mechanic_profiles')
@@ -389,8 +407,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
 
     if (
       request.mechanic_id &&
-      (newStatus === REQUEST_STATUS.COMPLETED ||
-      newStatus === REQUEST_STATUS.CANCELLED)
+      (newStatus === REQUEST_STATUS.COMPLETED || newStatus === REQUEST_STATUS.CANCELLED)
     ) {
       await serviceSupabase
         .from('mechanic_profiles')
@@ -401,6 +418,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         })
     }
 
+    // ── FIX 2: notifications — were unreachable (after early return) ──
     const notification = statusNotificationMap[newStatus]
     const notifications = []
 
@@ -454,6 +472,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       console.warn('Notification insert failed:', notificationError)
     }
 
+    // ── FIX 3: email sends — were unreachable (after early return) ──
     if (newStatus === REQUEST_STATUS.ACCEPTED) {
       const { data: driver } = await serviceSupabase
         .from('profiles')
@@ -520,6 +539,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       }
     }
 
+    // Single, correct final return
     return {
       success: true,
       request: await fetchRequestDetails(requestId),
@@ -534,7 +554,6 @@ export async function updateRequestStatus(serviceSupabase, payload) {
 // ============================================================================
 // CANCEL REQUEST
 // ============================================================================
-// Cancellation is delegated to the validated status transition flow.
 export async function cancelRequest(serviceSupabase, payload) {
   const { requestId, driverId, reason } = payload
 
@@ -550,13 +569,10 @@ export async function cancelRequest(serviceSupabase, payload) {
 // ============================================================================
 // SUBMIT DRIVER RATING
 // ============================================================================
-// Driver rates completed job; updates mechanic's average rating
-// Uses full recalculation (not incremental) to avoid drift
 export async function submitRating(supabase, payload) {
   const { requestId, driverId, rating, review } = payload
 
   try {
-    // 1. Verify request exists and is completed
     const { data: request, error: requestError } = await supabase
       .from('rescue_requests')
       .select('id, driver_id, mechanic_id, status')
@@ -568,20 +584,18 @@ export async function submitRating(supabase, payload) {
     if (requestError) throw requestError
     if (!request) throw new Error('Request not found or not completed')
 
-    // 2. Insert rating into request_reviews table
     const { error: insertError } = await supabase
       .from('request_reviews')
       .insert({
         request_id: requestId,
         driver_id: driverId,
-        mechanic_id: request.mechanic_id, // Fix missing column mapping
+        mechanic_id: request.mechanic_id,
         rating: Math.max(1, Math.min(5, rating)),
         review: review || null,
       })
 
     if (insertError) throw insertError
 
-    // 3. Recalculate mechanic's average rating from all reviews
     const { data: allReviews, error: fetchError } = await supabase
       .from('request_reviews')
       .select('rating')
@@ -589,13 +603,11 @@ export async function submitRating(supabase, payload) {
 
     if (fetchError) throw fetchError
 
-    // Handle edge case: no reviews yet (avoid division by zero)
     const avgRating =
       allReviews && allReviews.length > 0
         ? allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length
         : 0
 
-    // 4. Update mechanic's profile with new average and rating count
     const { error: updateError } = await supabase
       .from('mechanic_profiles')
       .update({

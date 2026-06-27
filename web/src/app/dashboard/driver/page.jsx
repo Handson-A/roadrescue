@@ -117,7 +117,7 @@ export default function DriverDashboard() {
         <div className="rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
           <h2 className="text-xl font-black tracking-tight text-[#1F1B10]">Dashboard</h2>
           <p className="mt-1 text-xs leading-relaxed text-[#7C6B44]">
-           Request emergency vehicle assistance and monitor your Mechanics&#39;s arrival coordinates in real time.
+           Request emergency vehicle assistance and monitor your mechanic&#39;s arrival coordinates in real time.
           </p>
         </div>
 
@@ -152,7 +152,7 @@ export default function DriverDashboard() {
           {quickTiles.map((tile) => {
             const Icon = tile.icon
             return (
-              <Link key={tile.label} href={tile.href} className="rounded-2xl border border-[#DCCDA9] bg-white p-4 shadow-sm active:bg-slate-50 transition flex flex-col justify-between">
+              <Link key={tile.label} href={tile.href} className="rounded-2xl border border-[#DCCDA9] hover:border-[#BCA878] bg-white p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:bg-[#FFFBF4] transition-all duration-200 flex flex-col justify-between">
                 <div>
                   <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF9EF] border border-[#DCCDA9] text-[#7C6B44]">
                     <Icon size={16} />
@@ -175,7 +175,7 @@ export default function DriverDashboard() {
               <div className="mt-3 space-y-1">
                 <h4 className="font-mono text-base font-black text-amber-400">Emergency ID #{activeRequest.id?.substring(0,8)}</h4>
                 <p className="text-xs text-white/70 leading-relaxed">{activeRequest.problem_description}</p>
-                <p className="text-[11px] font-mono text-white/40 pt-1">📍 {activeRequest.incident_address || 'Location coordinates active'}</p>
+                <p className="text-[11px] font-mono text-white/40 pt-1">📍 {activeRequest.incident_address || 'Location identified'}</p>
               </div>
             </div>
 
@@ -194,7 +194,7 @@ export default function DriverDashboard() {
 
             {/* Embedded Live Map Viewport */}
             <div className="relative overflow-hidden border border-[#DCCDA9] rounded-2xl h-64 shadow-sm">
-              <RescueMap request={activeRequest} height="100%" />
+              <RescueMap request={activeRequest} userRole="driver" height="100%" />
             </div>
           </div>
         )}

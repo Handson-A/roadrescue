@@ -94,6 +94,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { submitRating } from '@/lib/request'
 import { NextResponse } from 'next/server'
+import { sanitizeInput } from '@/lib/validate'
 
 export async function PATCH(req) {
   try {
@@ -104,7 +105,8 @@ export async function PATCH(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await req.json()
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
     const { requestId, rating, review } = body
 
     if (!requestId || !rating) {

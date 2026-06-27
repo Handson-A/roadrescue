@@ -68,7 +68,7 @@ export const useAuthStore = create((set, get) => ({
     set({ error }),
 
   /**
-   * Set network connection status
+   *Set network connection status
    * - 'connecting': Initial auth resolution in progress
    * - 'connected': Supabase connection active, auth working
    * - 'degraded': Can still auth but profile fetch has issues

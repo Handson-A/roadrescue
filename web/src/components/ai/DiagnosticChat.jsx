@@ -1,27 +1,46 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Send, Zap } from 'lucide-react'
+import { Send, Zap, ChevronDown } from 'lucide-react'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
+
+const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating', 'Check engine light']
 
 export default function DiagnosticChat({ onDiagnosisComplete }) {
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: 'ai',
-      text: "Hello! I'm your RoadRescue diagnostic AI. Describe what's happening with your vehicle in plain language, and I'll provide a fault assessment.",
+      text: "Hello! I'm your RoadRescue diagnostic AI. Describe what's happening with your vehicle and I'll assess the fault.",
     },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [promptsVisible, setPromptsVisible] = useState(true)
   const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
   const messageIdRef = useRef(1)
-  const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating']
 
-  // Auto-scroll the messages area when new chat nodes append
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  // Hide quick prompts when keyboard opens to free vertical space
+  useEffect(() => {
+    const handleFocus = () => setPromptsVisible(false)
+    const handleBlur = () => setTimeout(() => setPromptsVisible(true), 200)
+    const el = inputRef.current
+    if (el) {
+      el.addEventListener('focus', handleFocus)
+      el.addEventListener('blur', handleBlur)
+    }
+    return () => {
+      if (el) {
+        el.removeEventListener('focus', handleFocus)
+        el.removeEventListener('blur', handleBlur)
+      }
+    }
+  }, [])
 
   function buildFallbackDiagnosis(currentInput) {
     return {
@@ -37,14 +56,12 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
   }
 
   async function handleSendMessage(textToSend) {
-    const currentInput = textToSend || input
-    if (!currentInput.trim() || loading) return
+    const currentInput = (textToSend || input).trim()
+    if (!currentInput || loading) return
 
     messageIdRef.current += 1
-    const userMessage = { id: messageIdRef.current, sender: 'user', text: currentInput }
-    setMessages((prev) => [...prev, userMessage])
+    setMessages((prev) => [...prev, { id: messageIdRef.current, sender: 'user', text: currentInput }])
     if (!textToSend) setInput('')
-
     setLoading(true)
 
     try {
@@ -53,131 +70,118 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symptoms: currentInput }),
       })
-
       const data = await response.json()
-
       if (!response.ok || !data.success) throw new Error(data.error || 'Failed to process diagnosis')
 
       const diagnosis = data.diagnosis || buildFallbackDiagnosis(currentInput)
-
       messageIdRef.current += 1
-      const aiMessage = {
-        id: messageIdRef.current,
-        sender: 'ai',
-        text: diagnosis.problem || 'Unable to diagnose issue',
-        diagnosisData: diagnosis,
-      }
-      setMessages((prev) => [...prev, aiMessage])
-
-      if (onDiagnosisComplete) {
-        onDiagnosisComplete(diagnosis)
-      }
-    } catch (err) {
-      const fallbackDiagnosis = buildFallbackDiagnosis(currentInput)
-
+      setMessages((prev) => [...prev, { id: messageIdRef.current, sender: 'ai', diagnosisData: diagnosis }])
+      if (onDiagnosisComplete) onDiagnosisComplete(diagnosis)
+    } catch {
+      const fallback = buildFallbackDiagnosis(currentInput)
       messageIdRef.current += 1
-      setMessages((prev) => [
-        ...prev, 
-        {
-          id: messageIdRef.current,
-          sender: 'ai',
-          text: fallbackDiagnosis.problem,
-          diagnosisData: fallbackDiagnosis,
-        }
-      ])
-
-      if (onDiagnosisComplete) {
-        onDiagnosisComplete(fallbackDiagnosis)
-      }
+      setMessages((prev) => [...prev, { id: messageIdRef.current, sender: 'ai', diagnosisData: fallback }])
+      if (onDiagnosisComplete) onDiagnosisComplete(fallback)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    /* FIXED: Container uses a strict relative viewport boundary layout leaving breathing space for your bottom navigation bars */
-    <div className="w-full h-[calc(100vh-13rem)] md:h-[calc(100vh-8rem)] flex flex-col bg-[#FFF8EA] text-slate-900 overflow-hidden rounded-2xl border border-[#DCCDA9]/60 shadow-sm">
-      
-      {/* STATIC TOP HEADER BLOCK */}
-      <div className="flex items-center gap-3 border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5 shrink-0">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5D108] text-[#1F1B10] shadow-sm">
-          <Zap size={16} />
+    /*
+      Use dvh (dynamic viewport height) so the container shrinks correctly
+      when the soft keyboard opens on iOS/Android. This is the key fix.
+    */
+    <div className="ai-assist-container w-full flex flex-col overflow-hidden rounded-2xl bg-[#FFF8EA]">
+
+      {/* ── HEADER ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3 shrink-0">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F5D108] text-[#1F1B10] shadow-sm">
+          <Zap size={15} strokeWidth={2.5} />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-black tracking-tight text-[#1F1B10]">AI Diagnostics</h2>
-          <p className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+          <h2 className="text-[13px] font-black tracking-tight text-[#1F1B10]">AI Diagnostics</h2>
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Structured vehicle fault stream
+            Fault analysis ready
           </p>
         </div>
       </div>
 
-      {/* ONLY SCROLLABLE LAYOUT ELEMENT: MESSAGES WINDOW */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin">
+      {/* ── MESSAGES ───────────────────────────────────────────────────── */}
+      <div className="chat-messages-viewport flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-xs space-y-3 ${
+              className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-[#F5D108] text-[#1F1B10] font-black rounded-tr-none'
-                  : 'bg-white border border-[#DCCDA9] text-slate-800 rounded-tl-none'
+                  ? 'bg-[#F5D108] text-[#1F1B10] font-semibold rounded-tr-sm'
+                  : 'bg-white border border-[#E0D5B7] text-[#2A261C] rounded-tl-sm shadow-sm'
               }`}
             >
-              <div>{msg.text}</div>
-              
+              {msg.text && <p>{msg.text}</p>}
               {msg.sender === 'ai' && msg.diagnosisData && (
-                <div className="pt-2 border-t border-slate-100">
+                <div className={msg.text ? 'mt-3 pt-3 border-t border-[#F0E8D0]' : ''}>
                   <DiagnosticResult diagnosis={msg.diagnosisData} />
                 </div>
               )}
             </div>
           </div>
         ))}
-        
+
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-[#DCCDA9] text-slate-400 rounded-2xl rounded-tl-none px-4 py-2.5 text-xs font-medium animate-pulse">
-              AI is analyzing vehicle failure metrics...
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm border border-[#E0D5B7] bg-white px-4 py-3 shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#B8A060] animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#B8A060] animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#B8A060] animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* STATIC ANCHORED ACTION BOTTOM TRAY: Clears the mobile navigation tab context without overlapping */}
-      <div className="border-t border-[#E0D5B7] bg-[#FFF9EF] px-4 py-4 shrink-0 shadow-[0_-4px_12px_rgba(31,27,16,0.02)]">
-        <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-[#7C6B44]">Try asking about:</p>
-        <div className="mb-3.5 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {quickPrompts.map((prompt) => (
-            <button
-              key={prompt}
-              type="button"
-              disabled={loading}
-              onClick={() => handleSendMessage(prompt)}
-              className="whitespace-nowrap rounded-full border border-[#C8B98E] bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition disabled:opacity-50 active:scale-95"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
+      {/* ── INPUT DOCK ─────────────────────────────────────────────────── */}
+      <div className="chat-input-dock border-t border-[#E0D5B7] bg-[#FFF9EF] px-4 pt-3 pb-4 shrink-0">
 
-        <div className="flex items-center gap-2 rounded-xl bg-white border border-[#DCCDA9] p-1.5 shadow-xs focus-within:border-[#1F1B10] transition-colors">
+        {/* Quick prompts — hidden when keyboard is open to free space */}
+        {promptsVisible && (
+          <div className="mb-3 flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+            {quickPrompts.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                disabled={loading}
+                onClick={() => handleSendMessage(prompt)}
+                className="whitespace-nowrap rounded-full border border-[#D8C99A] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#4A4330] transition hover:bg-[#F5EDD0] hover:border-[#C0A860] disabled:opacity-40 active:scale-95 shrink-0"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input row */}
+        <div className="flex items-center gap-2 rounded-xl border border-[#DCCDA9] bg-white px-3 py-2 shadow-sm focus-within:border-[#B8A060] transition-colors">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             disabled={loading}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
             placeholder="Describe your car's symptoms..."
-            className="min-w-0 flex-1 bg-transparent px-2 text-xs sm:text-sm outline-none placeholder:text-slate-400 text-slate-900 disabled:opacity-50"
+            className="min-w-0 flex-1 bg-transparent text-[13px] text-[#2A261C] placeholder:text-[#B0A07A] outline-none disabled:opacity-50"
+            style={{ fontSize: '16px' }} /* Prevents iOS zoom on focus */
           />
           <button
             type="button"
             disabled={loading || !input.trim()}
             onClick={() => handleSendMessage()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800 disabled:opacity-20 active:scale-95"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1A1609] text-white transition hover:bg-[#2C2410] disabled:opacity-30 active:scale-95"
           >
-            <Send size={12} />
+            <Send size={13} strokeWidth={2} />
           </button>
         </div>
       </div>

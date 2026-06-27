@@ -189,7 +189,7 @@ const { data: active, error: activeErr } = await supabase
       <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
         <div className="text-center space-y-3">
           <Spinner />
-          <p className="text-xs font-mono font-black text-[#7C6B44] uppercase tracking-widest animate-pulse">Synchronizing Radio Terminals...</p>
+          <p className="text-xs font-mono font-black text-[#7C6B44] uppercase tracking-widest animate-pulse">please wait...</p>
         </div>
       </div>
     )
@@ -251,10 +251,10 @@ const { data: active, error: activeErr } = await supabase
             <p className="mt-1 text-xs text-slate-500 font-medium">Assigned requests in progress</p>
           </Card>
           
-          <Card className={`rounded-xl p-5 shadow-sm border transition-colors ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'}`}>
+          <Card className={`rounded-xl p-5 shadow-sm border transition-all duration-300 ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/30 border-t-4 border-t-[#F5D108] border-x-[#DCCDA9] border-b-[#DCCDA9] shadow-md shadow-amber-400/5' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Incoming Requests</span>
-              <AlertCircle size={16} className={incomingJobs.length > 0 && isAvailable ? 'text-amber-500' : 'text-slate-400'} />
+              <AlertCircle size={16} className={incomingJobs.length > 0 && isAvailable ? 'text-[#8A6B08]' : 'text-slate-400'} />
             </div>
             <p className="mt-2 text-4xl font-black text-[#111827] tracking-tight">{incomingJobs.length}</p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Unassigned breakdowns nearby</p>
@@ -297,6 +297,7 @@ const { data: active, error: activeErr } = await supabase
                   incomingJobs={incomingJobs}
                   isRadarMode={activeJobs.length === 0}
                   isOnline={isAvailable}
+                  userRole="mechanic"
                   height="100%" 
                 />
               </div>
@@ -368,16 +369,15 @@ const { data: active, error: activeErr } = await supabase
                 <AlertCircle size={16} />
               </div>
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Network Node Active</h4>
-              <p className="text-[11px] max-w-[200px] mt-1 font-medium leading-relaxed">System mapping radar is polling your PostGIS geometric location loop metrics cleanly.</p>
+              <p className="text-[11px] max-w-[200px] mt-1 font-medium leading-relaxed">When Active, you&apos;ll be visible to drivers within a 15km radius.</p>
             </Card>
           </div>
 
         </div>
       </div>
 
-      {/* ================= CONFIRMATION OFFLINE MODAL VECTOR ================= */}
       {showOfflineModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
           <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
             <button 
               onClick={() => setShowOfflineModal(false)}
@@ -393,7 +393,7 @@ const { data: active, error: activeErr } = await supabase
               <div className="space-y-1">
                 <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Going offline removes your workshop profile from active emergency network nodes. Drivers nearby will not be able to broadcast breakdown signals to your console.
+                  Going offline removes your workshop profile from the active emergency network system. Drivers nearby will not be able to broadcast breakdown signals to your console.
                 </p>
               </div>
             </div>

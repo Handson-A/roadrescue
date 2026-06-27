@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { updateRequestStatus } from '@/lib/request'
 import { normalizeString } from '@/lib/rescueLifecycle'
 import { NextResponse } from 'next/server'
+import { sanitizeInput } from '@/lib/validate'
 
 export async function PATCH(req) {
   try {
@@ -27,15 +28,19 @@ export async function PATCH(req) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    const body = await req.json()
-    const { requestId, newStatus, status } = body
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
+    
+    // 1. Extract mechanicId (or mechanic_id) from the incoming body
+    const { requestId, newStatus, status, mechanicId, mechanic_id } = body
     const requestedStatus = newStatus || status
+    const targetMechanicId = mechanicId || mechanic_id || user.id // Fallback to current authenticated user
 
     if (!requestId || !requestedStatus) {
       return NextResponse.json(
         { error: 'requestId and newStatus are required' },
         { status: 400 }
-      )
+      );
     }
 
     const cancellationReason = normalizeString(
@@ -50,10 +55,13 @@ export async function PATCH(req) {
         ? body.performed_services
         : undefined
 
+    // 2. Pass it into the update function options object
     const result = await updateRequestStatus(serviceSupabase, {
       requestId,
       actorId: user.id,
       actorRole: profile.role,
+      mechanicId: targetMechanicId,  // 💡 Forward camelCase key
+      mechanic_id: targetMechanicId, // 💡 Forward snake_case key just in case helper expects it
       newStatus: requestedStatus,
       completionNotes,
       performedServices,
