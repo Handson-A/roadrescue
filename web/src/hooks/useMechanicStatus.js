@@ -54,7 +54,8 @@ export function useMechanicStatus(mechanicId) {
     loadInitial()
 
     // realtime subscription: keep a single source of truth in sync
-    const channel = supabase.channel(`mechanic-status-${mechanicId}`)
+    const randomSuffix = Math.random().toString(36).substring(2, 9)
+    const channel = supabase.channel(`mechanic-status-${mechanicId}-${randomSuffix}`)
     channelRef.current = channel
 
     channel
@@ -153,6 +154,7 @@ export function useMechanicStatus(mechanicId) {
       // New schema: mechanic availability is boolean `is_available`
       const is_available = normalized === 'available'
 
+      // 1. Update status in database immediately so state/UI transitions instantly
       const { error } = await supabase
         .from('mechanic_profiles')
         .update({ is_available })
@@ -165,6 +167,45 @@ export function useMechanicStatus(mechanicId) {
 
       // reflect DB result quickly; realtime subscription is the ultimate source
       setStatus(normalized)
+
+      // 2. Broadcast coordinates immediately when going online
+      if (is_available && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords
+            const currentNow = { lat: latitude, lng: longitude }
+            setLocalCoords(currentNow)
+
+            // Broadcast coordinates to 'online-mechanics' channel
+            const channel = supabase.channel('online-mechanics')
+            channel.subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                channel.send({
+                  type: 'broadcast',
+                  event: 'location_update',
+                  payload: {
+                    mechanicId,
+                    latitude,
+                    longitude,
+                    timestamp: Date.now()
+                  }
+                })
+              }
+            })
+
+            // Persist location immediately to DB to broadcast pin to admin dashboard map
+            await supabase
+              .from('mechanic_profiles')
+              .update({
+                current_location: `POINT(${longitude} ${latitude})`,
+                location_updated_at: new Date().toISOString()
+              })
+              .eq('user_id', mechanicId)
+          },
+          (err) => console.warn('[useMechanicStatus GPS FAULT ON GO ONLINE]:', err.message),
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        )
+      }
     },
     [mechanicId]
   )

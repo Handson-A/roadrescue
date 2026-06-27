@@ -82,7 +82,7 @@ export default function AdminUsersPage() {
                     </p>
                     <div className="text-xs text-slate-500 font-medium space-y-0.5">
                       <p className="flex items-center gap-1.5"><Mail size={12} className="text-slate-400 shrink-0" /> {user.email}</p>
-                      <p className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400 shrink-0" /> {user.phone || 'Comms unconfigured'}</p>
+                      <p className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400 shrink-0" /> {user.phone || 'Phone not set'}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3 border-t border-slate-50 pt-3 sm:border-0 sm:pt-0 shrink-0">

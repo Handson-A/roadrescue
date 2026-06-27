@@ -22,14 +22,37 @@ export default function AdminAccountPage() {
     phone: '',
   })
 
+  const resolvePhoneNumber = (profileVal, userObj) => {
+    const isValidPhone = (val) => {
+      if (!val) return false
+      const clean = val.toString().trim()
+      return clean.length > 0 && !/[a-zA-Z]/.test(clean)
+    }
+    
+    const userMetaPhone = userObj?.user_metadata?.phone
+    if (isValidPhone(userMetaPhone)) return userMetaPhone.toString().trim()
+
+    const pPhone = typeof profileVal === 'object' ? profileVal?.phone : profileVal
+    if (isValidPhone(pPhone)) return pPhone.toString().trim()
+
+    const userPhone = userObj?.phone
+    if (isValidPhone(userPhone)) return userPhone.toString().trim()
+
+    return ''
+  }
+
   const resolvedFormData = {
     fullName: profile?.full_name || '',
     email: profile?.email || user?.email || '',
-    phone: profile?.phone || '',
+    phone: resolvePhoneNumber(profile, user),
   }
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    let cleanValue = value
+    if (field === 'phone') {
+      cleanValue = value.replace(/[^0-9+]/g, '')
+    }
+    setFormData(prev => ({ ...prev, [field]: cleanValue }))
   }
 
   const handleStartEditing = () => {
@@ -137,7 +160,7 @@ export default function AdminAccountPage() {
 
             <div>
               <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1.5">
-                <Phone size={13} className="text-slate-400" /> Dispatch Comms Line
+                <Phone size={13} className="text-slate-400" /> Dispatch Communication line
               </label>
               {isEditing ? (
                 <Input
@@ -146,7 +169,7 @@ export default function AdminAccountPage() {
                   placeholder="+233..."
                 />
               ) : (
-                <p className="text-sm font-bold text-slate-900">{resolvedFormData.phone || 'Comms unconfigured'}</p>
+                <p className="text-sm font-bold text-slate-900">{resolvedFormData.phone || 'Phone Number not set'}</p>
               )}
             </div>
 

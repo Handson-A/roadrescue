@@ -18,11 +18,15 @@ import {
 export default function MechanicAccountPage() {
   const { user, profile, setProfile } = useAuth()
   const [mechanicProfile, setMechanicProfile] = useState(null)
+  const [completedRescuesCount, setCompletedRescuesCount] = useState(0)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const userIdRef = useRef(user?.id)
   const fileInputRef = useRef(null)
+  const docInputRef = useRef(null)
+  const [documents, setDocuments] = useState([])
+  const [uploadingDoc, setUploadingDoc] = useState(false)
 
   // Unified application form schema state instance
   const [formData, setFormData] = useState({
@@ -66,9 +70,9 @@ export default function MechanicAccountPage() {
       // 2. Fetch specialized workplace fields using verified schema columns
       const { data: mechData } = await supabase
         .from('mechanic_profiles')
-.select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, created_at')
-         .eq('user_id', currentUserId)
-         .maybeSingle()
+        .select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, verification_status, created_at')
+        .eq('user_id', currentUserId)
+        .maybeSingle()
 
       // 3. Query centralized application app profile preferences table
       let preferenceData = null
@@ -82,35 +86,83 @@ export default function MechanicAccountPage() {
         console.warn('Preferences repository endpoint fallback initialized:', err)
       }
 
-      if (mounted && userIdRef.current) {
-        setMechanicProfile(mechData || null)
+      // 4. Query completed rescues count
+      const { count: completedCount, error: countErr } = await supabase
+        .from('rescue_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('mechanic_id', currentUserId)
+        .eq('status', 'completed')
 
-setFormData((prev) => ({
-           ...prev,
-           fullName: baseProfile?.full_name || prev.fullName,
-           email: baseProfile?.email || user?.email || prev.email,
-           phone: baseProfile?.phone || prev.phone,
-           avatarUrl: baseProfile?.avatar_url || prev.avatarUrl,
-           businessName: mechData?.business_name || '',
-           specializations: Array.isArray(mechData?.specializations) ? mechData.specializations.join(', ') : (mechData?.specializations || ''),
-           serviceArea: mechData?.location_label || '',
-           yearsExperience: mechData?.years_experience || '',
-           availability: mechData?.is_available ?? false,
-           
-           theme: preferenceData?.theme || 'system',
-           preferredLanguage: preferenceData?.preferred_language || 'en',
-           secondaryPhone: preferenceData?.secondary_phone || '',
-           notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
-           communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
-         }))
+      if (countErr) {
+        console.warn('[COMPLETED RESCUES COUNT FETCH FAULT]:', countErr.message)
+      }
+
+      // 5. Fetch current verification documents
+      const { data: docsData, error: docsErr } = await supabase
+        .from('mechanic_documents')
+        .select('id, document_name, file_url, created_at')
+        .eq('mechanic_id', currentUserId)
+        .order('created_at', { ascending: false })
+
+      if (docsErr) {
+        console.warn('[DOCUMENTS FETCH FAULT]:', docsErr.message)
+      }
+
+      if (mounted && userIdRef.current) {
+        const resolvePhoneNumber = (profileVal, userObj) => {
+          const isValidPhone = (val) => {
+            if (!val) return false
+            const clean = val.toString().trim()
+            return clean.length > 0 && !/[a-zA-Z]/.test(clean)
+          }
+          
+          const userMetaPhone = userObj?.user_metadata?.phone
+          if (isValidPhone(userMetaPhone)) return userMetaPhone.toString().trim()
+
+          const pPhone = typeof profileVal === 'object' ? profileVal?.phone : profileVal
+          if (isValidPhone(pPhone)) return pPhone.toString().trim()
+
+          const userPhone = userObj?.phone
+          if (isValidPhone(userPhone)) return userPhone.toString().trim()
+
+          return ''
+        }
+
+        setMechanicProfile(mechData || null)
+        setCompletedRescuesCount(completedCount || 0)
+        setDocuments(docsData || [])
+
+        setFormData((prev) => ({
+          ...prev,
+          fullName: baseProfile?.full_name || prev.fullName,
+          email: baseProfile?.email || user?.email || prev.email,
+          phone: resolvePhoneNumber(baseProfile, user),
+          avatarUrl: baseProfile?.avatar_url || prev.avatarUrl,
+          businessName: mechData?.business_name || '',
+          specializations: Array.isArray(mechData?.specializations) ? mechData.specializations.join(', ') : (mechData?.specializations || ''),
+          serviceArea: mechData?.location_label || '',
+          yearsExperience: mechData?.years_experience || '',
+          availability: mechData?.is_available ?? false,
+          theme: preferenceData?.theme || 'System',
+          preferredLanguage: preferenceData?.preferred_language || 'English',
+          secondaryPhone: preferenceData?.secondary_phone || '',
+          notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
+          communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
+        }))
       }
     }
 
     loadFullProfile()
     return () => { mounted = false }
-  }, [user?.id, user?.email])
+  }, [user])
 
-  const handleChange = (field, value) => setFormData((p) => ({ ...p, [field]: value }))
+  const handleChange = (field, value) => {
+    let cleanValue = value
+    if (field === 'phone' || field === 'secondaryPhone') {
+      cleanValue = value.replace(/[^0-9+]/g, '')
+    }
+    setFormData((p) => ({ ...p, [field]: cleanValue }))
+  }
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0]
@@ -152,6 +204,101 @@ setFormData((prev) => ({
       toast.error(err.message || 'Error processing profile image binary stream upload')
     } finally {
       setUploadingAvatar(false)
+    }
+  }
+
+  const handleDocumentUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only PDF or Image (PNG, JPG) documents are supported')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Document size must be under 5MB')
+      return
+    }
+
+    try {
+      setUploadingDoc(true)
+      const supabase = createClient()
+
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user.id}/${Date.now()}_${file.name}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('mechanic-documents')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: docRecord, error: dbError } = await supabase
+        .from('mechanic_documents')
+        .insert({
+          mechanic_id: user.id,
+          document_name: file.name,
+          file_url: filePath
+        })
+        .select()
+        .single()
+
+      if (dbError) throw dbError
+
+      const { error: profileError } = await supabase
+        .from('mechanic_profiles')
+        .update({ verification_status: 'pending' })
+        .eq('user_id', user.id)
+
+      if (profileError) {
+        console.warn('Failed to reset verification_status in mechanic_profiles:', profileError.message)
+      }
+
+      const { error: verificationError } = await supabase
+        .from('mechanic_verifications')
+        .update({ status: 'pending' })
+        .eq('mechanic_id', user.id)
+
+      if (verificationError) {
+        console.warn('Failed to reset status in mechanic_verifications:', verificationError.message)
+      }
+
+      setDocuments(prev => [docRecord, ...prev])
+      toast.success('Document uploaded successfully! Profile verification re-queued.')
+      
+      if (mechanicProfile) {
+        setMechanicProfile(prev => ({
+          ...prev,
+          verification_status: 'pending'
+        }))
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload document')
+    } finally {
+      setUploadingDoc(false)
+      if (docInputRef.current) docInputRef.current.value = ''
+    }
+  }
+
+  const handleViewDocument = async (fileUrl) => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.storage
+        .from('mechanic-documents')
+        .createSignedUrl(fileUrl, 300)
+      
+      if (error) {
+        const { data: pubData } = supabase.storage
+          .from('mechanic-documents')
+          .getPublicUrl(fileUrl)
+        window.open(pubData.publicUrl, '_blank')
+      } else {
+        window.open(data.signedUrl, '_blank')
+      }
+    } catch (err) {
+      toast.error('Failed to resolve document link')
     }
   }
 
@@ -286,7 +433,7 @@ setMechanicProfile((prev) => ({
                 )}
                 <p className="text-sm font-semibold text-slate-500 mt-0.5 truncate">{formData.businessName || 'Independent Recovery Expert'}</p>
                 <div className="mt-2.5 flex items-center gap-2">
-                  <Badge label="Terminal Profile Active" variant="success" />
+                  <Badge label="Profile Active" variant="success" />
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${formData.availability ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
                     {formData.availability ? 'Online' : 'Offline'}
                   </span>
@@ -321,7 +468,7 @@ setMechanicProfile((prev) => ({
 
           <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><CheckCircle2 size={14} className="text-slate-400" /> Job Completions</p>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">0</p>
+            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{completedRescuesCount}</p>
             <p className="mt-1 text-xs font-medium text-slate-500">Successful corridor rescue logs</p>
           </Card>
 
@@ -415,7 +562,7 @@ setMechanicProfile((prev) => ({
 
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-2">
-                <MessageSquare size={12} className="inline mr-1" /> Active Comms Channels
+                <MessageSquare size={12} className="inline mr-1" /> Active Communication Channels
               </span>
               <div className="flex flex-wrap gap-2">
                 {['call', 'sms', 'whatsapp'].map((channel) => {
@@ -436,6 +583,95 @@ setMechanicProfile((prev) => ({
                 })}
               </div>
             </div>
+          </div>
+        </Card>
+
+        {/* ================= IDENTITY & CLEARANCE CREDENTIALS ================= */}
+        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <FileText size={16} className="text-amber-500" /> Identity & Clearance Credentials
+            </h3>
+            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border ${
+              mechanicProfile?.verification_status === 'approved' || mechanicProfile?.verification_status === 'verified'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/40'
+                : mechanicProfile?.verification_status === 'more_info'
+                ? 'bg-amber-50 text-amber-800 border-amber-200/40'
+                : 'bg-blue-50 text-blue-800 border-blue-200/40'
+            }`}>
+              {mechanicProfile?.verification_status === 'approved' || mechanicProfile?.verification_status === 'verified'
+                ? 'Verified'
+                : mechanicProfile?.verification_status === 'more_info'
+                ? 'More Info Requested'
+                : mechanicProfile?.verification_status || 'Pending'}
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed mb-5">
+            Upload your official credentials, such as a government-issued ID, business registry certificate, or certified mechanical credentials to authorize operations on the RoadRescue network.
+          </p>
+
+          <div className="space-y-4">
+            {/* Upload Selector */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={uploadingDoc}
+                onClick={() => docInputRef.current?.click()}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-white hover:bg-slate-800 disabled:opacity-40"
+              >
+                {uploadingDoc ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <FileText size={13} />
+                )}
+                {uploadingDoc ? 'Uploading...' : 'Upload Document'}
+              </button>
+              <input
+                type="file"
+                ref={docInputRef}
+                onChange={handleDocumentUpload}
+                accept="image/*,application/pdf"
+                className="hidden"
+                disabled={uploadingDoc}
+              />
+              <span className="text-[10px] font-medium text-slate-400">PDF, PNG, or JPG (Max 5MB)</span>
+            </div>
+
+            {/* Document List */}
+            {documents.length > 0 ? (
+              <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-slate-100 text-slate-500">
+                        <FileText size={16} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 truncate">{doc.document_name}</p>
+                        <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                          Uploaded {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleViewDocument(doc.file_url)}
+                      className="inline-flex h-7 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all"
+                    >
+                      View
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/20 py-8 text-center">
+                <span className="text-slate-300 mb-1">
+                  <FileText size={22} />
+                </span>
+                <p className="text-[11px] text-slate-400 font-semibold">No verification documents uploaded</p>
+              </div>
+            )}
           </div>
         </Card>
 

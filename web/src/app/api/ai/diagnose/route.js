@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI, Type } from '@google/genai'
 import { diagnoseLimiter } from '@/lib/rateLimit'
+import { sanitizeInput } from '@/lib/validate'
 
 const MODEL = 'gemini-2.5-flash'
 const SEVERITIES = new Set(['low', 'medium', 'high', 'critical'])
@@ -112,7 +113,8 @@ export async function POST(request) {
       )
     }
 
-    const body = await request.json()
+    const rawBody = await request.json()
+    const body = sanitizeInput(rawBody)
     const symptoms = normalizeString(body.symptoms)
     const vehicleMake = normalizeString(body.vehicleMake)
     const vehicleModel = normalizeString(body.vehicleModel)

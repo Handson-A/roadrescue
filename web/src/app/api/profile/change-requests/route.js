@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sanitizeInput } from '@/lib/validate'
 
 async function requireUser(supabase) {
   const { data: { user }, error } = await supabase.auth.getUser()
@@ -31,7 +32,8 @@ export async function POST(req) {
   try {
     const supabase = await createClient()
     const user = await requireUser(supabase)
-    const body = await req.json()
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
 
     const { role, target_table, field_key, old_value, new_value, reason } = body
 

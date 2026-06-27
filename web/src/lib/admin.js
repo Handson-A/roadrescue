@@ -28,6 +28,12 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
           phone,
           avatar_url,
           role
+        ),
+        mechanic_documents(
+          id,
+          document_name,
+          file_url,
+          created_at
         )
       )
     `)
@@ -40,7 +46,7 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
   }
 
   // Map the clean database relational nesting straight to your frontend model expectations
-  return (verifications || []).map((item) => {
+  const mapped = (verifications || []).map((item) => {
     const mechProfile = item.mechanic_profiles
     const userProfile = mechProfile?.profiles
 
@@ -66,9 +72,20 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
       specializations: specs,
       verification_status: item.status,
       created_at: item.created_at,
-      user: userProfile || null // Feeds user.role seamlessly to your page's client filter
+      user: userProfile || null, // Feeds user.role seamlessly to your page's client filter
+      documents: mechProfile?.mechanic_documents || []
     }
   })
+
+  // Deduplicate based on user_id, keeping the latest verification log (ordered by created_at ascending)
+  const uniqueMechanics = Array.from(
+    mapped.reduce((map, item) => {
+      map.set(item.user_id, item)
+      return map
+    }, new Map()).values()
+  )
+
+  return uniqueMechanics
 }
 
 /**
@@ -170,7 +187,7 @@ export async function getAdminStats(serviceSupabase) {
     (topMechanicsRaw || []).map(async (mechanic) => {
       const { data: profile } = await serviceSupabase
         .from('profiles')
-        .select('full_name, avatar_url')
+        .select('full_name, phone, avatar_url')
         .eq('id', mechanic.user_id)
         .maybeSingle()
       return {

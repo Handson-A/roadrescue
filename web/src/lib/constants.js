@@ -9,8 +9,8 @@ export const REQUEST_STATUS = {
   CANCELLED: 'cancelled',
 }
 
-export const SERVICE_TYPE = {
-  REPAIR: 'repair',
+export const SERVICE_TYPE = { 
+  REPAIR: 'repair',  //has a general repair part and fallback when the request is made.
   TOWING: 'towing',
   TYRE_CHANGE: 'tyre_change',
   BATTERY_JUMP: 'battery_jump',

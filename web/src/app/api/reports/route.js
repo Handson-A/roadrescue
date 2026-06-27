@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/rbac'
+import { sanitizeInput } from '@/lib/validate'
 
 export async function GET() {
   const result = await requireAdmin()
@@ -42,7 +43,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const rawBody = await request.json()
+    const body = sanitizeInput(rawBody)
     const { requestId, reporterId, reasonHeader, comment } = body
 
     if (!requestId || !reasonHeader || !comment) {

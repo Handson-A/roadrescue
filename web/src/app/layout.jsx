@@ -1,27 +1,3 @@
-// /**
-//  * Root Layout
-//  * Global layout wrapper for entire application
-//  * Contains Tailwind globals, fonts, providers
-//  */
-
-// import './globals.css';
-
-// export const metadata = {
-//   title: 'RoadRescue - Emergency Vehicle Assistance',
-//   description: 'Fast, reliable roadside assistance for drivers and mechanics',
-// };
-
-// export default function RootLayout({ children }) {
-//   return (
-//     <html lang="en">
-//       <body className="bg-gray-50 text-gray-900">
-//         {children}
-//       </body>
-//     </html>
-//   );
-// }
-
-
 // web/src/app/layout.jsx
 import '@/styles/global.css'
 
@@ -61,6 +37,10 @@ export const metadata = {
 
 export const viewport = {
   themeColor: '#FDFBF7',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({

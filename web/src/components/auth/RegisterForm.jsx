@@ -91,7 +91,6 @@ export default function RegisterForm() {
       driverPayload.home_area = formData.serviceArea.trim()
     }
 
-    // FIXED: Formats details down into JSONB preferences to respect structural table schema constraint limits
     driverPayload.preferences = {
       vehicle_make: formData.vehicleMake.trim(),
       vehicle_model: formData.vehicleModel.trim(),
@@ -107,7 +106,6 @@ export default function RegisterForm() {
 
     if (error) throw error
     
-    // Save emergency contacts to dedicated table
     if (formData.emergencyContactName.trim() && formData.emergencyContactPhone.trim()) {
       const { error: contactError } = await supabase
         .from('user_emergency_contacts')
@@ -146,7 +144,6 @@ export default function RegisterForm() {
         return
       }
 
-      // Step 1: Sign up user into Supabase Auth.
       const data = await signUp({
         email,
         password: formData.password,
@@ -158,7 +155,6 @@ export default function RegisterForm() {
       const userId = data?.user?.id || data?.session?.user?.id
       const role = data?.user?.user_metadata?.role || data?.session?.user?.user_metadata?.role || formData.role
 
-      // Step 2: Update optional tables safely
       if (userId && showOptionalDetails) {
         if (role === USER_ROLE.MECHANIC) {
           await saveMechanicProfile(userId)
@@ -168,7 +164,6 @@ export default function RegisterForm() {
         }
       }
 
-      // Step 3: Trigger Transactional Email Template
       const roleLabel = formData.role.toLowerCase()
       const wrapperStyle = "background-color: #FFF8EA; padding: 32px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;"
       const containerStyle = "max-width: 540px; margin: 0 auto; background-color: #ffffff; border: 1px solid #DCCDA9; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(31, 27, 16, 0.03);"
@@ -235,22 +230,22 @@ export default function RegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {/* Role Selection Tabs */}
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
-          Your Role
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">
+          Your Role Context
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {[USER_ROLE.DRIVER, USER_ROLE.MECHANIC].map((role) => (
             <button
               key={role}
               type="button"
               onClick={() => updateField('role', role)}
-              className={`rounded-xl border px-3 py-2 text-xs font-bold capitalize transition ${
+              className={`rounded-xl border h-[44px] text-xs font-black uppercase tracking-wider transition-all duration-200 cubic-bezier(0.4,0,0.2,1) ${
                 formData.role === role
-                  ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  ? 'border-[#1A1609] bg-[#1A1609] text-white shadow-sm'
+                  : 'border-[#DDD0A8] bg-white text-[#6B5E3E] hover:bg-[#FFFBF4] hover:text-[#1F1B10]'
               }`}
             >
               {role}
@@ -259,108 +254,108 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {/* MECHANIC OPTIONAL WRAPPER */}
+      {/* MECHANIC OPTIONAL PROFILE CARD */}
       {isMechanic && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50">
-          <div className="flex items-center justify-between p-4">
+        <div className="rounded-[18px] border border-[#DDD0A8]/60 bg-[#FFFBF4] transition-all overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#FFF9ED] border-b border-[#E5D9B6]/60">
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-slate-500">
-                Mechanic Details <span className="text-xs font-medium text-slate-400">(optional)</span>
+              <p className="text-xs font-black uppercase tracking-wider text-[#1F1B10]">
+                Mechanic Setup <span className="text-[11px] font-medium text-slate-700/70">(Optional)</span>
               </p>
-              <p className="mt-1 text-xs text-slate-400">These can be configured inside your profile settings panel later.</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[#6B5E3E]">Configure advanced profile matching fields now or skip to finish.</p>
             </div>
             <button 
               type="button" 
               onClick={() => setShowOptionalDetails((s) => !s)} 
-              className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-100"
+              className="text-[11px] font-black uppercase tracking-wide bg-white border border-[#DDD0A8] rounded-lg px-3 py-1.5 text-[#1F1B10] hover:bg-[#FFFBF4] transition-colors shadow-sm shrink-0 self-start sm:self-center"
             >
-              {showOptionalDetails ? 'Hide Options' : 'Add Options Now'}
+              {showOptionalDetails ? 'Hide Options' : 'More Options'}
             </button>
           </div>
 
           {showOptionalDetails && (
-            <div className="space-y-4 p-4 border-t border-slate-200 bg-white rounded-b-2xl">
+            <div className="space-y-4 p-4 bg-white">
               <div>
-                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Business Name</label>
-                <Input placeholder="RoadRescue Pro Garage" value={formData.businessName} onChange={(e) => updateField('businessName', e.target.value)} />
+                <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Business Name</label>
+                <Input placeholder="RoadRescue Pro Garage" value={formData.businessName} onChange={(e) => updateField('businessName', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Years of Experience</label>
-                  <Input type="number" min="0" placeholder="5" value={formData.yearsExperience} onChange={(e) => updateField('yearsExperience', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Years of Experience</label>
+                  <Input type="number" min="0" placeholder="5" value={formData.yearsExperience} onChange={(e) => updateField('yearsExperience', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Service Area Location</label>
-                  <Input placeholder="Accra, Central Region..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Service Area Location</label>
+                  <Input placeholder="Accra, Central Region..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
               </div>
               <div>
-                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Specializations</label>
-                <Textarea rows={3} placeholder="Towing, battery jump-start, diagnostics, tyre repair" value={formData.specializations} onChange={(e) => updateField('specializations', e.target.value)} />
-                <p className="mt-1 text-[11px] text-slate-400">Separate values with commas.</p>
+                <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Specializations</label>
+                <Textarea rows={3} placeholder="Towing, battery jump-start, diagnostics, tyre repair" value={formData.specializations} onChange={(e) => updateField('specializations', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
+                <p className="mt-1 text-[11px] text-[#6B5E3E]/70 italic">Separate spercializations with commas.</p>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* DRIVER OPTIONAL WRAPPER */}
+      {/* DRIVER OPTIONAL PROFILE CARD */}
       {isDriver && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50">
-          <div className="flex items-center justify-between p-4">
+        <div className="rounded-[18px] border border-[#DDD0A8]/60 bg-[#FFFBF4] transition-all overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-[#FFF9ED] border-b border-[#E5D9B6]/60">
             <div>
-              <p className="text-xs font-black uppercase tracking-wider text-slate-500">
-                Vehicle & Emergency Info <span className="text-xs font-medium text-slate-400">(optional)</span>
+              <p className="text-xs font-black uppercase tracking-wider text-[#1F1B10]">
+                Vehicle Details & Emergency <span className="text-[11px] font-medium text-slate-700/70">(Optional)</span>
               </p>
-              <p className="mt-1 text-xs text-slate-400">Skip this now if you do not have your vehicle data on hand.</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[#6B5E3E]">Skip now if you do not have vehicle specs on hand.</p>
             </div>
             <button 
               type="button" 
               onClick={() => setShowOptionalDetails((s) => !s)} 
-              className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 hover:bg-slate-100"
+              className="text-[11px] font-black uppercase tracking-wide bg-white border border-[#DDD0A8] rounded-lg px-3 py-1.5 text-[#1F1B10] hover:bg-[#FFFBF4] transition-colors shadow-sm shrink-0 self-start sm:self-center"
             >
-              {showOptionalDetails ? 'Hide Options' : 'Add Options Now'}
+              {showOptionalDetails ? 'Hide Options' : 'More Options'}
             </button>
           </div>
 
           {showOptionalDetails && (
-            <div className="space-y-4 p-4 border-t border-slate-200 bg-white rounded-b-2xl">
+            <div className="space-y-4 p-4 bg-white">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Make</label>
-                  <Input placeholder="Toyota" value={formData.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Vehicle Make</label>
+                  <Input placeholder="Toyota" value={formData.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Model</label>
-                  <Input placeholder="Camry" value={formData.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Vehicle Model</label>
+                  <Input placeholder="Camry" value={formData.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Year</label>
-                  <Input type="number" min="1970" placeholder="2022" value={formData.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Vehicle Year</label>
+                  <Input type="number" min="1970" placeholder="2022" value={formData.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Vehicle Color</label>
-                  <Input placeholder="Silver" value={formData.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Vehicle Color</label>
+                  <Input placeholder="Silver" value={formData.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Plate Number</label>
-                  <Input placeholder="GW-4920-24" value={formData.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Plate Number</label>
+                  <Input placeholder="GW-4920-24" value={formData.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Home Residential Area</label>
-                  <Input placeholder="Kasoa, Cantonments..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Home Area</label>
+                  <Input placeholder="Kasoa, Cantonments..." value={formData.serviceArea} onChange={(e) => updateField('serviceArea', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 border-t border-slate-100 pt-3">
+              <div className="grid gap-4 sm:grid-cols-2 border-t border-[#E5D9B6]/40 pt-4 mt-2">
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Emergency Contact Name</label>
-                  <Input placeholder="John Doe" value={formData.emergencyContactName} onChange={(e) => updateField('emergencyContactName', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Emergency Contact Name</label>
+                  <Input placeholder="John Doe" value={formData.emergencyContactName} onChange={(e) => updateField('emergencyContactName', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
                 <div>
-                  <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Emergency Contact Phone</label>
-                  <Input placeholder="+233..." value={formData.emergencyContactPhone} onChange={(e) => updateField('emergencyContactPhone', e.target.value)} />
+                  <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Emergency Phone</label>
+                  <Input placeholder="+233..." value={formData.emergencyContactPhone} onChange={(e) => updateField('emergencyContactPhone', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
                 </div>
               </div>
             </div>
@@ -368,47 +363,81 @@ export default function RegisterForm() {
         </div>
       )}
 
-      {/* Primary Required Inputs */}
-      <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Full Name</label>
-        <Input placeholder="Kwame Mensah" value={formData.fullName} onChange={(e) => updateField('fullName', e.target.value)} />
+      {/* Primary Required Content inputs */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Full Name</label>
+          <Input placeholder="Kwame Mensah" value={formData.fullName} onChange={(e) => updateField('fullName', e.target.value)} className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" />
+        </div>
+
+        <div>
+          <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Phone Number</label>
+          <Input placeholder="+233(0)..." value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" />
+        </div>
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Phone Number</label>
-        <Input placeholder="+233..." value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} />
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Email Address</label>
+        <Input type="email" placeholder="you@example.com" value={formData.email} onChange={(e) => updateField('email', e.target.value)} className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" />
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Email Address</label>
-        <Input type="email" placeholder="you@example.com" value={formData.email} onChange={(e) => updateField('email', e.target.value)} />
+        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Secure Password</label>
+        <Input type="password" placeholder="••••••••" value={formData.password} onChange={(e) => updateField('password', e.target.value)} className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" />
       </div>
 
-      <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">Password</label>
-        <Input type="password" placeholder="••••••••" value={formData.password} onChange={(e) => updateField('password', e.target.value)} />
-      </div>
-
-      {/* Consent Checkbox */}
-      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 select-none cursor-pointer">
+      {/* Consent Box */}
+      <label className="flex items-start gap-3.5 rounded-[16px] border border-[#DDD0A8]/70 bg-[#FFFBF4] p-4 select-none cursor-pointer transition-colors hover:bg-[#FFF9ED]">
         <input
           type="checkbox"
           checked={consentAccepted}
           onChange={(e) => setConsentAccepted(e.target.checked)}
-          className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+          className="mt-1 h-4 w-4 rounded border-[#DDD0A8] text-[#1A1609] focus:ring-[#1A1609] bg-white cursor-pointer"
         />
-        <span className="text-sm leading-6 text-slate-600">
-          I consent to RoadRescue using my account details, location, and rescue activity to provide roadside assistance, notifications, and support.
+        <span className="text-[13.5px] leading-relaxed text-[#6B5E3E] font-medium">
+          I consent to RoadRescue using my account details, location parameters, and rescue telemetry to deliver network services, emergency dispatches, notifications, and active support layers.
         </span>
       </label>
 
       <Button
         type="submit"
-        className="w-full bg-slate-900 text-xs font-black uppercase tracking-wider hover:bg-slate-800 py-3 rounded-xl"
+        className="w-full h-[52px] bg-[#1A1609] text-sm font-black uppercase tracking-wide text-white hover:bg-[#2A2211] py-3 rounded-xl transition-all hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-40"
         disabled={loading || !consentAccepted}
       >
         {loading ? 'Creating account...' : isMechanic ? 'Submit Mechanic Registration' : 'Submit Driver Registration'}
       </Button>
+
+      <div className="my-4 flex items-center justify-center gap-3">
+        <div className="h-[1px] flex-1 bg-slate-200"></div>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">or</span>
+        <div className="h-[1px] flex-1 bg-slate-200"></div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => toast('Coming soon, register manually for now.', { icon: 'ℹ️' })}
+        className="flex w-full h-[50px] items-center justify-center rounded-[12px] border border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] cursor-pointer"
+      >
+        <svg className="mr-2.5 h-4 w-4" viewBox="0 0 24 24">
+          <path
+            fill="#4285F4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+          />
+        </svg>
+        Continue with Google
+      </button>
     </form>
   )
 }

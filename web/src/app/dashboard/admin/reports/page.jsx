@@ -1,30 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic' // FIXED: Added Next.js standard lazy router
+import dynamic from 'next/dynamic'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
-import { BarChart3, TrendingUp, Clock, Users, Star, MapPin, Wrench, Download, ShieldCheck } from 'lucide-react'
-
-// Dynamic Import: Disables server side instantiation rendering to prevent leaflet window crashes
-const LiveHotspotsMap = dynamic(
-  () => import('@/components/admin/LiveHotspotsMap'),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-full min-h-[26rem] flex items-center justify-center bg-slate-50 border rounded-xl">
-        <Spinner />
-      </div>
-    )
-  }
-)
+import { BarChart3, TrendingUp, Clock, Users, Star, Wrench, Download, ShieldCheck } from 'lucide-react'
 
 export default function AdminReportsPage() {
-  // ... rest of your AdminReportsPage component code remains exactly identical
   const [loading, setLoading] = useState(true)
-  const [timeRange, setTimeRange] = useState(7) // 7 days or 30 days toggle switch wrapper
+  const [timeRange, setTimeRange] = useState(7) 
   const [stats, setStats] = useState(null)
 
   const handleExportReport = () => {
@@ -34,7 +20,6 @@ export default function AdminReportsPage() {
         return
       }
 
-      // Format CSV content
       let csvContent = "data:text/csv;charset=utf-8,"
       csvContent += "RoadRescue Operations Summary Report 2026\n"
       csvContent += `Generated At,${new Date().toISOString()}\n\n`
@@ -82,8 +67,6 @@ export default function AdminReportsPage() {
     async function loadLiveSystemAnalytics() {
       try {
         setLoading(true)
-        
-        // Connect to your secure server-side API endpoint
         const response = await fetch('/api/admin/stats')
         const result = await response.json()
 
@@ -114,7 +97,6 @@ export default function AdminReportsPage() {
     )
   }
 
-  // Safely compute percentage breakdown metrics from database categories arrays
   const totalIncidents = stats.totalRequests || 0
   const findCountByService = (type) => stats.serviceTypeBreakdown?.find(s => s.service_type === type)?.count || 0
 
@@ -125,14 +107,51 @@ export default function AdminReportsPage() {
     other: totalIncidents > 0 ? Math.round((findCountByService('other') / totalIncidents) * 100) : 0,
   }
 
-  // Aggregate global cumulative fault calculations
   const totalMechanicalPercentage = Math.min(categoriesPercentages.engine + categoriesPercentages.other, 100)
-
   const totalVolume = stats.statusBreakdown?.reduce((sum, item) => sum + (item.count || 0), 0) || 0
+
+  const getNormalizedServiceLabel = (type) => {
+    const lower = type?.toLowerCase() || ''
+    if (lower.includes('repair')) return 'General Repair'
+    if (lower.includes('tow')) return 'Towing & Recovery'
+    if (lower.includes('tyre') || lower.includes('tire')) return 'Tyre Change'
+    if (lower.includes('battery') || lower.includes('jump')) return 'Battery Jump'
+    if (lower.includes('fuel')) return 'Fuel Delivery'
+    return 'Other Assistance'
+  }
+
+  const aggregatedServices = {}
+  stats.serviceTypeBreakdown?.forEach(item => {
+    const label = getNormalizedServiceLabel(item.service_type)
+    aggregatedServices[label] = (aggregatedServices[label] || 0) + item.count
+  })
+  
+  const allLabels = ['General Repair', 'Towing & Recovery', 'Tyre Change', 'Battery Jump', 'Fuel Delivery', 'Other Assistance']
+  const colorPalette = [
+    '#F5D108', // Gold / Brand matching
+    '#334155', // Slate-700
+    '#3b82f6', // Blue-500
+    '#10b981', // Emerald-500
+    '#f43f5e', // Rose-500
+    '#94a3b8'  // Slate-400
+  ]
+
+  const chartData = allLabels.map((label, idx) => ({
+    label,
+    count: aggregatedServices[label] || 0,
+    color: colorPalette[idx]
+  })).filter(d => d.count > 0) // Filter categories with 0 data to build clean segments
+
+  const totalChartCount = chartData.reduce((sum, d) => sum + d.count, 0)
+
+  // Math config parameters for SVG Donut calculation
+  const RADIUS = 70
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+  let accumulatedPercent = 0
 
   return (
     <PageWrapper 
-      title="Incident Analytics" 
+      title="Operational Analytics" 
       description="Real-time operational distribution logs, diagnostic fault scales, and network performance indicators."
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
@@ -192,20 +211,91 @@ export default function AdminReportsPage() {
           </Card>
         </div>
 
-        {/* ================= MAP VISUALIZER & DIAGNOSTIC MATRIX ================= */}
+        {/* ================= DONUT VISUALIZER & DIAGNOSTIC MATRIX ================= */}
         <div className="grid gap-6 lg:grid-cols-[1.9fr_0.9fr]">
-          <Card className="rounded-2xl border border-slate-100 bg-white p-0 overflow-hidden shadow-sm">
-  <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex justify-between items-center">
-    <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-      <MapPin size={14} className="text-slate-400" /> Regional Breakdown Hotspots Map
-    </h3>
-    <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Live System Sync</span>
-  </div>
-  <div className="p-4 bg-slate-50/20">
-    {/* Interactive Node Deployment Layer Map */}
-    <LiveHotspotsMap mechanics={stats.activeMechanicLocations} />
-  </div>
-</Card>
+          <Card className="rounded-2xl border border-slate-100 bg-white p-0 overflow-hidden shadow-sm flex flex-col justify-between">
+            <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex justify-between items-center">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <BarChart3 size={14} className="text-slate-400" /> Incident Categories Distribution
+              </h3>
+              <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Live System Sync</span>
+            </div>
+            
+            <div className="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8 min-h-[24rem]">
+              {totalChartCount === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center text-xs font-medium text-slate-400 py-12">
+                  No active incidents recorded across service type categories.
+                </div>
+              ) : (
+                <>
+                  {/* SVG PURE DONUT COMPONENT CONTAINER */}
+                  <div className="relative w-48 h-48 shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                      {/* Underlay tracking ring base */}
+                      <circle
+                        cx="100"
+                        cy="100"
+                        r={RADIUS}
+                        className="stroke-slate-100"
+                        strokeWidth="20"
+                        fill="transparent"
+                      />
+                      {/* Compound Segment Loop */}
+                      {chartData.map((segment, index) => {
+                        const percent = (segment.count / totalChartCount) * 100
+                        const strokeLength = (percent / 100) * CIRCUMFERENCE
+                        const strokeOffset = CIRCUMFERENCE - strokeLength + (accumulatedPercent / 100) * CIRCUMFERENCE
+                        
+                        // Push stacking threshold over to next calculation step
+                        accumulatedPercent -= percent
+
+                        return (
+                          <circle
+                            key={index}
+                            cx="100"
+                            cy="100"
+                            r={RADIUS}
+                            fill="transparent"
+                            stroke={segment.color}
+                            strokeWidth="22"
+                            strokeDasharray={CIRCUMFERENCE}
+                            strokeDashoffset={strokeOffset}
+                            strokeLinecap={chartData.length === 1 ? 'butt' : 'round'}
+                            className="transition-all duration-700 ease-in-out hover:brightness-95 cursor-pointer"
+                          />
+                        )
+                      })}
+                    </svg>
+
+                    {/* Center Context Meta Node */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                      <span className="text-2xl font-black text-slate-900 tracking-tight">{totalChartCount}</span>
+                      <span className="text-[9px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">Total Cases</span>
+                    </div>
+                  </div>
+
+                  {/* CUSTOM LABELED SIDE LEGEND BLOCK */}
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 w-full">
+                    {chartData.map((item, idx) => {
+                      const sharePercent = Math.round((item.count / totalChartCount) * 100)
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-50 bg-slate-50/30">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="h-3 w-3 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                            <span className="text-xs font-extrabold text-slate-700 truncate">{item.label}</span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5 pl-2">
+                            <span className="text-xs font-black text-slate-900 font-mono">{item.count}</span>
+                            <span className="text-[10px] text-slate-400 font-bold">({sharePercent}%)</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
 
           {/* REAL FAULT DISTRIBUTION SUMMARY PANEL */}
           <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col justify-between">
@@ -219,7 +309,6 @@ export default function AdminReportsPage() {
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Mechanical Incidents Ratio</p>
               </div>
 
-              {/* Dynamic CSS Bar charts powered by live state calculations */}
               <div className="mt-6 space-y-4 text-xs font-semibold text-slate-700">
                 <div className="space-y-1">
                   <div className="flex justify-between"><span>Engine Diagnostics</span><span className="text-slate-900">{categoriesPercentages.engine}%</span></div>
@@ -283,7 +372,7 @@ export default function AdminReportsPage() {
                 <div className="text-center text-xs font-medium text-slate-400 py-12">No active lifecycle transitions logged in current database matrix.</div>
               ) : (
                 stats.statusBreakdown.map((item) => {
-                  const barPercentage = totalVolume > 0 ? Math.min(Math.round((item.count / totalVolume) * 100), 100) : 5;
+                  const barPercentage = totalVolume > 0 ? Math.min(Math.round((item.count / totalVolume) * 100), 100) : 5
                   return (
                     <div key={item.status} className="w-full flex items-center gap-4 text-xs font-bold">
                       <span className="w-24 text-slate-500 font-mono uppercase text-[10px] tracking-wider text-left">{item.status}</span>

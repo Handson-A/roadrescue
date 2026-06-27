@@ -36,6 +36,11 @@
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 html {
   scroll-behavior: smooth;
   background:
@@ -50,6 +55,13 @@ body {
   color: var(--foreground);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
+}
+
+/* Mobile inputs auto-zoom prevention */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 * {
@@ -179,9 +191,18 @@ a:active {
 .ai-assist-container {
   display: flex;
   flex-direction: column;
-  height: 100dvh; /* Dynamic viewport tracking prevents keyboard layout breaks */
+  height: calc(100dvh - 13rem);
   overflow: hidden;
   background-color: #FFF8EA;
+}
+
+body.keyboard-open .ai-assist-container {
+  height: calc(100dvh - 5.5rem) !important;
+}
+
+/* Avoid bottom padding space on main layout when keyboard is open on mobile */
+body.keyboard-open main {
+  padding-bottom: 1.25rem !important;
 }
 
 /* Inner scrolling message list body element */

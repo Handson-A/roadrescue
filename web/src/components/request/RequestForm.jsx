@@ -200,7 +200,7 @@ export default function RequestForm() {
           />
           {form.incidentAddress && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-[#FFF9EF] px-4 py-3 text-xs font-bold text-slate-700 leading-relaxed">
-              📍 Selected Coordinate Asset: <span className="text-[#1F1B10] font-mono">{form.incidentAddress}</span>
+              📍 Selected Pickup Location: <span className="text-[#1F1B10] font-mono">{form.incidentAddress}</span>
             </div>
           )}
         </div>
@@ -213,8 +213,8 @@ export default function RequestForm() {
           <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Vehicle Snapshot</h3>
         </div>
         <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <Input label="Make" value={form.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} placeholder="Toyota" />
-          <Input label="Model" value={form.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} placeholder="Corolla" />
+          <Input label="Make *" value={form.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} placeholder="Toyota" />
+          <Input label="Model *" value={form.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} placeholder="Corolla" />
           <Input label="Year" type="number" value={form.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} placeholder="2018" />
           <Input label="Color" value={form.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} placeholder="Silver" />
           <div className="sm:col-span-2">
@@ -222,10 +222,10 @@ export default function RequestForm() {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#7C6B44]">
-              Optional Vehicle Camera Snapshot
+            <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-700">
+              Vehicle Camera Snapshot (Optional)
             </label>
-            <label className="group flex cursor-pointer flex-col gap-3 rounded-2xl border border-dashed border-[#C8B98E] bg-[#FFF9EF] p-4 transition hover:border-slate-900">
+            <label className="group flex cursor-pointer flex-col gap-3 rounded-2xl border-2 border-dashed border-[#DDD0A8] bg-[#FFFDF9] p-5 transition-all duration-200 hover:border-[#1F1B10] hover:bg-[#FFFBF4]">
               <input
                 type="file"
                 accept="image/*"
@@ -235,16 +235,16 @@ export default function RequestForm() {
               />
 
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl bg-slate-900 p-2 text-white">
-                    <Camera size={16} />
+                <div className="flex items-center gap-4">
+                  <div className="rounded-xl bg-[#1F1B10] p-3 text-white transition-transform group-hover:scale-105">
+                    <Camera size={20} strokeWidth={2} />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-[#1F1B10]">Tap to upload from gallery or camera</p>
-                    <p className="text-xs text-[#7C6B44]">Helps your mechanic prepare parts and reduce wait time.</p>
+                    <p className="text-sm font-black text-[#1F1B10]">Tap to upload or take a snapshot</p>
+                    <p className="text-xs text-[#7C6B44] leading-relaxed mt-0.5">Helps your mechanic prepare parts and reduces wait times.</p>
                   </div>
                 </div>
-                <ImagePlus size={18} className="text-[#7C6B44]" />
+                <ImagePlus size={20} className="text-[#B8A06A] transition-colors group-hover:text-[#1F1B10]" />
               </div>
 
               {vehicleImagePreview && (
@@ -272,7 +272,7 @@ export default function RequestForm() {
          </div>
          <div className="space-y-4 p-4">
            <Textarea
-             label="What is happening?"
+             label="What is happening? *"
              value={form.problemDescription}
              onChange={(e) => updateField('problemDescription', e.target.value)}
              placeholder="Describe any warning lights, sounds, or sudden component failures..."

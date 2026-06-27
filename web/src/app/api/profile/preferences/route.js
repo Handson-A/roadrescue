@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { sanitizeInput } from '@/lib/validate'
 
 async function requireUser(supabase) {
   const { data: { user }, error } = await supabase.auth.getUser()
@@ -26,8 +27,8 @@ export async function GET() {
     // PRODUCTION HARDENING: If no preference row exists yet, return default baseline tokens
     const operationalPreferences = data || {
       user_id: user.id,
-      theme: 'system',
-      preferred_language: 'en',
+      theme: 'System',
+      preferred_language: 'English',
       notification_preferences: { jobAlerts: true, messageAlerts: true, push: true },
       communication_preferences: ['call', 'sms'],
       secondary_phone: ''
@@ -48,7 +49,8 @@ export async function PUT(req) {
   try {
     const supabase = await createClient()
     const user = await requireUser(supabase)
-    const body = await req.json()
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
 
     const payload = {
       user_id: user.id,

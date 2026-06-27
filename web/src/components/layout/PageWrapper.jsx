@@ -1,23 +1,3 @@
-
-// export default function PageWrapper({
-//   title,
-//   description,
-//   children,
-// }) {
-//   return (
-//     <div className="space-y-6 lg:space-y-7">
-//       {(title || description) && (
-//         <div className="flex flex-col gap-2">
-//           {title && <h1 className="font-display text-2xl font-semibold lg:text-3xl">{title}</h1>}
-//           {description && <p className="max-w-2xl text-sm leading-6 text-muted">{description}</p>}
-//         </div>
-//       )}
-
-//       {children}
-//     </div>
-//   )
-// }
-
 export default function PageWrapper({
   title,
   description,
