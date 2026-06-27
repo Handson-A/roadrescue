@@ -7,13 +7,13 @@ const severityVariantMap = {
   critical: 'danger',
 }
 
-export default function DiagnosticResult({ diagnosis, className = '' }) {
+export default function DiagnosticResult({ diagnosis }) {
   if (!diagnosis) return null
 
   const { problem, severity, recommendations = [], estimated_causes = [] } = diagnosis
 
   return (
-    <div className={` rounded-card p-4 space-y-3 ${className}`}>
+    <div className="rounded-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-amber uppercase tracking-wider">
           AI Diagnosis

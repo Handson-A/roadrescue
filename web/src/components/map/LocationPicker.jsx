@@ -6,7 +6,7 @@ import { Fuel } from 'lucide-react'
 import toast from 'react-hot-toast' // Added hot-toast import
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { createClient } from '@/lib/supabase/client'
+import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
 
 const ACCRA_LAT = 5.6037
 const ACCRA_LNG = -0.1870
@@ -62,35 +62,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
   const [mapCenter, setMapCenter] = useState([ACCRA_LAT, ACCRA_LNG])
   const [customIcon, setCustomIcon] = useState(null)
   const [showStations, setShowStations] = useState(false)
-  const [stationIcons, setStationIcons] = useState({ fuel: null, ev: null })
-  const [stations, setStations] = useState([])
   const callbackRef = useRef(null)
-
-  useEffect(() => {
-    if (!showStations) return
-
-    let isMounted = true
-    async function loadStations() {
-      try {
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from('fuel_ev_stations')
-          .select('id, name, type, latitude, longitude, address')
-        
-        if (error) throw error
-        if (isMounted && data) {
-          setStations(data)
-        }
-      } catch (err) {
-        console.error('Error fetching fuel/EV stations:', err)
-        toast.error('Failed to load stations')
-      }
-    }
-    loadStations()
-    return () => {
-      isMounted = false
-    }
-  }, [showStations])
 
   useEffect(() => {
     callbackRef.current = onSelect || onLocationSelect
@@ -112,24 +84,6 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           shadowSize: [41, 41]
         })
       )
-      setStationIcons({
-        fuel: new L.Icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
-        }),
-        ev: new L.Icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
-        })
-      })
     })
   }, [])
 
@@ -235,38 +189,10 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           {(lat && lng && customIcon) && (
             <Marker position={[Number(lat), Number(lng)]} icon={customIcon} />
           )}
-          {showStations && stations.map((station) => {
-            const icon = station.type === 'ev' ? stationIcons.ev : stationIcons.fuel
-            if (!icon) return null
-            return (
-              <Marker
-                key={station.id}
-                position={[station.latitude, station.longitude]}
-                icon={icon}
-              >
-                <Popup>
-                  <div className="p-1 min-w-[170px] font-sans">
-                    <h4 className="font-bold text-sm text-slate-800 m-0">{station.name}</h4>
-                    <p className="text-[10px] text-slate-500 mt-1 mb-0">{station.address}</p>
-                    <p className="mt-1.5 mb-2">
-                      <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        station.type === 'ev' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'
-                      }`}>
-                        {station.type === 'ev' ? '⚡ EV Charging Hub' : '⛽ Fuel Station'}
-                      </span>
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => placeMarkerValue(station.latitude, station.longitude, true)}
-                      className="w-full text-center py-1.5 rounded-lg bg-[#1F1B10] text-[#F5D108] font-bold text-[10px] uppercase hover:bg-slate-800 transition-colors"
-                    >
-                      Select as Pickup
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            )
-          })}
+          <OverpassFuelLayer
+            isActive={showStations}
+            onSelectPickup={(lat, lng) => placeMarkerValue(lat, lng, true)}
+          />
           <MapClickHandler onClick={(latitude, longitude) => placeMarkerValue(latitude, longitude, true)} />
           <MapController center={mapCenter} zoom={14} />
         </MapContainer>

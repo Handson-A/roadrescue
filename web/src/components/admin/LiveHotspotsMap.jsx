@@ -48,7 +48,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
     const { createClient } = require('@/lib/supabase/client')
     const supabase = createClient()
     const channel = supabase
-      .channel('online-mechanics-map')
+      .channel('online-mechanics')
       .on('broadcast', { event: 'location_update' }, (payload) => {
         const { mechanicId, latitude, longitude } = payload.payload
         setLiveLocations((prev) => ({
@@ -137,13 +137,16 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
 
       {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
       {mechanics?.map((m) => {
-        const liveLoc = liveLocations[m.user_id]
-        const mechCoords = liveLoc || extractCoords(m.current_location)
-        if (!mechCoords) return null
-
         const activeAssignment = activeIncidents.find(
           (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
         )
+
+        // Only show if available (online) OR active in a dispatch
+        if (!m.is_available && !activeAssignment) return null
+
+        const liveLoc = liveLocations[m.user_id]
+        const mechCoords = liveLoc || extractCoords(m.current_location)
+        if (!mechCoords) return null
 
         return (
           <Marker 

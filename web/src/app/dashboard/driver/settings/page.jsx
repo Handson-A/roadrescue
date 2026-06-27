@@ -34,8 +34,8 @@ export default function DriverSettingsPage() {
       if (!mounted || !response.ok || !payload.preferences) return
 
       setPreferences({
-        theme: payload.preferences.theme || 'system',
-        preferred_language: payload.preferences.preferred_language || 'en',
+        theme: payload.preferences.theme || 'System',
+        preferred_language: payload.preferences.preferred_language || 'Englih',
         notification_preferences: payload.preferences.notification_preferences || { email: true, sms: true, push: true },
         communication_preferences: payload.preferences.communication_preferences || [],
         home_location_label: payload.preferences.home_location_label || '',

@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { Clock3, MapPin, PhoneCall, BusFront, ExternalLink, Shield, Compass, CheckCircle2 } from 'lucide-react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
@@ -44,6 +45,8 @@ export default function DriverRequestTrackingPage() {
   
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [canceling, setCanceling] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   const incidentLocation = request?.incident_location
   const liveDistanceText = useMemo(() => {
@@ -58,9 +61,10 @@ export default function DriverRequestTrackingPage() {
 
   // Core orchestration logic handler for secure emergency dispatch cancellation
   async function handleCancelRequest() {
-    const reason = prompt('Please enter a cancellation reason (optional):')
-    if (reason === null) return // User cancelled the prompt
+    setShowCancelModal(true)
+  }
 
+  async function confirmCancelRequest() {
     try {
       setCanceling(true)
       const response = await fetch(`/api/requests/${id}/status`, {
@@ -68,7 +72,7 @@ export default function DriverRequestTrackingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           status: 'cancelled',
-          cancellationReason: reason.trim() || 'Driver cancelled request'
+          cancellationReason: cancelReason.trim() || 'Driver cancelled request'
         }),
       })
 
@@ -77,12 +81,13 @@ export default function DriverRequestTrackingPage() {
         throw new Error(errorData.error || 'Failed to cancel request')
       }
 
-      alert('Rescue request successfully cancelled.')
+      toast.success('Rescue request successfully cancelled.')
       router.push('/dashboard/driver')
     } catch (error) {
-      alert(error.message || 'An error occurred during cancellation.')
+      toast.error(error.message || 'An error occurred during cancellation.')
     } finally {
       setCanceling(false)
+      setShowCancelModal(false)
     }
   }
 
@@ -116,17 +121,17 @@ export default function DriverRequestTrackingPage() {
   ].filter(Boolean).join(' · ')
 
   const rawRating = profileData?.rating_avg
-  const ratingVal = typeof rawRating === 'number' ? rawRating : 4.9
-  const ratingText = ratingVal.toFixed(1)
-  const stars = '★'.repeat(Math.round(ratingVal)) + '☆'.repeat(5 - Math.round(ratingVal))
+  const hasRating = typeof rawRating === 'number' && rawRating > 0
+  const ratingText = hasRating ? rawRating.toFixed(1) : 'New Responder'
+  const stars = hasRating ? '★'.repeat(Math.round(rawRating)) + '☆'.repeat(5 - Math.round(rawRating)) : '☆☆☆☆☆'
 
   const workflowStages = [
-    { key: 'pending', label: 'Requested', step: '1' },
-    { key: 'accepted', label: 'Accepted', step: '2' },
-    { key: 'en_route', label: 'En Route', step: '3' },
+    { key: 'pending', label: 'Finding Help', step: '1' },
+    { key: 'accepted', label: 'Assigned', step: '2' },
+    { key: 'en_route', label: 'On the Way', step: '3' },
     { key: 'arrived', label: 'On Site', step: '4' },
-    { key: 'in_progress', label: 'Working', step: '5' },
-    { key: 'completed', label: 'Completed', step: '6' },
+    { key: 'in_progress', label: 'Repairing', step: '5' },
+    { key: 'completed', label: 'Resolved', step: '6' },
   ]
 
   const currentStageIndex = workflowStages.findIndex(s => s.key === request.status)
@@ -139,7 +144,7 @@ export default function DriverRequestTrackingPage() {
       {/* ==================================================================== */}
       <div className="space-y-4 lg:hidden">
         <div className="overflow-hidden rounded-[2rem] bg-white shadow-md border border-slate-200/80">
-          <RescueMap request={request} driverLocation={request.incident_location} mechanicLocation={mechanicLocation} height="320px" />
+          <RescueMap request={request} driverLocation={request.incident_location} mechanicLocation={mechanicLocation} userRole="driver" height="320px" />
         </div>
 
         {/* DYNAMIC PROXIMITY TELEMETRY CARD */}
@@ -274,14 +279,23 @@ export default function DriverRequestTrackingPage() {
           <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Alternative Commute Gateway</p>
           <p className="text-xs text-slate-600 mt-1 mb-3">Need to leave the site immediately? Launch an external transport operator dashboard:</p>
           <div className="grid grid-cols-3 gap-2">
-            <a href="https://passenger.yango.com" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-200 bg-white text-center text-[11px] font-bold text-slate-700 shadow-xs">
-              Yango App
+            <a href="https://passenger.yango.com" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-slate-200 bg-white text-center text-[11px] font-bold transition-all hover:bg-slate-50 shadow-xs">
+              <span className="flex items-center gap-1.5 text-[#EF4444]">
+                <span className="h-3.5 w-3.5 rounded-sm bg-[#EF4444] flex items-center justify-center text-[8px] text-white font-black">Y</span>
+                Yango
+              </span>
             </a>
-            <a href="https://bolt.eu" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-200 bg-white text-center text-[11px] font-bold text-slate-700 shadow-xs">
-              Bolt Ride
+            <a href="https://bolt.eu" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-slate-200 bg-white text-center text-[11px] font-bold transition-all hover:bg-slate-50 shadow-xs">
+              <span className="flex items-center gap-1 text-[#10B981]">
+                <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M13 2v9h8L11 22v-9H3l10-10z"/></svg>
+                Bolt
+              </span>
             </a>
-            <a href="https://www.uber.com" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-200 bg-white text-center text-[11px] font-bold text-slate-700 shadow-xs">
-              Uber Drive
+            <a href="https://www.uber.com" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-slate-200 bg-white text-center text-[11px] font-bold transition-all hover:bg-slate-50 shadow-xs">
+              <span className="flex items-center gap-1.5 text-black">
+                <span className="h-3.5 w-3.5 rounded-full bg-black flex items-center justify-center text-[8px] text-white font-black">U</span>
+                Uber
+              </span>
             </a>
           </div>
         </Card>
@@ -372,7 +386,7 @@ export default function DriverRequestTrackingPage() {
                   onClick={() => setIsReportModalOpen(true)}
                   className="text-xs text-slate-400 hover:text-red-400 font-medium underline underline-offset-4 text-center mt-1 transition-colors"
                 >
-                  Report Issue to Admin
+                  Report
                 </button>
               </div>
             </Card>
@@ -412,13 +426,19 @@ export default function DriverRequestTrackingPage() {
         <div className="space-y-4 lg:col-span-2">
           <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Live Spatial Tracking Parameter</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Rescue Status</p>
               <h3 className="text-lg font-black text-slate-900 mt-0.5">
                 {request.status === 'pending' 
-                  ? 'Broadcasting to available field agents...' 
-                  : liveDistanceText 
-                    ? `Mechanic is within ${liveDistanceText} radius` 
-                    : 'Awaiting coordinate initialization...'}
+                  ? 'Finding the nearest mechanic for you...' 
+                  : request.status === 'accepted'
+                    ? 'Mechanic accepted your request!'
+                    : request.status === 'en_route'
+                      ? `Mechanic is on the way (within ${liveDistanceText || 'a few km'})`
+                      : request.status === 'arrived'
+                        ? 'Mechanic is on site'
+                        : request.status === 'in_progress'
+                          ? 'Repair is in progress'
+                          : 'Service completed'}
               </h3>
             </div>
             <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
@@ -429,6 +449,7 @@ export default function DriverRequestTrackingPage() {
               request={request}
               driverLocation={request.incident_location}
               mechanicLocation={mechanicLocation}
+              userRole="driver"
               height="480px"
             />
           </div>
@@ -445,18 +466,27 @@ export default function DriverRequestTrackingPage() {
                 <BusFront size={16} />
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <a href="https://passenger.yango.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#F5D108] transition-transform active:scale-95">
-                Yango Gateway
-                <ExternalLink size={12} />
+            <div className="mt-4 flex flex-wrap gap-3">
+              <a href="https://passenger.yango.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold transition-all hover:bg-slate-50 active:scale-95">
+                <span className="flex items-center gap-1.5 text-[#EF4444]">
+                  <span className="h-3.5 w-3.5 rounded-sm bg-[#EF4444] flex items-center justify-center text-[8px] text-white font-black">Y</span>
+                  Yango Gateway
+                </span>
+                <ExternalLink size={12} className="text-slate-400" />
               </a>
-              <a href="https://bolt.eu" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 transition-transform active:scale-95">
-                Bolt Gateway
-                <ExternalLink size={12} />
+              <a href="https://bolt.eu" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold transition-all hover:bg-slate-50 active:scale-95">
+                <span className="flex items-center gap-1 text-[#10B981]">
+                  <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M13 2v9h8L11 22v-9H3l10-10z"/></svg>
+                  Bolt Gateway
+                </span>
+                <ExternalLink size={12} className="text-slate-400" />
               </a>
-              <a href="https://www.uber.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 transition-transform active:scale-95">
-                Uber Gateway
-                <ExternalLink size={12} />
+              <a href="https://www.uber.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold transition-all hover:bg-slate-50 active:scale-95">
+                <span className="flex items-center gap-1.5 text-black">
+                  <span className="h-3.5 w-3.5 rounded-full bg-black flex items-center justify-center text-[8px] text-white font-black">U</span>
+                  Uber Gateway
+                </span>
+                <ExternalLink size={12} className="text-slate-400" />
               </a>
             </div>
           </Card>
@@ -469,6 +499,45 @@ export default function DriverRequestTrackingPage() {
         requestId={id}
         reporterId={user?.id}
       />
+
+      {/* CANCELLATION DIALOG MODAL */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">Cancel Rescue Request?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Please let us know if there is a reason for this cancellation. This helps us improve our dispatch matching.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Reason</label>
+              <textarea
+                rows={3}
+                placeholder="e.g. Vehicle started working, alternative help arrived..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full rounded-xl border border-[#DDD0A8] p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] focus:border-slate-900 focus:ring-slate-900"
+              />
+            </div>
+            <div className="flex gap-2.5 justify-end">
+              <button 
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Keep Request
+              </button>
+              <button 
+                type="button"
+                onClick={confirmCancelRequest}
+                disabled={canceling}
+                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {canceling ? 'Cancelling...' : 'Confirm Cancel'}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
     </PageWrapper>
   )
 }

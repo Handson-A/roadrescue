@@ -20,7 +20,7 @@ export default function RotatingTips({ compact = false }) {
     },
     {
       category: 'Ghana Driving',
-      quote: 'Be extra cautious on Ghanaian highways—watch for unexpected obstacles and pedestrians.',
+      quote: 'Be extra cautious on Ghanaian highways, watch for unexpected obstacles and pedestrians.',
     },
     {
       category: 'Emergency Preparedness',

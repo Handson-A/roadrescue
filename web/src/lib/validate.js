@@ -57,3 +57,52 @@ export function validateRequestBody(body) {
     ? { valid: false, errors }
     : { valid: true }
 }
+
+export function sanitizeInput(val) {
+  if (val === null || val === undefined) {
+    return val
+  }
+
+  if (Array.isArray(val)) {
+    return val.map(item => sanitizeInput(item))
+  }
+
+  if (typeof val === 'object') {
+    const cleaned = {}
+    for (const key in val) {
+      if (Object.prototype.hasOwnProperty.call(val, key)) {
+        cleaned[key] = sanitizeInput(val[key])
+      }
+    }
+    return cleaned
+  }
+
+  if (typeof val === 'string') {
+    let str = val
+
+    // 1. Strip script tags case-insensitively
+    str = str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+
+    // 2. Strip general HTML tags
+    str = str.replace(/<[^>]*>/g, '')
+
+    // 3. Strip javascript: URI protocol
+    str = str.replace(/javascript:/gi, '')
+
+    // 4. Strip inline event handlers: e.g. onload=, onclick=, onerror=
+    str = str.replace(/\bon\w+\s*=\s*(['"][^'"]*['"]|[^\s>]+(?=\s|>))/gi, '')
+
+    // 5. Escape dangerous HTML characters (preserving safe formatting)
+    str = str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+
+    // 6. Trim whitespace
+    return str.trim()
+  }
+
+  return val
+}

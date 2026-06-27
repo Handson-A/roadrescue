@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin, createErrorResponse } from '@/lib/rbac'
+import { sanitizeInput } from '@/lib/validate'
 
 // Structural lookup mapping matrices for safety verification checks
 const driverFieldMap = {
@@ -75,7 +76,8 @@ export async function PATCH(req) {
 
     const { profile } = access
     const serviceSupabase = await createServiceClient()
-    const body = await req.json()
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
     const { requestId, action, reviewNotes } = body
 
     if (!requestId || !action || !['approved', 'rejected'].includes(action)) {

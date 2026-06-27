@@ -52,11 +52,30 @@ export default function DriverAccountPage() {
       }
 
       if (mounted) {
+        const resolvePhoneNumber = (profileVal, userObj) => {
+          const isValidPhone = (val) => {
+            if (!val) return false
+            const clean = val.toString().trim()
+            return clean.length > 0 && !/[a-zA-Z]/.test(clean)
+          }
+          
+          const userMetaPhone = userObj?.user_metadata?.phone
+          if (isValidPhone(userMetaPhone)) return userMetaPhone.toString().trim()
+
+          const pPhone = typeof profileVal === 'object' ? profileVal?.phone : profileVal
+          if (isValidPhone(pPhone)) return pPhone.toString().trim()
+
+          const userPhone = userObj?.phone
+          if (isValidPhone(userPhone)) return userPhone.toString().trim()
+
+          return ''
+        }
+
         setDriverProfile(data || null)
         setFormData({
           fullName: profile?.full_name || '',
           email: profile?.email || '', // Locked parameter field
-          phone: profile?.phone || '',
+          phone: resolvePhoneNumber(profile, user),
           avatarUrl: profile?.avatar_url || '',
           vehicleMake: data?.vehicle_make || '',
           vehicleModel: data?.vehicle_model || '',
@@ -76,10 +95,14 @@ export default function DriverAccountPage() {
     return () => {
       mounted = false
     }
-  }, [user?.id, profile, dataInitialized])
+  }, [user, profile, dataInitialized])
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    let cleanValue = value
+    if (field === 'phone' || field === 'emergencyContactPhone') {
+      cleanValue = value.replace(/[^0-9+]/g, '')
+    }
+    setFormData((prev) => ({ ...prev, [field]: cleanValue }))
   }
 
   // File Upload Pipeline targeting Supabase Storage Bucket
@@ -180,7 +203,7 @@ export default function DriverAccountPage() {
       <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
         <div className="text-center space-y-3">
           <Spinner />
-          <p className="text-xs font-bold text-[#7C6B44] uppercase tracking-widest animate-pulse">Synchronizing Security Records...</p>
+          <p className="text-xs font-bold text-[#7C6B44] uppercase tracking-widest animate-pulse">Please wait...</p>
         </div>
       </div>
     )

@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { updateRequestStatus } from '@/lib/request'
 import { normalizeString, normalizeStatus } from '@/lib/rescueLifecycle'
 import { NextResponse } from 'next/server'
+import { sanitizeInput } from '@/lib/validate'
 
 export async function PATCH(req, { params }) {
   try {
@@ -31,7 +32,8 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    const body = await req.json()
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
     const rawStatus = body.status || body.newStatus
 
     if (!rawStatus) {

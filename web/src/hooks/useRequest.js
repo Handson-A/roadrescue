@@ -48,7 +48,8 @@ export function useRequestStatus(requestId) {
           filter: `id=eq.${requestId}`,
         },
         (payload) => {
-          setRequest(prev => ({ ...prev, ...payload.new }))
+          // Trigger a full fetch to resolve nested relationships in real-time
+          fetchRequest()
         }
       )
       .subscribe()

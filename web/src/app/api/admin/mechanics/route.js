@@ -2,6 +2,7 @@
 // GET  → fetch mechanics by verification status
 // PATCH → approve or reject a mechanic
 
+import { Resend } from 'resend'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import {
   getMechanicsByStatus,
@@ -170,6 +171,73 @@ export async function PATCH(req) {
 
       if (notificationError) {
         console.warn('Failed to create descriptive info feedback notification log:', notificationError)
+      }
+
+      // Fetch mechanic registration email profile securely using service role permissions bypass
+      const { data: mechanicProfile, error: emailErr } = await serviceSupabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', mechanicUserId)
+        .maybeSingle()
+
+      if (emailErr) {
+        console.warn('Failed to fetch mechanic email records payload for more_info notification:', emailErr)
+      }
+
+      if (mechanicProfile?.email) {
+        try {
+          const resendApiKey = process.env.RESEND_API_KEY
+          if (!resendApiKey) {
+            console.error('[EMAIL ERROR] Missing RESEND_API_KEY env variable')
+          } else {
+            const resendInstance = new Resend(resendApiKey)
+            const primaryFromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@roadrescue.com'
+            const fallbackFromEmail = 'RoadRescue <onboarding@resend.dev>'
+            const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/mechanic/account`
+
+            const emailHtml = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f8f8; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px;">🔧 Credentials Requested</h1>
+                </div>
+                <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; color: #334155; line-height: 1.6;">
+                  <p>Hi <strong>${mechanicProfile.full_name || 'Specialist'}</strong>,</p>
+                  <p>Our admin team has reviewed your profile application for the RoadRescue network. We require additional or clearer credentials (such as an ID or business clearance certificate) to proceed with your verification.</p>
+                  <p>Please log into your dashboard to upload these documents.</p>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${dashboardUrl}" style="display: inline-block; background: #ffd700; color: #111827; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Upload Credentials</a>
+                  </div>
+                  <p>Thank you for partnering with RoadRescue!</p>
+                </div>
+              </div>
+            `
+
+            let result = await resendInstance.emails.send({
+              from: primaryFromEmail,
+              to: mechanicProfile.email,
+              subject: 'Action Required: RoadRescue Profile Credentials Needed',
+              html: emailHtml,
+            })
+
+            if (result.error?.statusCode === 403 || result.error?.name === 'validation_error') {
+              console.warn('Primary Resend sender rejected, retrying with fallback onboarding sender')
+              result = await resendInstance.emails.send({
+                from: fallbackFromEmail,
+                to: mechanicProfile.email,
+                subject: 'Action Required: RoadRescue Profile Credentials Needed',
+                html: emailHtml,
+              })
+            }
+
+            if (result.error) {
+              console.error('[EMAIL ERROR] Failed to send more_info email via Resend:', result.error)
+            } else {
+              console.log('Verification update email sent successfully:', result.data.id)
+            }
+          }
+        } catch (err) {
+          console.error('[EMAIL ERROR] Unexpected failure in Resend notification sender:', err)
+        }
       }
     }
 

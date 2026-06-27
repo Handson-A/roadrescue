@@ -109,6 +109,13 @@ export default function AdminDashboardPage() {
           loadAdminDashboard()
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'mechanic_profiles' },
+        () => {
+          loadAdminDashboard()
+        }
+      )
       .subscribe()
 
     return () => {
@@ -197,7 +204,7 @@ export default function AdminDashboardPage() {
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Global Dispatch Tracker Feed</h3>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-                <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-xs">Telemetry Node</span>
+                <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-xs">Operations System Online</span>
                 <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[#FFD700]">24/7 Live Map</span>
               </div>
             </div>
@@ -278,6 +285,13 @@ export default function AdminDashboardPage() {
         <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => {
             const Icon = action.icon
+            
+            let badgeText = null
+            if (action.href === '/dashboard/admin/mechanics' && pendingMechanics.length > 0) {
+              badgeText = `${pendingMechanics.length} PENDING`
+            } else if (action.href === '/dashboard/admin/requests' && stats?.activeRequests > 0) {
+              badgeText = `${stats.activeRequests} ACTIVE`
+            }
 
             return (
               <Link key={action.href} href={action.href} className="group">
@@ -285,7 +299,14 @@ export default function AdminDashboardPage() {
                   <div className="flex flex-col h-full justify-between gap-4">
                     <div className="space-y-1">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Visit</span>
-                      <h3 className="text-base font-black text-slate-900 tracking-tight group-hover:text-slate-800 transition-colors">{action.label}</h3>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base font-black text-slate-900 tracking-tight group-hover:text-slate-800 transition-colors">{action.label}</h3>
+                        {badgeText && (
+                          <span className="rounded-full bg-red-50 border border-red-200/50 px-2 py-0.5 text-[9px] font-black text-red-600 tracking-wider shrink-0 animate-pulse">
+                            {badgeText}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-400 font-medium leading-normal pt-1">{action.description}</p>
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2 text-slate-600 shadow-xs self-start group-hover:bg-[#FFD700] group-hover:text-slate-900 transition-all">
@@ -303,27 +324,49 @@ export default function AdminDashboardPage() {
           <section className="grid gap-4 md:grid-cols-2">
             <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Service Type Breakdown</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Most Common Requests</h3>
-              <div className="mt-3 space-y-2">
-                {stats.serviceTypeBreakdown.slice(0, 5).map((item) => (
-                  <div key={item.service_type} className="flex items-center justify-between text-xs font-medium">
-                    <span className="capitalize text-slate-600">{item.service_type.replace('_', ' ')}</span>
-                    <span className="font-bold text-slate-900">{item.count}</span>
-                  </div>
-                ))}
+              <h3 className="text-sm font-extrabold text-slate-800 mt-3 mb-4">Most Common Requests</h3>
+              <div className="space-y-3.5">
+                {(() => {
+                  const total = stats.serviceTypeBreakdown.reduce((acc, curr) => acc + curr.count, 0) || 1
+                  return stats.serviceTypeBreakdown.slice(0, 5).map((item) => {
+                    const pct = Math.round((item.count / total) * 100)
+                    return (
+                      <div key={item.service_type} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="capitalize text-slate-600">{item.service_type.replace('_', ' ')}</span>
+                          <span className="text-slate-950 font-mono text-[11px]">{item.count} ({pct}%)</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-slate-900 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             </Card>
 
             <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Status Distribution</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Request Lifecycle</h3>
-              <div className="mt-3 space-y-2">
-                {stats.statusBreakdown.slice(0, 5).map((item) => (
-                  <div key={item.status} className="flex items-center justify-between text-xs font-medium">
-                    <span className="capitalize text-slate-600">{item.status.replace('_', ' ')}</span>
-                    <span className="font-bold text-slate-900">{item.count}</span>
-                  </div>
-                ))}
+              <h3 className="text-sm font-extrabold text-slate-800 mt-3 mb-4">Request Lifecycle</h3>
+              <div className="space-y-3.5">
+                {(() => {
+                  const total = stats.statusBreakdown.reduce((acc, curr) => acc + curr.count, 0) || 1
+                  return stats.statusBreakdown.slice(0, 5).map((item) => {
+                    const pct = Math.round((item.count / total) * 100)
+                    return (
+                      <div key={item.status} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="capitalize text-slate-600">{item.status.replace('_', ' ')}</span>
+                          <span className="text-slate-950 font-mono text-[11px]">{item.count} ({pct}%)</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#F5D108] rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             </Card>
           </section>

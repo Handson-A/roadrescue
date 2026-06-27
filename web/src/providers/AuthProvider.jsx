@@ -41,12 +41,31 @@ export default function AuthProvider({ children }) {
   const fetchUserProfile = useCallback(async (user) => {
     if (!user?.id) return null
 
+    const resolvePhoneNumber = (profileVal, userObj) => {
+      const isValidPhone = (val) => {
+        if (!val) return false
+        const clean = val.toString().trim()
+        return clean.length > 0 && !/[a-zA-Z]/.test(clean)
+      }
+      
+      const userMetaPhone = userObj?.user_metadata?.phone
+      if (isValidPhone(userMetaPhone)) return userMetaPhone.toString().trim()
+
+      const pPhone = typeof profileVal === 'object' ? profileVal?.phone : profileVal
+      if (isValidPhone(pPhone)) return pPhone.toString().trim()
+
+      const userPhone = userObj?.phone
+      if (isValidPhone(userPhone)) return userPhone.toString().trim()
+
+      return ''
+    }
+
     const userId = user.id
     const fallbackProfile = {
       id: userId,
       email: user.email || null,
       full_name: user.user_metadata?.full_name || null,
-      phone: user.user_metadata?.phone || null,
+      phone: resolvePhoneNumber(null, user) || null,
       role: user.user_metadata?.role || null,
     }
 
@@ -99,7 +118,11 @@ export default function AuthProvider({ children }) {
 
         if (!profile) return fallbackProfile
 
-        const extendedProfile = { ...fallbackProfile, ...profile }
+        const extendedProfile = {
+          ...fallbackProfile,
+          ...profile,
+          phone: resolvePhoneNumber(profile, user)
+        }
 
 if (profile?.role === 'driver') {
            const { data: driverProfile } = await supabase

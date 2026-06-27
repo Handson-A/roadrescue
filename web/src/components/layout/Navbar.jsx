@@ -19,6 +19,24 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const notificationRef = useRef(null)
 
+  const [visible, setVisible] = useState(true)
+  const lastScrollYRef = useRef(0)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      if (currentScrollY > lastScrollYRef.current && currentScrollY > 60) {
+        setVisible(false)
+      } else {
+        setVisible(true)
+      }
+      lastScrollYRef.current = currentScrollY
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   const pathname = usePathname()
   const hrs = new Date().getHours()
   const greeting = hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
@@ -123,7 +141,7 @@ export default function Navbar() {
   const hasAvatar = !!profile?.avatar_url;
 
   return (
-    <header className="sticky top-0 z-40 md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl">
+    <header className={`sticky top-0 z-40 transition-transform duration-300 ease-in-out md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
       
       {/* ==================================================================== */}
       {/* MODERNIZED MOBILE HEADER DISPLAY GRID                              */}

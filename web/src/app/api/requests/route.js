@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { requestLimiter } from '@/lib/rateLimit'
 import { sendNotificationEmail } from '@/lib/email'
 
+import { sanitizeInput } from '@/lib/validate'
+
 export async function POST(req) {
   try {
     const ip = req.headers.get('x-forwarded-for') || 'anonymous'
@@ -34,7 +36,42 @@ export async function POST(req) {
       return NextResponse.json({ error: 'You can only create a request if you signed up as a driver' }, { status: 403 })
     }
 
-    const body = await req.json()
+    // 1. Gating Check: Verify if driver already has an active request sequence
+    const { data: activeRequests, error: activeError } = await supabase
+      .from('rescue_requests')
+      .select('id')
+      .eq('driver_id', user.id)
+      .in('status', ['pending', 'offered', 'accepted', 'en_route', 'arrived', 'in_progress'])
+      .limit(1)
+
+    if (activeError) {
+      console.error('[ACTIVE REQUEST CHECK FAULT]:', activeError.message)
+    } else if (activeRequests && activeRequests.length > 0) {
+      return NextResponse.json(
+        { error: "Concurrency Lock: You have an ongoing rescue request sequence active. Please clear or abort your existing ticket allocation before issuing a secondary distress call." },
+        { status: 400 }
+      )
+    }
+
+    // 2. Rate-Limiting Check: Max 3 requests per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: hourlyCount, error: countError } = await supabase
+      .from('rescue_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('driver_id', user.id)
+      .gt('created_at', oneHourAgo)
+
+    if (countError) {
+      console.error('[HOURLY COUNT CHECK FAULT]:', countError.message)
+    } else if (hourlyCount !== null && hourlyCount >= 3) {
+      return NextResponse.json(
+        { error: "Security Lockout: Maximum request thresholds exceeded. Limit 3 emergency alerts per hour parameters." },
+        { status: 429 }
+      )
+    }
+
+    const rawBody = await req.json()
+    const body = sanitizeInput(rawBody)
 
     // basic input validation
     const { incidentLat, incidentLng, serviceType } = body

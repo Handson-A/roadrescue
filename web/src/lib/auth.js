@@ -170,11 +170,30 @@ export async function getCurrentUser() {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return null
 
+  const resolvePhoneNumber = (profileVal, userObj) => {
+    const isValidPhone = (val) => {
+      if (!val) return false
+      const clean = val.toString().trim()
+      return clean.length > 0 && !/[a-zA-Z]/.test(clean)
+    }
+    
+    const userMetaPhone = userObj?.user_metadata?.phone
+    if (isValidPhone(userMetaPhone)) return userMetaPhone.toString().trim()
+
+    const pPhone = typeof profileVal === 'object' ? profileVal?.phone : profileVal
+    if (isValidPhone(pPhone)) return pPhone.toString().trim()
+
+    const userPhone = userObj?.phone
+    if (isValidPhone(userPhone)) return userPhone.toString().trim()
+
+    return ''
+  }
+
   const fallbackProfile = {
     id: user.id,
     email: user.email,
     full_name: user.user_metadata?.full_name || '',
-    phone: user.user_metadata?.phone || '',
+    phone: resolvePhoneNumber(null, user),
     role: user.user_metadata?.role || 'driver',
   }
 
@@ -187,6 +206,7 @@ export async function getCurrentUser() {
   if (profileError) return fallbackProfile
 
   const extendedProfile = profile ? { ...profile } : { ...fallbackProfile }
+  extendedProfile.phone = resolvePhoneNumber(profile, user)
   const role = profile?.role || fallbackProfile.role
 
   if (role === 'mechanic') {

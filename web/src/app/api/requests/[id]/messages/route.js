@@ -1,5 +1,6 @@
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { sanitizeInput } from '@/lib/validate'
 
 export async function GET(request, { params }) {
   try {
@@ -52,7 +53,8 @@ export async function POST(request, { params }) {
     }
 
     const requestId = params?.id
-    const body = await request.json()
+    const rawBody = await request.json()
+    const body = sanitizeInput(rawBody)
     const message = body.message?.trim()
 
     if (!message) {

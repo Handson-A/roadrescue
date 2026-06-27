@@ -44,7 +44,7 @@ export default async function DashboardLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F2E7] text-[#1f1b10]">
+    <div className="min-h-screen bg-[#F6F2E7] text-[#1f1b10] overflow-x-hidden">
       <Sidebar />
 
       <div className="md:pl-64">
