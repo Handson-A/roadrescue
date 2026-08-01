@@ -67,7 +67,7 @@ export async function proxy(request) {
   const isDashboardRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/')
 
   // ==========================================
-  // CASE A: UNAUTHENTICATED USERS
+  // BRANCH 1: UNAUTHENTICATED USERS (NO SESSION)
   // ==========================================
   if (!user || authError) {
     if (isDashboardRoute) {
@@ -76,48 +76,54 @@ export async function proxy(request) {
     return response
   }
 
-  // ==========================================
-  // CASE B: AUTHENTICATED USERS
-  // ==========================================
-  
-  // Fetch verified profile role from database
+  // Fetch verified profile role from database since user session is active
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
     .maybeSingle()
 
-  // Clear cookie state or drop back to login safely if DB profile is completely missing/malformed
-  if (profileError || !profile) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
+  const userRole = profile?.role || user.user_metadata?.role || null
+  const isValidRole = userRole && roleRoutes[userRole]
 
-  const userRole = profile.role || user.user_metadata?.role || null
-  const homePath = roleRoutes[userRole] || '/auth/login'
+  // ==========================================
+  // BRANCH 2: AUTHENTICATED USERS WITH VALID ROLE
+  // ==========================================
+  if (isValidRole) {
+    const homePath = roleRoutes[userRole]
 
-  // Prevent authenticated user from viewing login/register landing portals
-  if (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) {
-    return NextResponse.redirect(new URL(homePath, request.url))
-  }
-
-  // Strict Dashboard Area Multi-Role RBAC Check
-  if (isDashboardRoute) {
-    let handled = false
-
-    for (const [dashPath, requiredRole] of Object.entries(dashboardPathToRole)) {
-      // Check if current URL path matches this role's structural section
-      if (pathname === dashPath || pathname.startsWith(`${dashPath}/`)) {
-        if (userRole !== requiredRole) {
-          return NextResponse.redirect(new URL(homePath, request.url))
-        }
-        handled = true
-        break
-      }
+    // Prevent authenticated user from viewing login/register landing portals
+    if (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register')) {
+      return NextResponse.redirect(new URL(homePath, request.url))
     }
 
-    // Catch-all: If user lands directly on "/dashboard" bare, route them to their actual home space
-    if (!handled && (pathname === '/dashboard' || userRole !== dashboardPathToRole[pathname])) {
-      return NextResponse.redirect(new URL(homePath, request.url))
+    // Strict Dashboard Area Multi-Role RBAC Check
+    if (isDashboardRoute) {
+      let handled = false
+
+      for (const [dashPath, requiredRole] of Object.entries(dashboardPathToRole)) {
+        // Check if current URL path matches this role's structural section
+        if (pathname === dashPath || pathname.startsWith(`${dashPath}/`)) {
+          if (userRole !== requiredRole) {
+            return NextResponse.redirect(new URL(homePath, request.url))
+          }
+          handled = true
+          break
+        }
+      }
+
+      // Catch-all: If user lands directly on "/dashboard" bare, route them to their actual home space
+      if (!handled && (pathname === '/dashboard' || userRole !== dashboardPathToRole[pathname])) {
+        return NextResponse.redirect(new URL(homePath, request.url))
+      }
+    }
+  } else {
+    // ==========================================
+    // BRANCH 3: AUTHENTICATED USERS WITH NO/INVALID ROLE
+    // ==========================================
+    // Redirect dashboard requests to login, but allow accessing login/register portals without loops.
+    if (isDashboardRoute) {
+      return NextResponse.redirect(new URL('/auth/login', request.url))
     }
   }
 

@@ -191,14 +191,13 @@ a:active {
 .ai-assist-container {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 13rem);
+  flex: 1;
+  width: 100%;
   overflow: hidden;
   background-color: #FFF8EA;
 }
 
-body.keyboard-open .ai-assist-container {
-  height: calc(100dvh - 5.5rem) !important;
-}
+
 
 /* Avoid bottom padding space on main layout when keyboard is open on mobile */
 body.keyboard-open main {
@@ -213,15 +212,31 @@ body.keyboard-open main {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  
-  /* Smooth inertial scrolling handling for iOS Safari rendering */
-  -webkit-overflow-scrolling: touch; 
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Fixed container block containing recommendations and the form element */
 .chat-input-dock {
-  background-color: #ffffff;
+  background-color: rgba(246, 242, 231, 0.85); /* Blends with parent bg #F6F2E7 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid #E0D5B7;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
   padding: 16px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom)); /* Accounting for iOS bottom notch indicator bars */
+}
+
+/* Spaces out containers from the bottom nav, resetting when keyboard is open */
+.has-mobile-nav {
+  padding-bottom: calc(7.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .has-mobile-nav {
+    padding-bottom: 0 !important;
+  }
+}
+
+body.keyboard-open .has-mobile-nav {
+  padding-bottom: 0 !important;
 }

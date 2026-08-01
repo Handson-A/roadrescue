@@ -6,7 +6,7 @@ export default function manifest() {
     start_url: '/dashboard/driver',
     display: 'standalone',
     background_color: '#FDFBF7',
-    theme_color: '#F59E0B',
+    theme_color: '#1A1A1A',
     orientation: 'portrait',
     icons: [
       {

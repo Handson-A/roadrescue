@@ -43,7 +43,88 @@ const dispatchedMechanicIcon = new L.Icon({
 export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }) {
   const defaultPosition = [5.6037, -0.1870] // Accra Operations Baseline Hub Center Coordinates
   const [liveLocations, setLiveLocations] = useState({})
+  const [liveIncidents, setLiveIncidents] = useState(activeIncidents)
+  const [onlineMechanics, setOnlineMechanics] = useState({})
 
+  // Keep liveIncidents synced with parent activeIncidents props
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setLiveIncidents(activeIncidents)
+    })
+  }, [activeIncidents])
+
+  // 1. Subscribe to INSERT and UPDATE events on rescue_requests to render driver pins instantly
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('admin-requests-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'rescue_requests' },
+        (payload) => {
+          const newRequest = payload.new
+          const isActive = ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(newRequest.status)
+          if (!isActive) return
+
+          setLiveIncidents((prev) => {
+            if (prev.some((req) => req.id === newRequest.id)) return prev
+            return [newRequest, ...prev]
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rescue_requests' },
+        (payload) => {
+          const updatedRequest = payload.new
+          const isActive = ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(updatedRequest.status)
+
+          setLiveIncidents((prev) => {
+            if (isActive) {
+              if (prev.some((req) => req.id === updatedRequest.id)) {
+                return prev.map((req) => req.id === updatedRequest.id ? { ...req, ...updatedRequest } : req)
+              } else {
+                return [updatedRequest, ...prev]
+              }
+            } else {
+              return prev.filter((req) => req.id !== updatedRequest.id)
+            }
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // 2. Subscribe to Supabase Presence to track online mechanics immediately
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+    const channel = supabase.channel('mechanic-presence')
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        const keys = Object.keys(state)
+        const onlineMap = {}
+        keys.forEach((key) => {
+          onlineMap[key] = true
+        })
+        setOnlineMechanics(onlineMap)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // 3. Subscribe to the standby online-mechanics broadcast channel
   useEffect(() => {
     const { createClient } = require('@/lib/supabase/client')
     const supabase = createClient()
@@ -62,6 +143,36 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       supabase.removeChannel(channel)
     }
   }, [])
+
+  // 4. Dynamically subscribe to active job channels (location-${requestId}) for fanned-out assigned locations
+  useEffect(() => {
+    if (!liveIncidents || liveIncidents.length === 0) return
+
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+    const activeChannels = []
+
+    liveIncidents.forEach((incident) => {
+      if (!['accepted', 'en_route', 'arrived', 'in_progress'].includes(incident.status)) return
+
+      const ch = supabase
+        .channel(`location-${incident.id}`)
+        .on('broadcast', { event: 'location_update' }, (payload) => {
+          const { mechanicId, latitude, longitude } = payload.payload
+          setLiveLocations((prev) => ({
+            ...prev,
+            [mechanicId]: { lat: latitude, lng: longitude }
+          }))
+        })
+      
+      ch.subscribe()
+      activeChannels.push(ch)
+    })
+
+    return () => {
+      activeChannels.forEach((ch) => supabase.removeChannel(ch))
+    }
+  }, [liveIncidents])
 
   // Robust parsing utility targeting multiple relational database string patterns
   const extractCoords = (locationField) => {
@@ -100,7 +211,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       />
 
       {/* ======================= LAYER 1: STRANDED DRIVERS & SECTOR INCIDENTS ======================= */}
-      {activeIncidents?.map((incident) => {
+      {liveIncidents?.map((incident) => {
         const driverCoords = extractCoords(incident.incident_location) || 
                              (incident.incident_lat && incident.incident_lng ? { lat: Number(incident.incident_lat), lng: Number(incident.incident_lng) } : null)
         
@@ -137,12 +248,14 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
 
       {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
       {mechanics?.map((m) => {
-        const activeAssignment = activeIncidents.find(
+        const activeAssignment = liveIncidents.find(
           (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
         )
 
+        const isOnline = onlineMechanics[m.user_id] || m.is_available
+
         // Only show if available (online) OR active in a dispatch
-        if (!m.is_available && !activeAssignment) return null
+        if (!isOnline && !activeAssignment) return null
 
         const liveLoc = liveLocations[m.user_id]
         const mechCoords = liveLoc || extractCoords(m.current_location)
@@ -191,7 +304,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
         const mechCoords = liveLoc || extractCoords(m.current_location)
         if (!mechCoords) return null
 
-        const activeAssignment = activeIncidents.find(
+        const activeAssignment = liveIncidents.find(
           (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
         )
         if (!activeAssignment) return null

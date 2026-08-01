@@ -11,10 +11,7 @@ import { timeAgo } from '@/lib/utils'
 import { ArrowLeft, MapPin, User, HardHat, Calendar, Info, ShieldAlert } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
-const RescueMap = dynamic(
-  () => import('@/components/map/RescueMap'),
-  { ssr: false, loading: () => <div className="h-80 bg-slate-50 border border-dashed rounded-2xl flex items-center justify-center animate-pulse" /> }
-)
+
 
 export default function AdminRequestDetailPage() {
   const { id } = useParams()
@@ -148,15 +145,7 @@ export default function AdminRequestDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main info panel */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Map Card */}
-            <Card className="p-0 overflow-hidden border-slate-200">
-              <RescueMap
-                request={request}
-                driverLocation={request.incident_location}
-                mechanicLocation={null}
-                height="360px"
-              />
-            </Card>
+
 
             {/* Incident Details Card */}
             <Card className="p-5 border-slate-200 bg-white">

@@ -40,7 +40,7 @@ export default function DriverRequestTrackingPage() {
   const { id } = useParams()
   const router = useRouter()
   const { request, loading } = useRequestStatus(id)
-  const { mechanicLocation } = useWatchMechanicLocation(id)
+  const { mechanicLocation } = useWatchMechanicLocation(id, request?.status)
   const { user } = useAuth()
   
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
@@ -48,16 +48,25 @@ export default function DriverRequestTrackingPage() {
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
 
+  const mechanic = request?.mechanic
+  const profileData = mechanic?.mechanic_profiles?.[0] || mechanic?.mechanic_profiles
+  const serviceMode = profileData?.service_mode || 'mobile'
+  const isFixed = serviceMode === 'fixed_location'
+
   const incidentLocation = request?.incident_location
   const liveDistanceText = useMemo(() => {
-    if (!incidentLocation || !mechanicLocation) return null
+    const targetLocation = isFixed 
+      ? profileData?.current_location 
+      : mechanicLocation
+
+    if (!incidentLocation || !targetLocation) return null
     
     const [driverLat, driverLng] = normalizeGeoPoint(incidentLocation)
-    const [mechLat, mechLng] = normalizeGeoPoint(mechanicLocation)
+    const [targetLat, targetLng] = normalizeGeoPoint(targetLocation)
     
-    const distanceKm = calculateHaversineDistance(driverLat, driverLng, mechLat, mechLng)
+    const distanceKm = calculateHaversineDistance(driverLat, driverLng, targetLat, targetLng)
     return formatDistance(distanceKm)
-  }, [incidentLocation, mechanicLocation])
+  }, [incidentLocation, mechanicLocation, isFixed, profileData?.current_location])
 
   // Core orchestration logic handler for secure emergency dispatch cancellation
   async function handleCancelRequest() {
@@ -111,10 +120,8 @@ export default function DriverRequestTrackingPage() {
     )
   }
 
-  const mechanic = request.mechanic
   const isActiveDispatch = ACTIVE_DRIVER_REQUEST_STATUSES.includes(request.status)
   const isCancellationAllowed = CANCELLATION_ALLOWED_STATUSES.includes(request.status)
-  const profileData = mechanic?.mechanic_profiles?.[0] || mechanic?.mechanic_profiles
   const workshopLabel = [
     profileData?.business_name,
     profileData?.location_label,
@@ -128,8 +135,16 @@ export default function DriverRequestTrackingPage() {
   const workflowStages = [
     { key: 'pending', label: 'Finding Help', step: '1' },
     { key: 'accepted', label: 'Assigned', step: '2' },
-    { key: 'en_route', label: 'On the Way', step: '3' },
-    { key: 'arrived', label: 'On Site', step: '4' },
+    { 
+      key: 'en_route', 
+      label: isFixed ? 'Transit to Shop' : 'On the Way', 
+      step: '3' 
+    },
+    { 
+      key: 'arrived', 
+      label: isFixed ? 'At Shop' : 'On Site', 
+      step: '4' 
+    },
     { key: 'in_progress', label: 'Repairing', step: '5' },
     { key: 'completed', label: 'Resolved', step: '6' },
   ]
@@ -143,7 +158,7 @@ export default function DriverRequestTrackingPage() {
       {/* MOBILE DISPLAY VIEWPORT LAYOUT                                       */}
       {/* ==================================================================== */}
       <div className="space-y-4 lg:hidden">
-        <div className="overflow-hidden rounded-[2rem] bg-white shadow-md border border-slate-200/80">
+        <div className="overflow-hidden rounded-2xl border border-slate-200">
           <RescueMap request={request} driverLocation={request.incident_location} mechanicLocation={mechanicLocation} userRole="driver" height="320px" />
         </div>
 
@@ -175,11 +190,15 @@ export default function DriverRequestTrackingPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FFD700]">📍 Intercept Proximity</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FFD700]">
+                    {isFixed ? '📍 Workshop Proximity' : '📍 Intercept Proximity'}
+                  </p>
                   <h2 className="mt-1 text-2xl font-black leading-none text-white font-mono">
                     {liveDistanceText ? liveDistanceText : 'Calculating...'}
                   </h2>
-                  <p className="text-xs text-[#A29A84] mt-1.5">Live gap parameter spacing to your breakdown coordinate asset.</p>
+                  <p className="text-xs text-[#A29A84] mt-1.5">
+                    {isFixed ? 'Static distance to the workshop location.' : 'Live gap parameter spacing to your breakdown coordinate asset.'}
+                  </p>
                 </>
               )}
             </div>
@@ -431,11 +450,11 @@ export default function DriverRequestTrackingPage() {
                 {request.status === 'pending' 
                   ? 'Finding the nearest mechanic for you...' 
                   : request.status === 'accepted'
-                    ? 'Mechanic accepted your request!'
+                    ? (isFixed ? 'Mechanic accepted! Please bring your vehicle to their shop.' : 'Mechanic accepted your request!')
                     : request.status === 'en_route'
-                      ? `Mechanic is on the way (within ${liveDistanceText || 'a few km'})`
+                      ? (isFixed ? `Please transport vehicle to shop at: ${profileData?.location_label || 'address'}` : `Mechanic is on the way (within ${liveDistanceText || 'a few km'})`)
                       : request.status === 'arrived'
-                        ? 'Mechanic is on site'
+                        ? (isFixed ? 'Vehicle has arrived at the shop' : 'Mechanic is on site')
                         : request.status === 'in_progress'
                           ? 'Repair is in progress'
                           : 'Service completed'}
@@ -444,7 +463,7 @@ export default function DriverRequestTrackingPage() {
             <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] border border-slate-200 shadow-sm bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-200">
             <RescueMap
               request={request}
               driverLocation={request.incident_location}

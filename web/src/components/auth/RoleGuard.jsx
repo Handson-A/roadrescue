@@ -21,26 +21,42 @@ export default function RoleGuard({
   children,
 }) {
   const router = useRouter()
-  const { role, loading, isLoggedIn } = useAuth()
+  const { user, profile, role, loading, isLoggedIn } = useAuth()
 
   useEffect(() => {
-    if (!loading && !isLoggedIn) {
+    if (loading) return
+
+    // State 1: No session -> redirect to login immediately
+    if (!isLoggedIn) {
       router.replace('/auth/login')
       return
     }
 
-    if (!loading && role && !allowedRoles.includes(role)) {
+    // State 2: Session exists but profile is still loading -> do NOT redirect
+    if (!profile) {
+      return
+    }
+
+    // State 3: Session exists and profile loaded
+    if (!role) {
+      // Profile loaded but role is missing or invalid -> redirect to login
+      router.replace('/auth/login')
+      return
+    }
+
+    if (role && !allowedRoles.includes(role)) {
       router.replace(`/dashboard/${role}`)
     }
   }, [
     allowedRoles,
     role,
+    profile,
     isLoggedIn,
     loading,
     router,
   ])
 
-  if (loading) {
+  if (loading || (isLoggedIn && !profile)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner />

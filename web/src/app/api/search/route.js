@@ -31,11 +31,24 @@ export async function GET(request) {
     const role = profile.role
 
     if (role === 'driver') {
-      const { data, error } = await supabase
+      let query = supabase
         .from('mechanic_public')
         .select('user_id, business_name, specializations, rating_avg, rating_count, location_label, current_location')
         .or(`business_name.ilike.${searchTerm},location_label.ilike.${searchTerm}`)
         .limit(20)
+
+      let { data, error } = await query
+
+      if (error && error.message.includes('location_label')) {
+        const fallbackQuery = supabase
+          .from('mechanic_public')
+          .select('user_id, business_name, specializations, rating_avg, rating_count, current_location')
+          .ilike('business_name', searchTerm)
+          .limit(20)
+        const fbRes = await fallbackQuery
+        data = fbRes.data
+        error = fbRes.error
+      }
 
       if (error) {
         console.error('[SEARCH DRIVER]:', error)
@@ -63,10 +76,19 @@ export async function GET(request) {
     }
 
     if (role === 'admin') {
-      const { data, error } = await supabase
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q)
+      
+      let query = supabase
         .from('rescue_requests')
         .select('id, status, service_type, problem_description, vehicle_plate, incident_address, created_at, driver_id, mechanic_id')
-        .or(`id.eq.${q},problem_description.ilike.${searchTerm},vehicle_plate.ilike.${searchTerm}`)
+
+      if (isUuid) {
+        query = query.or(`id.eq.${q},problem_description.ilike.${searchTerm},vehicle_plate.ilike.${searchTerm}`)
+      } else {
+        query = query.or(`problem_description.ilike.${searchTerm},vehicle_plate.ilike.${searchTerm}`)
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(50)
 

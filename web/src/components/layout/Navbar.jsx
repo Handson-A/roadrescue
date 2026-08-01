@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import useHideOnScroll from '@/hooks/useHideOnScroll'
 import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, Volume2, VolumeX, X } from 'lucide-react'
 import Link from 'next/link'
 
@@ -19,25 +20,11 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const notificationRef = useRef(null)
 
-  const [visible, setVisible] = useState(true)
-  const lastScrollYRef = useRef(0)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      if (currentScrollY > lastScrollYRef.current && currentScrollY > 60) {
-        setVisible(false)
-      } else {
-        setVisible(true)
-      }
-      lastScrollYRef.current = currentScrollY
-    }
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
   const pathname = usePathname()
+  const visibleOnScroll = useHideOnScroll({ threshold: 10, initialVisible: true })
+  const isDashboardHome = pathname === '/dashboard/driver' || pathname === '/dashboard/mechanic' || pathname === '/dashboard/admin'
+  const visible = isDashboardHome ? visibleOnScroll : true
+
   const hrs = new Date().getHours()
   const greeting = hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
   const router = useRouter()
@@ -101,9 +88,13 @@ export default function Navbar() {
   }
 
   const handleBack = () => {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-      return
+    if (pathname) {
+      const parts = pathname.split('/')
+      if (parts.length > 3) {
+        const parentPath = parts.slice(0, -1).join('/')
+        router.push(parentPath)
+        return
+      }
     }
     router.push(roleBase)
   }
@@ -141,7 +132,7 @@ export default function Navbar() {
   const hasAvatar = !!profile?.avatar_url;
 
   return (
-    <header className={`sticky top-0 z-40 transition-transform duration-300 ease-in-out md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
+    <header className={`fixed top-0 left-0 right-0 z-40 md:sticky md:top-0 transition-transform duration-300 ease-in-out md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
       
       {/* ==================================================================== */}
       {/* MODERNIZED MOBILE HEADER DISPLAY GRID                              */}
@@ -325,19 +316,21 @@ export default function Navbar() {
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-3">
           
           {/* Global Search Bar (Exits early on tight tablet dimensions to guard padding rows) */}
-          <form
-            className="hidden w-full max-w-xs xl:max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex min-w-0"
-            onSubmit={handleSearch}
-          >
-            <Search size={16} className="text-[#7A7058] flex-shrink-0" />
-            <input
-              type="search"
-              placeholder={role === 'admin' ? 'Search incidents...' : 'Search requests...'}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066] min-w-0"
-            />
-          </form>
+          {isDashboardRoot && (
+            <form
+              className="hidden w-full max-w-xs xl:max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex min-w-0"
+              onSubmit={handleSearch}
+            >
+              <Search size={16} className="text-[#7A7058] flex-shrink-0" />
+              <input
+                type="search"
+                placeholder={role === 'admin' ? 'Search incidents...' : 'Search requests...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066] min-w-0"
+              />
+            </form>
+          )}
 
           {/* Mute Toggles (Protected from scaling distortion) */}
           <button
