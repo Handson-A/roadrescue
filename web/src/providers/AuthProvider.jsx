@@ -125,17 +125,17 @@ export default function AuthProvider({ children }) {
         }
 
 if (profile?.role === 'driver') {
-           const { data: driverProfile } = await supabase
-             .from('driver_profiles')
-             .select('home_area, preferences')
-             .eq('user_id', userId)
-             .maybeSingle()
+  const { data: driverProfile } = await supabase
+    .from('driver_profiles')
+    .select('home_area, vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate, emergency_contact_name, emergency_contact_phone')
+    .eq('user_id', userId)
+    .maybeSingle()
 
-           if (driverProfile) {
-             extendedProfile.driver_profile = driverProfile
-             extendedProfile.home_area = driverProfile.home_area || null
-           }
-         }
+  if (driverProfile) {
+    extendedProfile.driver_profile = driverProfile
+    extendedProfile.home_area = driverProfile.home_area || null
+  }
+}
 
          if (profile?.role === 'mechanic') {
            const { data: mechanicProfile } = await supabase

@@ -76,48 +76,38 @@ export default function RegisterForm() {
     if (error) throw error
   }
 
-  async function saveDriverProfile(userId) {
-    if (
-      !formData.vehicleMake && !formData.vehicleModel && !formData.vehicleYear && 
-      !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea
-    ) {
-      return
-    }
+ async function saveDriverProfile(userId) {
+  if (
+    !formData.vehicleMake && !formData.vehicleModel && !formData.vehicleYear &&
+    !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea &&
+    !formData.emergencyContactName && !formData.emergencyContactPhone
+  ) {
+    return
+  }
 
-    const supabase = createClient()
-    const driverPayload = {}
+  const supabase = createClient()
+  const driverPayload = {}
 
-    if (formData.serviceArea.trim()) {
-      driverPayload.home_area = formData.serviceArea.trim()
-    }
+  if (formData.serviceArea.trim()) {
+    driverPayload.home_area = formData.serviceArea.trim()
+  }
+  if (formData.vehicleMake.trim()) driverPayload.vehicle_make = formData.vehicleMake.trim()
+  if (formData.vehicleModel.trim()) driverPayload.vehicle_model = formData.vehicleModel.trim()
+  if (formData.vehicleYear) driverPayload.vehicle_year = parseInt(formData.vehicleYear, 10) || null
+  if (formData.vehicleColor.trim()) driverPayload.vehicle_color = formData.vehicleColor.trim()
+  if (formData.vehiclePlate.trim()) driverPayload.vehicle_plate = formData.vehiclePlate.trim().toUpperCase()
+  if (formData.emergencyContactName.trim()) driverPayload.emergency_contact_name = formData.emergencyContactName.trim()
+  if (formData.emergencyContactPhone.trim()) driverPayload.emergency_contact_phone = formData.emergencyContactPhone.trim()
 
-    driverPayload.preferences = {
-      vehicle_make: formData.vehicleMake.trim(),
-      vehicle_model: formData.vehicleModel.trim(),
-      vehicle_year: formData.vehicleYear ? parseInt(formData.vehicleYear, 10) || null : null,
-      vehicle_color: formData.vehicleColor.trim(),
-      vehicle_plate: formData.vehiclePlate.trim().toUpperCase()
-    }
+  if (Object.keys(driverPayload).length === 0) return
 
-    const { error } = await supabase
-      .from('driver_profiles')
-      .update(driverPayload)
-      .eq('user_id', userId)
+  const { error } = await supabase
+    .from('driver_profiles')
+    .update(driverPayload)
+    .eq('user_id', userId)
 
-    if (error) throw error
-    
-    if (formData.emergencyContactName.trim() && formData.emergencyContactPhone.trim()) {
-      const { error: contactError } = await supabase
-        .from('user_emergency_contacts')
-        .insert({
-          user_id: userId,
-          name: formData.emergencyContactName.trim(),
-          phone: formData.emergencyContactPhone.trim(),
-          is_primary: true,
-        })
-      
-      if (contactError) console.warn('Emergency contact save failed:', contactError)
-    }
+  if (error) throw error
+
   }
 
   async function handleSubmit(e) {
