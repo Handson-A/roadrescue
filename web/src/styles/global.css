@@ -15,22 +15,46 @@
 }
 
 :root {
-  --color-background: 253 251 247;
-  --color-foreground: 15 23 42;
-  --color-surface: 255 255 255;
-  --color-surface-alt: 241 245 249;
-  --color-muted: 100 116 139;
-  --color-border: 229 231 235;
-  --color-primary: 245 158 11;
-  --color-primary-dark: 217 119 6;
-  --color-accent: 15 23 42;
-  --color-accent-soft: 243 244 246;
-  --color-success: 22 163 74;
-  --color-warning: 245 158 11;
-  --color-danger: 220 38 38;
+  --color-background-raw: 253 251 247;
+  --color-foreground-raw: 15 23 42;
+  --color-surface-raw: 255 255 255;
+  --color-surface-alt-raw: 241 245 249;
+  --color-muted-raw: 100 116 139;
+  --color-border-raw: 220 205 169;
+  --color-primary-raw: 245 196 0;
+  --color-primary-dark-raw: 212 170 0;
+  --color-accent-raw: 15 23 42;
+  --color-accent-soft-raw: 243 244 246;
+  --color-success-raw: 22 163 74;
+  --color-warning-raw: 245 196 0;
+  --color-danger-raw: 220 38 38;
 
-  --background: rgb(var(--color-background));
-  --foreground: rgb(var(--color-foreground));
+  --background: rgb(var(--color-background-raw));
+  --foreground: rgb(var(--color-foreground-raw));
+  --font-body: var(--font-inter), sans-serif;
+  --font-display: var(--font-inter), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@theme {
+  --color-background: rgb(var(--color-background-raw));
+  --color-foreground: rgb(var(--color-foreground-raw));
+  --color-surface: rgb(var(--color-surface-raw));
+  --color-surface-alt: rgb(var(--color-surface-alt-raw));
+  --color-muted: rgb(var(--color-muted-raw));
+  --color-border: rgb(var(--color-border-raw));
+  --color-primary: rgb(var(--color-primary-raw));
+  --color-primary-dark: rgb(var(--color-primary-dark-raw));
+  --color-accent: rgb(var(--color-accent-raw));
+  --color-accent-soft: rgb(var(--color-accent-soft-raw));
+  --color-success: rgb(var(--color-success-raw));
+  --color-warning: rgb(var(--color-warning-raw));
+  --color-danger: rgb(var(--color-danger-raw));
+
+  --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-lift: 0 18px 50px rgba(15, 23, 42, 0.12);
+  --shadow-glow: 0 0 0 1px rgba(255, 184, 0, 0.15), 0 20px 40px rgba(255, 184, 0, 0.12);
+
   --font-body: var(--font-inter), sans-serif;
   --font-display: var(--font-inter), sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -69,8 +93,8 @@ body {
 }
 
 ::selection {
-  background: rgb(var(--color-primary) / 0.2);
-  color: rgb(var(--color-accent));
+  background: rgb(var(--color-primary-raw) / 0.2);
+  color: rgb(var(--color-accent-raw));
 }
 
 input,
@@ -101,7 +125,7 @@ a:active {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--color-border));
+  background: rgb(var(--color-border-raw));
   border-radius: 999px;
 }
 
@@ -123,16 +147,16 @@ a:active {
 
 .focus-ring:focus-visible {
   ring-width: 2px;
-  ring-color: rgb(var(--color-primary) / 0.3);
+  ring-color: rgb(var(--color-primary-raw) / 0.3);
   ring-offset-width: 2px;
-  ring-offset-color: rgb(var(--color-background));
+  ring-offset-color: rgb(var(--color-background-raw));
   box-shadow: 
-    0 0 0 2px rgb(var(--color-background)),
-    0 0 0 4px rgb(var(--color-primary) / 0.3);
+    0 0 0 2px rgb(var(--color-background-raw)),
+    0 0 0 4px rgb(var(--color-primary-raw) / 0.3);
 }
 
 .glass-panel {
-  border: 1px solid rgb(var(--color-border) / 0.7);
+  border: 1px solid rgb(var(--color-border-raw) / 0.7);
   background: rgb(255 255 255 / 0.85);
   -webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
@@ -167,7 +191,7 @@ a:active {
 
 .bento-card {
   background: #fff;
-  border: 1px solid rgb(var(--color-border));
+  border: 1px solid rgb(var(--color-border-raw));
   border-radius: 12px;
   padding: 1.25rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
@@ -191,14 +215,13 @@ a:active {
 .ai-assist-container {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 13rem);
+  flex: 1;
+  width: 100%;
   overflow: hidden;
   background-color: #FFF8EA;
 }
 
-body.keyboard-open .ai-assist-container {
-  height: calc(100dvh - 5.5rem) !important;
-}
+
 
 /* Avoid bottom padding space on main layout when keyboard is open on mobile */
 body.keyboard-open main {
@@ -213,15 +236,60 @@ body.keyboard-open main {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  
-  /* Smooth inertial scrolling handling for iOS Safari rendering */
-  -webkit-overflow-scrolling: touch; 
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Fixed container block containing recommendations and the form element */
 .chat-input-dock {
-  background-color: #ffffff;
+  position: sticky;
+  bottom: env(safe-area-inset-bottom);
+  z-index: 60;
+  background-color: rgba(246, 242, 231, 0.95); /* Blends with parent bg #F6F2E7 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid #E0D5B7;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
   padding: 16px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom)); /* Accounting for iOS bottom notch indicator bars */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom)); /* Accounting for iOS bottom safe area */
+}
+
+body.keyboard-open .chat-input-dock {
+  bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+/* Spaces out containers from the bottom nav, resetting when keyboard is open */
+.has-mobile-nav {
+  padding-bottom: calc(7.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .has-mobile-nav {
+    padding-bottom: 0 !important;
+  }
+}
+
+body.keyboard-open .has-mobile-nav {
+  padding-bottom: env(safe-area-inset-bottom) !important;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.610, 0.355, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring {
+    animation: none !important;
+  }
 }

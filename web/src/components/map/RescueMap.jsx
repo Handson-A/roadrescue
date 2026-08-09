@@ -77,7 +77,13 @@ export default function RescueMap({
 }) {
   const activeRequestId = request && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(request.status) ? request.id : null
   const { mechanicLocation: watchedLoc } = useWatchMechanicLocation(activeRequestId)
-  const finalMechanicLocation = mechanicLocation || (userRole === 'driver' ? watchedLoc : null)
+
+  const profileData = request?.mechanic?.mechanic_profiles?.[0] || request?.mechanic?.mechanic_profiles || request?.assignedMechanic?.mechanic_profiles?.[0] || request?.assignedMechanic?.mechanic_profiles
+  const serviceMode = profileData?.service_mode || 'mobile'
+  const isFixed = serviceMode === 'fixed_location'
+  const staticShopLocation = isFixed ? profileData?.current_location : null
+
+  const finalMechanicLocation = mechanicLocation || (userRole === 'driver' ? watchedLoc : null) || staticShopLocation
 
   const driver = normalizePoint(driverLocation) || normalizePoint(request?.incident_location)
   const mechanic = normalizePoint(finalMechanicLocation)
@@ -240,8 +246,12 @@ export default function RescueMap({
           <Marker position={[mechanic.lat, mechanic.lng]} icon={mechanicIcon}>
             <Popup>
               <div className="p-1 min-w-[120px]">
-                <p className="font-bold text-blue-600 text-xs uppercase tracking-wider">Assigned Mechanic</p>
-                <p className="font-semibold text-sm mt-1">En Route</p>
+                <p className="font-bold text-blue-600 text-xs uppercase tracking-wider">
+                  {isFixed ? 'Workshop Base' : 'Assigned Mechanic'}
+                </p>
+                <p className="font-semibold text-sm mt-1">
+                  {isFixed ? 'Fixed Location' : 'En Route'}
+                </p>
                 <p className="text-[10px] font-mono text-gray-500 mt-0.5">{mechanic.lat.toFixed(4)}, {mechanic.lng.toFixed(4)}</p>
               </div>
             </Popup>

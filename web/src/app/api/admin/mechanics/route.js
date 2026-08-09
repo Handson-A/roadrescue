@@ -205,7 +205,7 @@ export async function PATCH(req) {
                   <p>Our admin team has reviewed your profile application for the RoadRescue network. We require additional or clearer credentials (such as an ID or business clearance certificate) to proceed with your verification.</p>
                   <p>Please log into your dashboard to upload these documents.</p>
                   <div style="text-align: center; margin: 30px 0;">
-                    <a href="${dashboardUrl}" style="display: inline-block; background: #ffd700; color: #111827; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Upload Credentials</a>
+                    <a href="${dashboardUrl}" style="display: inline-block; background: #f5c400; color: #111827; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Upload Credentials</a>
                   </div>
                   <p>Thank you for partnering with RoadRescue!</p>
                 </div>

@@ -11,7 +11,7 @@ const roleCards = [
     title: 'Need Assistance?',
     description: 'Request urgent mechanical help and track a responder to your location.',
     icon: CarFront,
-    accent: 'bg-[#F5D108] text-[#1F1B10]',
+    accent: 'bg-primary text-[#1F1B10]',
     tag: 'Driver',
   },
   {
@@ -76,7 +76,7 @@ export default function OnboardingPage() {
               <div>
                 <h1 className="text-[2.85rem] font-black leading-[0.93] tracking-[-0.03em] xl:text-6xl">
                   The reliable way<br />
-                  <span className="text-[#F5D108]">back on the road.</span>
+                  <span className="text-primary">back on the road.</span>
                 </h1>
                 <p className="mt-5 text-[15px] leading-7 text-white/60 max-w-sm">
                   Connecting stranded drivers with certified mechanics and recovery specialists across Ghana — instantly.
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
             <div className="relative h-[22rem] overflow-hidden rounded-[28px] border border-white/[0.07] bg-gradient-to-br from-[#3a2a05] via-[#241b04] to-[#14100a] shadow-2xl shadow-black/60">
 
               {/* Glow core */}
-              <div className="absolute left-1/2 top-[30%] -translate-x-1/2 -translate-y-1/2 h-52 w-52 rounded-full bg-[#F5D108]/20 blur-3xl" />
+              <div className="absolute left-1/2 top-[30%] -translate-x-1/2 -translate-y-1/2 h-52 w-52 rounded-full bg-primary/20 blur-3xl" />
 
               {/* Pulsing map pin motif */}
               <div className="absolute left-1/2 top-[32%] -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -226,7 +226,7 @@ export default function OnboardingPage() {
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
             <Link
               href="/auth/login"
-              className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[14px] bg-[#F5D108] px-6 text-[15px] font-black text-[#1F1B10] shadow-sm hover:shadow-md transition-all duration-200 hover:bg-[#E8C700] hover:-translate-y-[1px] active:translate-y-0"
+              className="inline-flex h-[52px] items-center justify-center gap-2 rounded-[14px] bg-primary px-6 text-[15px] font-black text-[#1F1B10] shadow-sm hover:shadow-md transition-all duration-200 hover:bg-primary/90 hover:-translate-y-[1px] active:translate-y-0"
             >
               Get Started
               <ArrowRight size={16} strokeWidth={2.5} />

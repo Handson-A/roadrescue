@@ -103,7 +103,7 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
           if (onSelectPickup) {
             const button = document.createElement('button')
             button.type = 'button'
-            button.className = 'w-full text-center py-1.5 rounded-lg bg-[#1F1B10] text-[#F5D108] font-bold text-[10px] uppercase hover:bg-slate-800 transition-colors cursor-pointer'
+            button.className = 'w-full text-center py-1.5 rounded-lg bg-[#1F1B10] text-primary font-bold text-[10px] uppercase hover:bg-slate-800 transition-colors cursor-pointer'
             button.innerText = 'Select as Pickup'
             button.addEventListener('click', () => {
               onSelectPickup(lat, lng)

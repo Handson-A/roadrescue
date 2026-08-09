@@ -35,7 +35,7 @@ export default function MechanicNavigationPage() {
   const { isAvailable, localCoords } = useMechanicStatus(user?.id)
 
   // 2. Initialize active real-time channel location broadcasting
-  const { broadcastError } = useBroadcastLocation(activeJob?.id, user?.id)
+  const { broadcastError } = useBroadcastLocation(activeJob?.id, user?.id, activeJob?.status)
 
   // Poll for incoming active assignments or states
   useEffect(() => {

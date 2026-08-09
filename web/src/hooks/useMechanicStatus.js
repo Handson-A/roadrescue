@@ -11,6 +11,10 @@ function normalizeStatus(value) {
 }
 
 
+// Module-level cache for sharing the presence channel across multiple hook instances
+let sharedPresenceChannel = null
+let sharedPresenceRefCount = 0
+
 export function useMechanicStatus(mechanicId) {
   const supabaseRef = useRef(null)
   const channelRef = useRef(null)
@@ -101,6 +105,38 @@ export function useMechanicStatus(mechanicId) {
     const channel = supabase.channel('online-mechanics')
     channel.subscribe()
 
+    let presenceChannel = sharedPresenceChannel
+
+    if (!presenceChannel) {
+      presenceChannel = supabase.channel('mechanic-presence', {
+        config: { presence: { key: mechanicId } },
+      })
+
+      presenceChannel
+        .on('presence', { event: 'leave' }, async ({ key }) => {
+          if (key === mechanicId) {
+            await supabase
+              .from('mechanic_profiles')
+              .update({ is_available: false })
+              .eq('user_id', mechanicId)
+          }
+        })
+        .subscribe(async (subStatus) => {
+          if (subStatus === 'SUBSCRIBED') {
+            await presenceChannel.track({ mechanicId, online_at: new Date().toISOString() })
+          }
+        })
+
+      sharedPresenceChannel = presenceChannel
+    } else {
+      // If already subscribed, declare presence again
+      if (presenceChannel.state === 'joined') {
+        presenceChannel.track({ mechanicId, online_at: new Date().toISOString() }).catch(() => {})
+      }
+    }
+
+    sharedPresenceRefCount++
+
     let lastDBSync = 0
 
     const watchId = navigator.geolocation.watchPosition(
@@ -141,6 +177,15 @@ export function useMechanicStatus(mechanicId) {
     return () => {
       navigator.geolocation.clearWatch(watchId)
       supabase.removeChannel(channel)
+
+      sharedPresenceRefCount--
+      if (sharedPresenceRefCount <= 0) {
+        if (sharedPresenceChannel) {
+          supabase.removeChannel(sharedPresenceChannel)
+          sharedPresenceChannel = null
+        }
+        sharedPresenceRefCount = 0
+      }
     }
   }, [isAvailable, mechanicId])
 

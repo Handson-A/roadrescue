@@ -200,7 +200,7 @@ export default function DriverAccountPage() {
 
   if (!profile || !dataInitialized) {
     return (
-      <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
+      <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center">
         <div className="text-center space-y-3">
           <Spinner />
           <p className="text-xs font-bold text-[#7C6B44] uppercase tracking-widest animate-pulse">Please wait...</p>
@@ -210,7 +210,7 @@ export default function DriverAccountPage() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 lg:pl-64 flex justify-center items-start pb-24 lg:pb-8">
+    <div className="w-full flex-grow bg-[#FFF8EA] text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-20 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         {/* Profile Card Header with Dynamic Avatar Management Terminal */}
@@ -243,7 +243,7 @@ export default function DriverAccountPage() {
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
-              <User size={16} className="text-[#F5D108]" />
+              <User size={16} className="text-primary" />
               Personal Details
             </h2>
             {!isEditing ? (
@@ -309,7 +309,7 @@ export default function DriverAccountPage() {
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
-              <CarFront size={16} className="text-[#F5D108]" />
+              <CarFront size={16} className="text-primary" />
               Vehicle Snapshot Profile
             </h2>
           </div>
@@ -342,7 +342,7 @@ export default function DriverAccountPage() {
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
-              <Shield size={16} className="text-[#F5D108]" />
+              <Shield size={16} className="text-primary" />
               Emergency Contact (SOS Link)
             </h2>
           </div>

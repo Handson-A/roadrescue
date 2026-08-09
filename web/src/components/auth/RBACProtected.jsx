@@ -16,14 +16,27 @@ export function RBACProtectedPage({
   fallback = null 
 }) {
   const router = useRouter();
-  const { profile, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (loading) return;
 
-    if (!profile || !profile.role) {
+    // State 1: No session -> redirect to login immediately
+    if (!user) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    // State 2: Session exists but profile is still loading -> do NOT redirect
+    if (!profile) {
+      return;
+    }
+
+    // State 3: Session exists and profile loaded
+    if (!profile.role) {
+      // Profile loaded but role is missing or invalid -> redirect to login
       router.replace('/auth/login');
       return;
     }
@@ -38,9 +51,9 @@ export function RBACProtectedPage({
       setIsAuthorized(true);
       setChecked(true);
     }, 0);
-  }, [profile, loading, allowedRoles, router]);
+  }, [user, profile, loading, allowedRoles, router]);
 
-  if (!checked || loading) {
+  if (!checked || loading || (user && !profile)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner />

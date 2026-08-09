@@ -71,7 +71,7 @@ export default function DriverRatingPage() {
       ) : (
         <div className="mx-auto max-w-2xl space-y-5">
           <Card className="overflow-hidden p-0">
-            <div className="bg-[#FFD700] px-4 py-4 text-[#111827]">
+            <div className="bg-primary px-4 py-4 text-[#111827]">
               <p className="text-xs font-black uppercase tracking-[0.22em]">Service summary</p>
               <h2 className="mt-1 text-2xl font-black">{request.service_type?.replace('_', ' ')}</h2>
             </div>
@@ -88,9 +88,9 @@ export default function DriverRatingPage() {
 
           <Card className="p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-[#7C7767]">Rate Marcus</p>
-            <div className="mt-4 flex justify-center gap-2 text-4xl text-[#FFD700]">
+            <div className="mt-4 flex justify-center gap-2 text-4xl text-primary">
               {[1, 2, 3, 4, 5].map((value) => (
-                <button key={value} onClick={() => setRating(value)} className={value <= rating ? 'text-[#FFD700]' : 'text-[#7C7767]/40'}>★</button>
+                <button key={value} onClick={() => setRating(value)} className={value <= rating ? 'text-primary' : 'text-[#7C7767]/40'}>★</button>
               ))}
             </div>
 

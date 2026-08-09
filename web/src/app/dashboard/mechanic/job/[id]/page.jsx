@@ -222,7 +222,6 @@ export default function JobDetailPage() {
       const result = await res.json()
       if (res.ok && result.request) {
         setJob(result.request)
-        if (['en_route', 'accepted'].includes(newStatus)) router.push('/navigation')
       } else {
         alert(result.error || 'Could not update status.')
       }
@@ -438,7 +437,7 @@ export default function JobDetailPage() {
           {/* Location */}
           <SectionCard icon={MapPin} title="Location">
             <p className="text-xs text-slate-600 mb-3 leading-relaxed">{job.incident_address}</p>
-            <div className="overflow-hidden rounded-xl border border-slate-200 h-[220px] relative z-10">
+            <div className="overflow-hidden rounded-xl h-[220px] relative z-10">
               {mapValid ? (
                 <RescueMap
                   request={job}

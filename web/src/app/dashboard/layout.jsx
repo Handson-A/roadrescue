@@ -19,40 +19,84 @@ const isPathForRole = (pathname, role) => {
 export default async function DashboardLayout({ children }) {
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') || '/dashboard'
+
   const supabase = await createClient()
   const auth = await supabase.auth.getUser()
+  const authUser = auth.data?.user
+  const authError = auth.error
 
-  if (auth.error || !auth.data?.user) {
+  if (authError || !authUser) {
     redirect('/auth/login')
   }
 
+  // Prioritize checking the profile table database record (matches proxy.js behavior)
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', auth.data.user.id)
+    .eq('id', authUser.id)
     .maybeSingle()
 
-  if (profileError || !profile?.role || !roleRoutes[profile.role]) {
+  if (profileError) {
     redirect('/auth/login')
   }
 
-  const role = profile.role
+  const role = profile?.role || authUser.user_metadata?.role || null
+
+  if (!role || !roleRoutes[role]) {
+    redirect('/auth/login')
+  }
+
   const homePath = roleRoutes[role]
 
   if (!isPathForRole(pathname, role)) {
     redirect(homePath)
   }
 
+  const isFullHeightPage = pathname?.includes('/ai') || pathname?.includes('/chat')
+
+  // let mainClass = ""
+  // if (isFullHeightPage) {
+  //   // Chat & Map screens: full viewport size, locked scrolling, simple padding-top matching fixed navbar height
+  //   mainClass = "flex-1 flex flex-col overflow-hidden pt-16 md:pt-[68px]"
+  // } else {
+  //   // Regular scrollable pages: scrollable viewport, clearing fixed navbar (68px) + standard margins
+  //   mainClass = "flex-1 flex flex-col overflow-y-auto px-4 pb-5 pt-16 md:px-6 md:py-6 md:pb-8 md:pt-[92px]"
+  // }
+
+  
+  // let mainClass = ""
+  // if (isFullHeightPage) {
+  //   // Chat & Map screens: full viewport size, locked scrolling, simple padding-top matching thin navbar
+  //   mainClass = "flex-1 flex flex-col overflow-hidden pt-16 md:pt-0"
+  // } else {
+  //   // Regular scrollable pages: scrollable viewport, no mobile top padding (delegated to child pages to avoid scroll gaps)
+  //   mainClass = "flex-1 flex flex-col overflow-y-auto px-4 pb-5 md:px-6 md:py-6 md:pb-8 md:pt-6"
+  // }
+
+let mainClass = ""
+  
+  if (isFullHeightPage) {
+    // Chat & Map screens: full viewport size, locked scrolling
+    mainClass = "flex-1 flex flex-col overflow-hidden pt-16 md:pt-0"
+  } else {
+    // Regular scrollable pages: scrollable viewport, allows content to slide under the fixed navbar
+    // Increased to 104px for extra breathing room below the 68px navbar
+    mainClass = "flex-1 flex flex-col overflow-y-auto px-4 pb-5 md:px-6 md:pb-8 md:pt-[104px]"
+  }
+
+
   return (
-    <div className="min-h-screen bg-[#F6F2E7] text-[#1f1b10] overflow-x-hidden">
-      <Sidebar />
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F6F2E7] text-[#1f1b10]">
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
 
-      <div className="md:pl-64">
-        <Navbar />
+        <div className="flex-1 flex flex-col md:pl-64 min-w-0 min-h-0 overflow-hidden">
+          <Navbar />
 
-        <main className="px-4 py-5 pb-36 md:px-6 md:py-6 md:pb-8">
-          {children}
-        </main>
+          <main className={mainClass}>
+            {children}
+          </main>
+        </div>
       </div>
 
       <BottomNav />

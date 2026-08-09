@@ -83,9 +83,9 @@ export default function JobCompletionPage() {
             <p className="text-xs uppercase tracking-[0.22em] text-[#7C7767]">Services performed</p>
             <div className="mt-3 space-y-3">
               {services.map((service) => (
-                <button key={service} onClick={() => toggleService(service)} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${performed.includes(service) ? 'border-[#FFD700] bg-[#F3F4F6]' : 'border-[#7C7767]/25 bg-[#F3F4F6]'}`}>
+                <button key={service} onClick={() => toggleService(service)} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${performed.includes(service) ? 'border-primary bg-primary/10' : 'border-[#7C7767]/25 bg-[#F3F4F6]'}`}>
                   <span className="text-sm font-semibold text-[#111827]">{service}</span>
-                  <span className={`h-4 w-4 rounded border ${performed.includes(service) ? 'border-[#FFD700] bg-[#FFD700]' : 'border-[#7C7767]/25 bg-[#F3F4F6]'}`} />
+                  <span className={`h-4 w-4 rounded border ${performed.includes(service) ? 'border-primary bg-primary' : 'border-[#7C7767]/25 bg-[#F3F4F6]'}`} />
                 </button>
               ))}
             </div>

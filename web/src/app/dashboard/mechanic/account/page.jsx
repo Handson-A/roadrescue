@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import ToggleChip from '@/components/ui/ToggleChip'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +15,8 @@ import {
   Building2, MapPin, Wrench, ShieldAlert, Award, Clock, 
   Phone, Mail, FileText, CheckCircle2, Sliders, Bell, MessageSquare, Camera, Loader2 
 } from 'lucide-react'
+import Select from '@/components/ui/Select'
+import { normalizeGeoPoint } from '@/lib/utils'
 
 export default function MechanicAccountPage() {
   const { user, profile, setProfile } = useAuth()
@@ -27,6 +30,7 @@ export default function MechanicAccountPage() {
   const docInputRef = useRef(null)
   const [documents, setDocuments] = useState([])
   const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [pinningLocation, setPinningLocation] = useState(false)
 
   // Unified application form schema state instance
   const [formData, setFormData] = useState({
@@ -49,6 +53,7 @@ export default function MechanicAccountPage() {
     secondaryPhone: '',
     notificationPreferences: { jobAlerts: true, messageAlerts: true, push: true },
     communicationPreferences: ['call', 'sms'],
+    serviceMode: 'mobile',
   })
 
   useEffect(() => {
@@ -70,7 +75,7 @@ export default function MechanicAccountPage() {
       // 2. Fetch specialized workplace fields using verified schema columns
       const { data: mechData } = await supabase
         .from('mechanic_profiles')
-        .select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, verification_status, created_at')
+        .select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, verification_status, created_at, service_mode')
         .eq('user_id', currentUserId)
         .maybeSingle()
 
@@ -148,6 +153,7 @@ export default function MechanicAccountPage() {
           secondaryPhone: preferenceData?.secondary_phone || '',
           notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
           communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
+          serviceMode: mechData?.service_mode || 'mobile',
         }))
       }
     }
@@ -289,15 +295,10 @@ export default function MechanicAccountPage() {
         .from('mechanic-documents')
         .createSignedUrl(fileUrl, 300)
       
-      if (error) {
-        const { data: pubData } = supabase.storage
-          .from('mechanic-documents')
-          .getPublicUrl(fileUrl)
-        window.open(pubData.publicUrl, '_blank')
-      } else {
-        window.open(data.signedUrl, '_blank')
-      }
+      if (error) throw error
+      window.open(data.signedUrl, '_blank')
     } catch (err) {
+      console.error('Error generating document view link:', err)
       toast.error('Failed to resolve document link')
     }
   }
@@ -323,6 +324,54 @@ export default function MechanicAccountPage() {
     }))
   }
 
+  const pinShopLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser')
+      return
+    }
+    setPinningLocation(true)
+    const supabase = createClient()
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords
+          const { error } = await supabase
+            .from('mechanic_profiles')
+            .update({
+              current_location: `POINT(${longitude} ${latitude})`,
+              location_updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user?.id)
+
+          if (error) throw error
+          
+          // Re-fetch mechanic profile locally to display new coordinates
+          const { data: updatedProfile } = await supabase
+            .from('mechanic_profiles')
+            .select('current_location')
+            .eq('user_id', user?.id)
+            .maybeSingle()
+            
+          setMechanicProfile((prev) => ({
+            ...prev,
+            current_location: updatedProfile?.current_location || prev?.current_location
+          }))
+
+          toast.success('Shop location pinned successfully!')
+        } catch (err) {
+          toast.error('Failed to pin shop location: ' + err.message)
+        } finally {
+          setPinningLocation(false)
+        }
+      },
+      (err) => {
+        toast.error('Error getting location: ' + err.message)
+        setPinningLocation(false)
+      },
+      { enableHighAccuracy: true }
+    )
+  }
+
   const getUserInitials = () => {
     const name = formData.fullName || profile?.full_name || 'Mechanic'
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
@@ -340,18 +389,19 @@ export default function MechanicAccountPage() {
 
       if (profileError) throw profileError
 
-const { error: mechanicError } = await supabase
+      const { error: mechanicError } = await supabase
          .from('mechanic_profiles')
          .update({
            years_experience: formData.yearsExperience ? parseInt(formData.yearsExperience, 10) || 0 : 0,
            is_available: formData.availability,
            specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
            business_name: formData.businessName.trim() || null,
-           location_label: formData.serviceArea.trim() || null
+           location_label: formData.serviceArea.trim() || null,
+           service_mode: formData.serviceMode,
          })
          .eq('user_id', user?.id)
-
-      if (mechanicError) throw mechanicError
+ 
+       if (mechanicError) throw mechanicError
 
       try {
         await fetch('/api/profile/preferences', {
@@ -369,13 +419,14 @@ const { error: mechanicError } = await supabase
         console.warn('Preferences middleware sync bypassed:', prefErr)
       }
 
-setMechanicProfile((prev) => ({
+      setMechanicProfile((prev) => ({
          ...prev,
          business_name: formData.businessName,
          specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
          location_label: formData.serviceArea,
          is_available: formData.availability,
          years_experience: formData.yearsExperience,
+         service_mode: formData.serviceMode,
        }))
 
       toast.success('Profile configurations updated successfully')
@@ -421,8 +472,7 @@ setMechanicProfile((prev) => ({
               <div className="min-w-0">
                 {isEditing ? (
                   <div className="space-y-1.5">
-                    <input 
-                      type="text" 
+                    <Input 
                       value={formData.fullName} 
                       onChange={(e) => handleChange('fullName', e.target.value)}
                       className="text-xl font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 outline-none focus:border-amber-400 transition-colors" 
@@ -501,6 +551,46 @@ setMechanicProfile((prev) => ({
                 <Input label="Primary Dispatch Base Area" value={formData.serviceArea} onChange={(e) => handleChange('serviceArea', e.target.value)} placeholder="e.g. Accra Metropolitan, Greater Accra" />
                 <Input label="Specializations (Comma Separated)" value={formData.specializations} onChange={(e) => handleChange('specializations', e.target.value)} placeholder="Towing, Engine Diagnostics, Brake Repair" />
               </div>
+              <div className="grid gap-4 sm:grid-cols-2 items-end">
+                <Select
+                  label="Service Engagement Mode"
+                  value={formData.serviceMode}
+                  onChange={(e) => handleChange('serviceMode', e.target.value)}
+                  options={[
+                    { value: 'mobile', label: 'Mobile Responder (Travels to Driver)' },
+                    { value: 'fixed_location', label: 'Fixed Location (Driver Brings Vehicle to Shop)' },
+                    { value: 'hybrid', label: 'Hybrid Mode (Both Mobile & Shop Operations)' },
+                  ]}
+                />
+              </div>
+              {['fixed_location', 'hybrid'].includes(formData.serviceMode) && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 mt-2">
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5"><MapPin size={14} className="text-amber-500" /> Shop Geo-Coordinates</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {mechanicProfile?.current_location 
+                        ? `Pinned Coordinates: ${normalizeGeoPoint(mechanicProfile.current_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.current_location)[1].toFixed(6)}` 
+                        : 'No coordinates pinned. Please click the button to set your shop location.'}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={pinShopLocation}
+                    disabled={pinningLocation}
+                    className="shrink-0 h-10 px-4 rounded-xl border border-amber-200 bg-white text-xs font-bold uppercase tracking-wider text-amber-800 hover:bg-[#F5F0E0] hover:border-[#BCA86A] transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {pinningLocation ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" /> Pinning...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin size={13} /> Pin Current Location
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
@@ -520,6 +610,26 @@ setMechanicProfile((prev) => ({
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Experience Depth</span>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{formData.yearsExperience ? `${formData.yearsExperience} Years Vetted Professional` : 'Not documented'}</p>
               </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Service Mode</span>
+                <p className="mt-1 text-sm font-semibold text-slate-800 capitalize">
+                  {formData.serviceMode === 'fixed_location' 
+                    ? 'Fixed Location (Shop-Based)' 
+                    : formData.serviceMode === 'hybrid' 
+                      ? 'Hybrid Mode' 
+                      : 'Mobile Responder'}
+                </p>
+              </div>
+              {['fixed_location', 'hybrid'].includes(formData.serviceMode) && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Shop Coordinates</span>
+                  <p className="mt-1 text-sm font-semibold text-slate-800 font-mono">
+                    {mechanicProfile?.current_location 
+                      ? `${normalizeGeoPoint(mechanicProfile.current_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.current_location)[1].toFixed(6)}` 
+                      : 'Not pinned'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </Card>
@@ -544,17 +654,13 @@ setMechanicProfile((prev) => ({
                 {['jobAlerts', 'messageAlerts', 'push'].map((field) => {
                   const isChecked = formData.notificationPreferences?.[field]
                   return (
-                    <button
+                    <ToggleChip
                       key={field}
-                      type="button"
-                      disabled={!isEditing}
-                      onClick={() => toggleNotification(field)}
-                      className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
-                        isChecked ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-xs' : 'bg-slate-50 text-slate-400 border-slate-200 opacity-60'
-                      } ${isEditing ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
-                    >
-                      {field.replace('Alerts', ' Alerts')}
-                    </button>
+                      label={field.replace('Alerts', ' Alerts')}
+                      checked={isChecked}
+                      readOnly={!isEditing}
+                      onChange={() => toggleNotification(field)}
+                    />
                   )
                 })}
               </div>
@@ -568,17 +674,13 @@ setMechanicProfile((prev) => ({
                 {['call', 'sms', 'whatsapp'].map((channel) => {
                   const isSelected = formData.communicationPreferences.includes(channel)
                   return (
-                    <button
+                    <ToggleChip
                       key={channel}
-                      type="button"
-                      disabled={!isEditing}
-                      onClick={() => toggleCommunication(channel)}
-                      className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
-                        isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-slate-50 text-slate-400 border-slate-200 opacity-60'
-                      } ${isEditing ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
-                    >
-                      {channel}
-                    </button>
+                      label={channel}
+                      checked={isSelected}
+                      readOnly={!isEditing}
+                      onChange={() => toggleCommunication(channel)}
+                    />
                   )
                 })}
               </div>

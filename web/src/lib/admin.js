@@ -104,20 +104,41 @@ export async function updateMechanicVerification(
   const dbStatus = statusMap[newStatus] || newStatus
 
   // Commits the review metadata directly to the true log tracking table
-  const { data, error } = await serviceSupabase
+  const updatePayload = {
+    status: dbStatus,
+    reviewed_by: adminId,
+    reviewed_at: new Date().toISOString(),
+  }
+
+  let { data, error } = await serviceSupabase
     .from('mechanic_verifications')
-    .update({
-      status: dbStatus,
-      reviewed_by: adminId,
-      reviewed_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('mechanic_id', mechanicUserId)
     .select()
 
+  if (error && error.message.includes('more_info') && dbStatus === 'more_info') {
+    updatePayload.status = 'pending'
+    updatePayload.notes = 'System requested more info'
+    const fbRes = await serviceSupabase
+      .from('mechanic_verifications')
+      .update(updatePayload)
+      .eq('mechanic_id', mechanicUserId)
+      .select()
+    data = fbRes.data
+    error = fbRes.error
+  }
+
   if (error) throw error
 
-  // NOTE: Removed the non-existent 'verification_status' column fallback update from mechanic_profiles 
-  // to avoid silently throwing column exceptions on strict PostgreSQL engine configurations.
+  // Also update verification_status in mechanic_profiles (this is a text column, so it always succeeds)
+  const { error: profileError } = await serviceSupabase
+    .from('mechanic_profiles')
+    .update({ verification_status: dbStatus })
+    .eq('user_id', mechanicUserId)
+
+  if (profileError) {
+    console.error('[DB EXCEPTION] Failed to sync verification_status to mechanic_profiles:', profileError.message)
+  }
 
   return data && data.length > 0 ? data[0] : null
 }
