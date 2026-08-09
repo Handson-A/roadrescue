@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import ToggleChip from '@/components/ui/ToggleChip'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
@@ -294,15 +295,10 @@ export default function MechanicAccountPage() {
         .from('mechanic-documents')
         .createSignedUrl(fileUrl, 300)
       
-      if (error) {
-        const { data: pubData } = supabase.storage
-          .from('mechanic-documents')
-          .getPublicUrl(fileUrl)
-        window.open(pubData.publicUrl, '_blank')
-      } else {
-        window.open(data.signedUrl, '_blank')
-      }
+      if (error) throw error
+      window.open(data.signedUrl, '_blank')
     } catch (err) {
+      console.error('Error generating document view link:', err)
       toast.error('Failed to resolve document link')
     }
   }
@@ -476,8 +472,7 @@ export default function MechanicAccountPage() {
               <div className="min-w-0">
                 {isEditing ? (
                   <div className="space-y-1.5">
-                    <input 
-                      type="text" 
+                    <Input 
                       value={formData.fullName} 
                       onChange={(e) => handleChange('fullName', e.target.value)}
                       className="text-xl font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 outline-none focus:border-amber-400 transition-colors" 
@@ -659,17 +654,13 @@ export default function MechanicAccountPage() {
                 {['jobAlerts', 'messageAlerts', 'push'].map((field) => {
                   const isChecked = formData.notificationPreferences?.[field]
                   return (
-                    <button
+                    <ToggleChip
                       key={field}
-                      type="button"
-                      disabled={!isEditing}
-                      onClick={() => toggleNotification(field)}
-                      className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
-                        isChecked ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-xs' : 'bg-slate-50 text-slate-400 border-slate-200 opacity-60'
-                      } ${isEditing ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
-                    >
-                      {field.replace('Alerts', ' Alerts')}
-                    </button>
+                      label={field.replace('Alerts', ' Alerts')}
+                      checked={isChecked}
+                      readOnly={!isEditing}
+                      onChange={() => toggleNotification(field)}
+                    />
                   )
                 })}
               </div>
@@ -683,17 +674,13 @@ export default function MechanicAccountPage() {
                 {['call', 'sms', 'whatsapp'].map((channel) => {
                   const isSelected = formData.communicationPreferences.includes(channel)
                   return (
-                    <button
+                    <ToggleChip
                       key={channel}
-                      type="button"
-                      disabled={!isEditing}
-                      onClick={() => toggleCommunication(channel)}
-                      className={`rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider border transition-all ${
-                        isSelected ? 'bg-slate-900 text-white border-slate-900 shadow-xs' : 'bg-slate-50 text-slate-400 border-slate-200 opacity-60'
-                      } ${isEditing ? 'active:scale-95 cursor-pointer' : 'cursor-default'}`}
-                    >
-                      {channel}
-                    </button>
+                      label={channel}
+                      checked={isSelected}
+                      readOnly={!isEditing}
+                      onChange={() => toggleCommunication(channel)}
+                    />
                   )
                 })}
               </div>

@@ -21,19 +21,19 @@ export default function Navbar() {
   const notificationRef = useRef(null)
 
   const pathname = usePathname()
+  const { user, profile } = useAuth()
+  const role = profile?.role || 'driver'
+  const roleBase = `/dashboard/${role}`
+  const isDashboardRoot = pathname === roleBase || pathname === `${roleBase}/`
+
   const visibleOnScroll = useHideOnScroll({ threshold: 10, initialVisible: true })
-  const isDashboardHome = pathname === '/dashboard/driver' || pathname === '/dashboard/mechanic' || pathname === '/dashboard/admin'
-  const visible = isDashboardHome ? visibleOnScroll : true
+  const visible = isDashboardRoot ? visibleOnScroll : true
 
   const hrs = new Date().getHours()
   const greeting = hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
   const router = useRouter()
   
-  // Destructure BOTH user (Supabase Auth Core) and profile (Public Database Row Table)
-  const { user, profile } = useAuth()
   const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
-
-  const role = profile?.role || 'driver'
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -72,8 +72,6 @@ export default function Navbar() {
     }
   }, [])
   
-  const roleBase = `/dashboard/${role}`
-  const isDashboardRoot = pathname === roleBase || pathname === `${roleBase}/`
   const firstName = profile?.full_name?.split(' ')?.[0] || 'member'
 
   const activeRescueCount = notifications.filter((n) => !n.is_read).length
@@ -132,7 +130,7 @@ export default function Navbar() {
   const hasAvatar = !!profile?.avatar_url;
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 md:sticky md:top-0 transition-transform duration-300 ease-in-out md:border-b md:border-slate-200 md:bg-white/95 md:backdrop-blur-xl ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
+    <header className={`fixed top-0 left-0 right-0 md:left-64 z-30 transition-transform duration-300 ease-in-out ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
       
       {/* ==================================================================== */}
       {/* MODERNIZED MOBILE HEADER DISPLAY GRID                              */}
@@ -143,7 +141,7 @@ export default function Navbar() {
             {/* Top row: Greeting & Profile/Notification Toggles */}
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-lg font-bold text-[#FFD700]">{greeting}, {firstName}</h1>
+                <h1 className="text-lg font-bold text-primary">{greeting}, {firstName}</h1>
                 <p className="text-[11px] font-medium text-[#A29A84] truncate mt-0.5 opacity-85">
                   {authenticatedEmail}
                 </p>
@@ -157,28 +155,23 @@ export default function Navbar() {
                 >
                   <Bell size={18} />
                   {unreadCount > 0 && (
-                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#FFD700] ring-4 ring-[#1E1B15]" />
+                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary ring-4 ring-[#1E1B15]" />
                   )}
                 </button>
 
-                {/* FIXED WRAPPER: Background sets to transparent when an avatar is present */}
-                <button
-                  onClick={handleProfileClick}
-                  className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl active:scale-95 transition-transform shadow-md ${
-                    hasAvatar 
-                      ? 'bg-transparent border border-white/10' 
-                      : 'bg-[#FFD700] shadow-[#FFD700]/10'
-                  }`}
-                  aria-label="Open profile"
-                >
-                  <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
-                </button>
+                 <button
+                   onClick={handleProfileClick}
+                   className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full active:scale-95 transition-transform bg-transparent"
+                   aria-label="Open profile"
+                 >
+                   <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
+                 </button>
               </div>
             </div>
 
             {/* Premium, sleek Search form input */}
             <form
-              className="mt-5 flex items-center gap-2.5 rounded-xl bg-white/[0.04] px-3.5 py-2 border border-white/[0.08] focus-within:border-[#FFD700]/40 focus-within:bg-white/[0.06] transition-all duration-200"
+              className="mt-5 flex items-center gap-2.5 rounded-xl bg-white/[0.04] px-3.5 py-2 border border-white/[0.08] focus-within:border-primary/40 focus-within:bg-white/[0.06] transition-all duration-200"
               onSubmit={handleSearch}
             >
               <Search size={16} className="shrink-0 text-[#A29A84]" />
@@ -191,7 +184,7 @@ export default function Navbar() {
               />
               <button
                 type="submit"
-                className="flex h-7 items-center justify-center rounded-lg bg-[#FFD700] px-3.5 text-xs font-bold uppercase tracking-wider text-[#1E1B15] active:scale-95 transition-transform"
+                className="flex h-7 items-center justify-center rounded-lg bg-primary px-3.5 text-xs font-bold uppercase tracking-wider text-[#1E1B15] active:scale-95 transition-transform"
               >
                 Go
               </button>
@@ -211,7 +204,7 @@ export default function Navbar() {
               </button>
 
               <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#FFD700] block">{getMobileTitle()}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary block">{getMobileTitle()}</span>
                 <p className="mt-0.5 truncate text-xs text-[#A29A84] font-medium">{mobileSubtitle}</p>
               </div>
             </div>
@@ -223,7 +216,7 @@ export default function Navbar() {
                 aria-label="Open notifications"
               >
                 <Bell size={16} />
-                {unreadCount > 0 && <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-[#FFD700]" />}
+                {unreadCount > 0 && <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-primary" />}
               </button>
 
               <button
@@ -269,7 +262,7 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
               <span className="text-xs font-bold text-[#A29A84]">Active Updates ({unreadCount})</span>
               {unreadCount > 0 && (
-                <button onClick={markAllAsRead} className="text-[11px] font-bold text-[#FFD700] hover:underline">
+                <button onClick={markAllAsRead} className="text-[11px] font-bold text-primary hover:underline">
                   Mark all read
                 </button>
               )}
@@ -286,7 +279,7 @@ export default function Navbar() {
                     await markAsRead(n.id)
                     setOpen(false)
                   }}
-                  className={`block px-5 py-3 border-b border-white/[0.02] active:bg-white/[0.02] ${n.is_read ? 'opacity-40' : 'bg-[#FFD700]/[0.02]'}`}
+                  className={`block px-5 py-3 border-b border-white/[0.02] active:bg-white/[0.02] ${n.is_read ? 'opacity-40' : 'bg-primary/[0.02]'}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[#EFE8D4] truncate">{n.title || 'Update'}</p>

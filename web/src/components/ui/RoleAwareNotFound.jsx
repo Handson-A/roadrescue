@@ -43,16 +43,16 @@ export default function RoleAwareNotFound() {
           
           {/* Brand pill */}
           <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-white/60 backdrop-blur-sm shadow-inner">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#F5D108] animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             RoadRescue
           </div>
 
           {/* Pulsing pin motif */}
           <div className="relative flex items-center justify-center my-4 h-32">
-            <span className="absolute h-44 w-44 animate-ping rounded-full bg-[#F5D108]/[0.04] duration-1000" />
-            <span className="absolute h-28 w-28 animate-ping rounded-full bg-[#F5D108]/[0.06] duration-700" />
-            <span className="flex h-16 w-16 items-center justify-center rounded-full border border-[#F5D108]/30 bg-[#F5D108]/15 shadow-lg shadow-[#F5D108]/5">
-              <AlertTriangle size={26} className="text-[#F5D108]" strokeWidth={2} />
+            <span className="absolute h-44 w-44 animate-ping rounded-full bg-primary/[0.04] duration-1000" />
+            <span className="absolute h-28 w-28 animate-ping rounded-full bg-primary/[0.06] duration-700" />
+            <span className="flex h-16 w-16 items-center justify-center rounded-full border border-primary/30 bg-primary/15 shadow-lg shadow-primary/5">
+              <AlertTriangle size={26} className="text-primary" strokeWidth={2} />
             </span>
           </div>
 
@@ -69,7 +69,7 @@ export default function RoleAwareNotFound() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 w-full">
             <Link
               href="/"
-              className="inline-flex h-[48px] flex-1 min-w-[140px] items-center justify-center gap-2 rounded-[12px] bg-[#F5D108] px-6 text-[13px] font-black text-[#1F1B10] transition-all hover:bg-[#E8C700] hover:-translate-y-[2px] active:translate-y-0 hover:shadow-lg hover:shadow-[#F5D108]/10"
+              className="inline-flex h-[48px] flex-1 min-w-[140px] items-center justify-center gap-2 rounded-[12px] bg-primary px-6 text-[13px] font-black text-[#1F1B10] transition-all hover:bg-primary/90 hover:-translate-y-[2px] active:translate-y-0 hover:shadow-lg hover:shadow-primary/10"
             >
               <Home size={15} strokeWidth={2.4} />
               Go Home

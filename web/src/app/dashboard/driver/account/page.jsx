@@ -243,7 +243,7 @@ export default function DriverAccountPage() {
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
-              <User size={16} className="text-[#F5D108]" />
+              <User size={16} className="text-primary" />
               Personal Details
             </h2>
             {!isEditing ? (
@@ -309,7 +309,7 @@ export default function DriverAccountPage() {
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
-              <CarFront size={16} className="text-[#F5D108]" />
+              <CarFront size={16} className="text-primary" />
               Vehicle Snapshot Profile
             </h2>
           </div>
@@ -342,7 +342,7 @@ export default function DriverAccountPage() {
         <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
           <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
             <h2 className="text-sm font-black flex items-center gap-2 text-[#1F1B10]">
-              <Shield size={16} className="text-[#F5D108]" />
+              <Shield size={16} className="text-primary" />
               Emergency Contact (SOS Link)
             </h2>
           </div>

@@ -203,7 +203,7 @@ export default function AdminRequestDetailPage() {
                         key={stage.key}
                         className={`rounded-xl p-2.5 border text-center transition-all ${
                           isCurrent
-                            ? 'border-[#F5D108] bg-amber-50/40 ring-1 ring-[#F5D108]/20 font-bold'
+                            ? 'border-primary bg-primary/10 ring-1 ring-primary/20 font-bold'
                             : isPast
                               ? 'border-slate-200 bg-slate-50 opacity-60'
                               : 'border-slate-100 bg-slate-50/40 opacity-40'
@@ -225,7 +225,7 @@ export default function AdminRequestDetailPage() {
             {/* Driver Profile */}
             <Card className="p-5 border-slate-200 bg-white">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3 text-slate-500">
-                <User size={14} className="text-[#F5D108]" />
+                <User size={14} className="text-primary" />
                 <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-900">Driver Account details</span>
               </div>
               {driver ? (
@@ -251,7 +251,7 @@ export default function AdminRequestDetailPage() {
             {/* Mechanic Profile */}
             <Card className="p-5 border-slate-200 bg-white">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3 text-slate-500">
-                <HardHat size={14} className="text-[#F5D108]" />
+                <HardHat size={14} className="text-primary" />
                 <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-900">Assigned Mechanic</span>
               </div>
               {mechanic ? (

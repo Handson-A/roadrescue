@@ -37,7 +37,7 @@ export default function MechanicSupportPage() {
         {/* ================= PRIMARY HERO CALLOUT ================= */}
         <Card className="rounded-2xl border-slate-200 bg-slate-900 p-6 text-white shadow-sm relative overflow-hidden">
           <div className="max-w-xl relative z-10">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#FFD700] flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1.5">
               <LifeBuoy size={14} /> Desk Operator Online
             </span>
             <h1 className="mt-2 text-2xl font-black tracking-tight">Encountering an issue on a live scene?</h1>
@@ -54,7 +54,7 @@ export default function MechanicSupportPage() {
         {/* ================= QUICK INTERACTION ACTION COLUMNS ================= */}
         <div className="grid gap-4 sm:grid-cols-3">
           <Link href="/dashboard/mechanic" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 transition-all active:scale-98">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 group-hover:bg-[#FFD700] group-hover:text-slate-900 transition-colors">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 group-hover:bg-primary group-hover:text-slate-900 transition-colors">
               <LayoutDashboard size={18} />
             </div>
             <p className="mt-3 text-sm font-bold text-slate-900">Return to Console</p>
@@ -62,7 +62,7 @@ export default function MechanicSupportPage() {
           </Link>
 
           <Link href="/dashboard/mechanic/account" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 transition-all active:scale-98">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 group-hover:bg-[#FFD700] group-hover:text-slate-900 transition-colors">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 group-hover:bg-primary group-hover:text-slate-900 transition-colors">
               <User size={18} />
             </div>
             <p className="mt-3 text-sm font-bold text-slate-900">Update Parameters</p>
@@ -70,7 +70,7 @@ export default function MechanicSupportPage() {
           </Link>
 
           <Link href="/dashboard/mechanic/history" className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 transition-all active:scale-98">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 group-hover:bg-[#FFD700] group-hover:text-slate-900 transition-colors">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-700 group-hover:bg-primary group-hover:text-slate-900 transition-colors">
               <History size={18} />
             </div>
             <p className="mt-3 text-sm font-bold text-slate-900">Review Activity Logs</p>

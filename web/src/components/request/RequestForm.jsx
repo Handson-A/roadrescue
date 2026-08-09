@@ -294,12 +294,12 @@ export default function RequestForm() {
                       onClick={() => updateField('serviceType', opt.value)}
                       className={`flex items-start gap-3.5 rounded-xl border p-3 text-left transition-all ${
                         isSelected
-                          ? 'border-[#F5D108] bg-amber-50/40 ring-1 ring-[#F5D108]/30 shadow-xs'
+                          ? 'border-primary bg-primary/10 ring-1 ring-primary/30 shadow-xs'
                           : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50/85'
                       }`}
                     >
                       <div className={`rounded-xl p-2.5 transition-colors shrink-0 ${
-                        isSelected ? 'bg-[#1F1B10] text-[#F5D108]' : 'bg-slate-200/60 text-slate-600'
+                        isSelected ? 'bg-[#1F1B10] text-primary' : 'bg-slate-200/60 text-slate-600'
                       }`}>
                         <Icon size={18} />
                       </div>

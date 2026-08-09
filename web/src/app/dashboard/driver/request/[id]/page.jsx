@@ -10,6 +10,8 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
 import Spinner from '@/components/ui/Spinner'
+import Button from '@/components/ui/Button'
+import Textarea from '@/components/ui/Textarea'
 import RescueMap from '@/components/map/RescueMap'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import { useRequestStatus } from '@/hooks/useRequestStatus'
@@ -172,7 +174,7 @@ export default function DriverRequestTrackingPage() {
             <div>
               {request.status === 'pending' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FFD700] animate-pulse">📡 Broadcast Pipeline Active</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary animate-pulse">📡 Broadcast Pipeline Active</p>
                   <h2 className="mt-1 text-xl font-black leading-tight text-[#EFE8D4]">Searching for nearest mechanics...</h2>
                   <p className="text-xs text-[#A29A84] mt-1">Signals matching across your local district window.</p>
                 </>
@@ -184,13 +186,13 @@ export default function DriverRequestTrackingPage() {
                 </>
               ) : request.status === 'in_progress' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FFD700]">🛠️ Maintenance Mode</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">🛠️ Maintenance Mode</p>
                   <h2 className="mt-1 text-xl font-black leading-tight text-[#EFE8D4]">Recovery under execution</h2>
                   <p className="text-xs text-[#A29A84] mt-1">Your vehicle service log is actively updating.</p>
                 </>
               ) : (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FFD700]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
                     {isFixed ? '📍 Workshop Proximity' : '📍 Intercept Proximity'}
                   </p>
                   <h2 className="mt-1 text-2xl font-black leading-none text-white font-mono">
@@ -202,7 +204,7 @@ export default function DriverRequestTrackingPage() {
                 </>
               )}
             </div>
-            <div className={`rounded-2xl p-3.5 ${request.status === 'pending' ? 'bg-[#FFD700]/10 text-[#FFD700] animate-spin duration-10000' : 'bg-white/5 text-white'}`}>
+            <div className={`rounded-2xl p-3.5 ${request.status === 'pending' ? 'bg-primary/10 text-primary animate-spin duration-10000' : 'bg-white/5 text-white'}`}>
               <Clock3 size={24} />
             </div>
           </div>
@@ -220,7 +222,7 @@ export default function DriverRequestTrackingPage() {
                   key={stage.key} 
                   className={`rounded-xl p-2.5 border text-center transition-all ${
                     isCurrent 
-                      ? 'border-[#F5D108] bg-amber-50/40 ring-1 ring-[#F5D108]/20' 
+                      ? 'border-primary bg-primary/10 ring-1 ring-primary/20' 
                       : isPast 
                         ? 'border-slate-200 bg-slate-50 opacity-60'
                         : 'border-slate-100 bg-slate-50/40 opacity-40'
@@ -230,7 +232,7 @@ export default function DriverRequestTrackingPage() {
                     {isPast ? (
                       <CheckCircle2 size={14} className="text-emerald-500" />
                     ) : (
-                      <span className={`text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center ${isCurrent ? 'bg-slate-900 text-[#F5D108]' : 'bg-slate-200 text-slate-600'}`}>
+                      <span className={`text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center ${isCurrent ? 'bg-slate-900 text-primary' : 'bg-slate-200 text-slate-600'}`}>
                         {stage.step}
                       </span>
                     )}
@@ -253,7 +255,7 @@ export default function DriverRequestTrackingPage() {
                 <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900">Verified Responder Attached</span>
               </div>
               <div className="mt-3 flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-sm font-black text-[#F5D108]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-sm font-black text-primary">
                   {mechanic?.full_name?.split(' ').map((part) => part[0]).join('').slice(0, 2) || 'RR'}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -266,7 +268,7 @@ export default function DriverRequestTrackingPage() {
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <a
                   href={mechanic?.phone ? `tel:${mechanic.phone}` : undefined}
-                  className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-[#F5D108] active:scale-95 transition-transform"
+                  className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-primary active:scale-95 transition-transform"
                 >
                   <PhoneCall size={12} />
                   Voice Call
@@ -324,7 +326,7 @@ export default function DriverRequestTrackingPage() {
           <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Incident Profile</p>
           <p className="mt-1.5 text-xs font-medium text-slate-700 leading-relaxed">{request.problem_description}</p>
           <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
-            <MapPin size={12} className="text-[#F5D108] shrink-0" />
+            <MapPin size={12} className="text-primary shrink-0" />
             <span className="truncate">{request.incident_address || 'Coordinates registered'}</span>
           </div>
           
@@ -366,7 +368,7 @@ export default function DriverRequestTrackingPage() {
                 return (
                   <div key={stage.key} className={`flex items-center gap-3 p-2 rounded-xl ${isCurrent ? 'bg-amber-50/40 border border-amber-200' : ''}`}>
                     <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                      isCurrent ? 'bg-slate-900 text-[#F5D108]' : isPast ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'
+                      isCurrent ? 'bg-slate-900 text-primary' : isPast ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'
                     }`}>
                       {isPast ? '✓' : stage.step}
                     </div>
@@ -527,32 +529,31 @@ export default function DriverRequestTrackingPage() {
             <p className="text-xs text-slate-500 leading-relaxed">
               Please let us know if there is a reason for this cancellation. This helps us improve our dispatch matching.
             </p>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Reason</label>
-              <textarea
-                rows={3}
-                placeholder="e.g. Vehicle started working, alternative help arrived..."
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full rounded-xl border border-[#DDD0A8] p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] focus:border-slate-900 focus:ring-slate-900"
-              />
-            </div>
+            <Textarea
+              label="Reason"
+              id="cancel-reason"
+              rows={3}
+              placeholder="e.g. Vehicle started working, alternative help arrived..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
+            />
             <div className="flex gap-2.5 justify-end">
-              <button 
-                type="button"
+              <Button 
+                variant="outline"
                 onClick={() => setShowCancelModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
+                className="h-10 text-xs px-4"
               >
                 Keep Request
-              </button>
-              <button 
-                type="button"
+              </Button>
+              <Button 
+                variant="danger"
                 onClick={confirmCancelRequest}
                 disabled={canceling}
-                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                className="h-10 text-xs px-4"
               >
                 {canceling ? 'Cancelling...' : 'Confirm Cancel'}
-              </button>
+              </Button>
             </div>
           </Card>
         </div>

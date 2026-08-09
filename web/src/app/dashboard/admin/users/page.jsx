@@ -71,7 +71,7 @@ export default function AdminUsersPage() {
                 key={user.id} 
                 className={`rounded-2xl border transition-all p-5 shadow-sm ${
                   selectedUser?.id === user.id && inspecting 
-                    ? 'border-[#FFD700] bg-amber-50/10 shadow-md' 
+                    ? 'border-primary bg-primary/10 shadow-md' 
                     : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
@@ -161,7 +161,7 @@ export default function AdminUsersPage() {
                         <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                           <span className="text-[10px] text-slate-400 block">Vetting Score</span>
                           <p className="text-sm font-black text-slate-800 mt-0.5 flex items-center gap-1">
-                            <Star size={12} className="text-[#FFD700] fill-[#FFD700]" />
+                            <Star size={12} className="text-primary fill-primary" />
                             {selectedUser.mechanic_profile?.rating_avg ? Number(selectedUser.mechanic_profile.rating_avg).toFixed(1) : '5.0'}
                           </p>
                         </div>

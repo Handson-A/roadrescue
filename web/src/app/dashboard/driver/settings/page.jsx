@@ -8,11 +8,13 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
+import ToggleChip from '@/components/ui/ToggleChip'
 import toast from 'react-hot-toast'
 
 export default function DriverSettingsPage() {
   const { profile } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const [preferences, setPreferences] = useState({
     theme: 'system',
     preferred_language: 'en',
@@ -24,18 +26,15 @@ export default function DriverSettingsPage() {
     secondary_phone: '',
   })
 
-  useEffect(() => {
-    let mounted = true
-
-    async function loadPreferences() {
+  async function loadPreferences() {
+    try {
       const response = await fetch('/api/profile/preferences', { cache: 'no-store' })
       const payload = await response.json()
-
-      if (!mounted || !response.ok || !payload.preferences) return
+      if (!response.ok || !payload.preferences) return
 
       setPreferences({
         theme: payload.preferences.theme || 'System',
-        preferred_language: payload.preferences.preferred_language || 'Englih',
+        preferred_language: payload.preferences.preferred_language || 'English',
         notification_preferences: payload.preferences.notification_preferences || { email: true, sms: true, push: true },
         communication_preferences: payload.preferences.communication_preferences || [],
         home_location_label: payload.preferences.home_location_label || '',
@@ -43,10 +42,13 @@ export default function DriverSettingsPage() {
         bio: payload.preferences.bio || '',
         secondary_phone: payload.preferences.secondary_phone || '',
       })
+    } catch (e) {
+      console.error(e)
     }
+  }
 
+  useEffect(() => {
     loadPreferences()
-    return () => { mounted = false }
   }, [])
 
   const updatePreference = (field, value) => {
@@ -95,11 +97,17 @@ export default function DriverSettingsPage() {
         bio: payload.preferences.bio || '',
         secondary_phone: payload.preferences.secondary_phone || '',
       })
+      setIsEditing(false)
     } catch (error) {
       toast.error(error.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCancel = () => {
+    loadPreferences()
+    setIsEditing(false)
   }
 
   return (
@@ -111,30 +119,45 @@ export default function DriverSettingsPage() {
         <Card className="p-6">
           <h2 className="mb-4 text-xl font-bold text-[#111827]">Persistent Preferences</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Theme" value={preferences.theme} onChange={(e) => updatePreference('theme', e.target.value)} placeholder="system" />
-            <Input label="Preferred language" value={preferences.preferred_language} onChange={(e) => updatePreference('preferred_language', e.target.value)} placeholder="en" />
-            <Input label="Secondary phone" value={preferences.secondary_phone} onChange={(e) => updatePreference('secondary_phone', e.target.value)} placeholder="+233..." />
-            <Input label="Home location" value={preferences.home_location_label} onChange={(e) => updatePreference('home_location_label', e.target.value)} placeholder="Accra" />
-            <Input label="Work location" value={preferences.work_location_label} onChange={(e) => updatePreference('work_location_label', e.target.value)} placeholder="Office / home base" />
+            <Input label="Theme" value={preferences.theme} disabled={!isEditing} onChange={(e) => updatePreference('theme', e.target.value)} placeholder="system" />
+            <Input label="Preferred language" value={preferences.preferred_language} disabled={!isEditing} onChange={(e) => updatePreference('preferred_language', e.target.value)} placeholder="en" />
+            <Input label="Secondary phone" value={preferences.secondary_phone} disabled={!isEditing} onChange={(e) => updatePreference('secondary_phone', e.target.value)} placeholder="+233..." />
+            <Input label="Home location" value={preferences.home_location_label} disabled={!isEditing} onChange={(e) => updatePreference('home_location_label', e.target.value)} placeholder="Accra" />
+            <Input label="Work location" value={preferences.work_location_label} disabled={!isEditing} onChange={(e) => updatePreference('work_location_label', e.target.value)} placeholder="Office / home base" />
           </div>
           <div className="mt-4">
-            <Textarea label="Bio / about" value={preferences.bio} onChange={(e) => updatePreference('bio', e.target.value)} rows={4} placeholder="Short bio for profile cards" />
+            <Textarea label="Bio / about" value={preferences.bio} disabled={!isEditing} onChange={(e) => updatePreference('bio', e.target.value)} rows={4} placeholder="Short bio for profile cards" />
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {['email', 'sms', 'push'].map((field) => (
-              <button key={field} type="button" onClick={() => toggleNotification(field)} className={`rounded-full px-4 py-2 text-sm font-semibold ${preferences.notification_preferences?.[field] ? 'bg-[#FFD700] text-[#111827]' : 'bg-[#F3F4F6] text-[#7C7767]'}`}>
-                {field.toUpperCase()}
-              </button>
+              <ToggleChip
+                key={field}
+                label={field}
+                checked={preferences.notification_preferences?.[field]}
+                readOnly={!isEditing}
+                onChange={() => toggleNotification(field)}
+              />
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {['call', 'sms', 'whatsapp'].map((field) => (
-              <button key={field} type="button" onClick={() => toggleCommunication(field)} className={`rounded-full px-4 py-2 text-sm font-semibold ${preferences.communication_preferences.includes(field) ? 'bg-[#111827] text-[#F3F4F6]' : 'bg-[#F3F4F6] text-[#7C7767]'}`}>
-                {field}
-              </button>
+              <ToggleChip
+                key={field}
+                label={field}
+                checked={preferences.communication_preferences.includes(field)}
+                readOnly={!isEditing}
+                onChange={() => toggleCommunication(field)}
+              />
             ))}
           </div>
-          <Button className="mt-6 w-full" loading={loading} onClick={handleSave}>Save preferences</Button>
+          {!isEditing ? (
+            <Button className="mt-6 w-full" onClick={() => setIsEditing(true)}>Edit Preferences</Button>
+          ) : (
+            <div className="mt-6 flex gap-2.5">
+              <Button variant="outline" className="flex-1" onClick={handleCancel}>Cancel</Button>
+              <Button className="flex-[2]" loading={loading} onClick={handleSave}>Save preferences</Button>
+            </div>
+          )}
         </Card>
 
         <Card className="p-6">

@@ -4,7 +4,7 @@ export default function PageWrapper({
   children,
 }) {
   return (
-    <div className="space-y-6 lg:space-y-7 px-4 md:px-0 pt-16 md:pt-0 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-12">
+    <div className="space-y-6 lg:space-y-7 px-4 md:px-0 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] md:pb-12">
       {/* The magic fix is in the bottom padding:
         - pb-[calc(env(safe-area-inset-bottom)+5.5rem)]: Gives ample breathing room on mobile so content clears the fixed navigation bar and the raised floating button smoothly.
         - md:pb-12: Standard, clean padding on desktop layout views where the bottom nav is hidden.

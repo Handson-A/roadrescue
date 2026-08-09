@@ -98,26 +98,21 @@ export function ResponsiveModal({ isOpen, onClose, title, children, className = 
   );
 }
 
+import Select from '@/components/ui/Select';
+
 /**
  * TouchFriendlySelect Component
  * Larger dropdown for better mobile usability
  */
 export function TouchFriendlySelect({ options, onChange, defaultValue, label }) {
   return (
-    <div className="flex flex-col gap-2">
-      {label && <label className="text-sm font-semibold text-slate-700">{label}</label>}
-      <select
-        defaultValue={defaultValue}
-        onChange={onChange}
-        className="h-12 rounded-lg border border-slate-200 px-4 text-base md:h-10 md:text-sm"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      label={label}
+      defaultValue={defaultValue}
+      onChange={onChange}
+      options={options}
+      className="h-12 text-base md:h-10 md:text-sm"
+    />
   );
 }
 

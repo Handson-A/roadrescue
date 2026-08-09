@@ -5,14 +5,30 @@ import Link from 'next/link'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import ToggleChip from '@/components/ui/ToggleChip'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 export default function AdminSettingsPage() {
+  const [isEditing, setIsEditing] = useState(false)
   const [settings, setSettings] = useState({
     maintenanceMode: false,
     enableNewRegistrations: true,
     requireMechanicVerification: true,
   })
+  const [backupSettings, setBackupSettings] = useState(null)
+
+  const startEditing = () => {
+    setBackupSettings({ ...settings })
+    setIsEditing(true)
+  }
+
+  const cancelEditing = () => {
+    if (backupSettings) {
+      setSettings(backupSettings)
+    }
+    setIsEditing(false)
+  }
 
   const handleToggle = (key) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }))
@@ -32,11 +48,11 @@ export default function AdminSettingsPage() {
                 <label className="font-semibold text-[#111827]">Maintenance Mode</label>
                 <p className="text-sm text-[#7C7767]">Prevent new requests when enabled</p>
               </div>
-              <input 
-                type="checkbox" 
+              <ToggleChip
+                label={settings.maintenanceMode ? "Active" : "Inactive"}
                 checked={settings.maintenanceMode}
+                readOnly={!isEditing}
                 onChange={() => handleToggle('maintenanceMode')}
-                className="w-4 h-4"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -44,11 +60,11 @@ export default function AdminSettingsPage() {
                 <label className="font-semibold text-[#111827]">Enable New Registrations</label>
                 <p className="text-sm text-[#7C7767]">Allow new users to register</p>
               </div>
-              <input 
-                type="checkbox" 
+              <ToggleChip
+                label={settings.enableNewRegistrations ? "Allowed" : "Blocked"}
                 checked={settings.enableNewRegistrations}
+                readOnly={!isEditing}
                 onChange={() => handleToggle('enableNewRegistrations')}
-                className="w-4 h-4"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -56,14 +72,25 @@ export default function AdminSettingsPage() {
                 <label className="font-semibold text-[#111827]">Require Mechanic Verification</label>
                 <p className="text-sm text-[#7C7767]">Manual approval for mechanics</p>
               </div>
-              <input 
-                type="checkbox" 
+              <ToggleChip
+                label={settings.requireMechanicVerification ? "Required" : "Optional"}
                 checked={settings.requireMechanicVerification}
+                readOnly={!isEditing}
                 onChange={() => handleToggle('requireMechanicVerification')}
-                className="w-4 h-4"
               />
             </div>
           </div>
+          {!isEditing ? (
+            <Button className="mt-6 w-full" onClick={startEditing}>Edit Configuration</Button>
+          ) : (
+            <div className="mt-6 flex gap-2.5">
+              <Button variant="outline" className="flex-1" onClick={cancelEditing}>Cancel</Button>
+              <Button className="flex-[2]" onClick={() => {
+                toast.success('Configuration saved')
+                setIsEditing(false)
+              }}>Save Configuration</Button>
+            </div>
+          )}
         </Card>
 
         <Card className="p-6">

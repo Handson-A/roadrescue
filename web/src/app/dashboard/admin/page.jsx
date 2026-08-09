@@ -205,7 +205,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                 <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-xs">Operations System Online</span>
-                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[#FFD700]">24/7 Live Map</span>
+                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-primary">24/7 Live Map</span>
               </div>
             </div>
 
@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <p className="text-xs text-slate-400 font-medium leading-normal pt-1">{action.description}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2 text-slate-600 shadow-xs self-start group-hover:bg-[#FFD700] group-hover:text-slate-900 transition-all">
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2 text-slate-600 shadow-xs self-start group-hover:bg-primary group-hover:text-slate-900 transition-all">
                       <Icon size={16} strokeWidth={2.2} />
                     </div>
                   </div>
@@ -361,7 +361,7 @@ export default function AdminDashboardPage() {
                           <span className="text-slate-950 font-mono text-[11px]">{item.count} ({pct}%)</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#F5D108] rounded-full" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )

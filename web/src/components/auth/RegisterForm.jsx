@@ -157,19 +157,19 @@ export default function RegisterForm() {
       const roleLabel = formData.role.toLowerCase()
       const wrapperStyle = "background-color: #FFF8EA; padding: 32px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;"
       const containerStyle = "max-width: 540px; margin: 0 auto; background-color: #ffffff; border: 1px solid #DCCDA9; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(31, 27, 16, 0.03);"
-      const headerStyle = "background: #1F1B10; padding: 32px 24px; text-align: center; border-bottom: 3px solid #F5D108;"
+      const headerStyle = "background: #1F1B10; padding: 32px 24px; text-align: center; border-bottom: 3px solid #f5c400;"
       const bodyStyle = "padding: 32px 24px; color: #1F1B10;"
       const greetingStyle = "font-size: 16px; font-weight: 800; margin-top: 0; margin-bottom: 12px; color: #1F1B10;"
       const textStyle = "font-size: 14px; line-height: 1.6; color: #5E5440; margin-top: 0; margin-bottom: 20px;"
       const parameterBoxStyle = "background-color: #FFF9EF; border: 1px solid #E0D5B7; border-radius: 12px; padding: 16px; margin: 24px 0;"
-      const buttonStyle = "display: inline-block; background-color: #F5D108; color: #1F1B10; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 14px 28px; border-radius: 12px; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(245, 209, 8, 0.2);"
+      const buttonStyle = "display: inline-block; background-color: #f5c400; color: #1F1B10; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 14px 28px; border-radius: 12px; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(245, 196, 0, 0.2);"
       const footerStyle = "text-align: center; padding: 24px; border-top: 1px solid #FFF1D6; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: #7C6B44; background-color: #FFF9EF;"
 
       const structuredEmailContent = `
         <div style="${wrapperStyle}">
           <div style="${containerStyle}">
             <div style="${headerStyle}">
-              <span style="font-size: 10px; font-weight: 900; color: #F5D108; text-transform: uppercase; letter-spacing: 0.2em; display: block; margin-bottom: 6px;">Clearance Authenticated</span>
+              <span style="font-size: 10px; font-weight: 900; color: #f5c400; text-transform: uppercase; letter-spacing: 0.2em; display: block; margin-bottom: 6px;">Clearance Authenticated</span>
               <h1 style="margin: 0; font-size: 20px; font-weight: 900; color: #ffffff;">Welcome to RoadRescue!</h1>
             </div>
             <div style="${bodyStyle}">
@@ -187,7 +187,7 @@ export default function RegisterForm() {
 
               <p style="${textStyle}">Please log into your dashboard to request rescues, update your profile picture, verify your direct contact lines, and prefill any vehicle or garage details to ensure perfect dispatch matching metrics.</p>
               <br>
-              <p style="${textStyle}">If you have any questions or need assistance, please reach out to our support team at <a href="mailto:ayelgumhandson001@gmail.com" style="color: #F5D108; text-decoration: underline;">roadrescuesupportteam@dev</a></p>
+              <p style="${textStyle}">If you have any questions or need assistance, please reach out to our support team at <a href="mailto:ayelgumhandson001@gmail.com" style="color: #f5c400; text-decoration: underline;">roadrescuesupportteam@dev</a></p>
               <p style="${textStyle}">All the best</p>
               <div style="text-align: center; margin-top: 28px;">
                 <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/auth/login" style="${buttonStyle}">Go to Your Dashboard</a>

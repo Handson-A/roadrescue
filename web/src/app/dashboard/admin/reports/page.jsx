@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { BarChart3, TrendingUp, Clock, Users, Star, Wrench, Download, ShieldCheck } from 'lucide-react'
+import { BRAND_COLORS } from '@/lib/theme'
 
 export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true)
@@ -128,7 +129,7 @@ export default function AdminReportsPage() {
   
   const allLabels = ['General Repair', 'Towing & Recovery', 'Tyre Change', 'Battery Jump', 'Fuel Delivery', 'Other Assistance']
   const colorPalette = [
-    '#F5D108', // Gold / Brand matching
+    BRAND_COLORS.primary, // Gold / Brand matching
     '#334155', // Slate-700
     '#3b82f6', // Blue-500
     '#10b981', // Emerald-500
@@ -204,7 +205,7 @@ export default function AdminReportsPage() {
           <Card className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">System CSAT Score</span>
-              <Star size={16} className="text-[#FFD700] fill-[#FFD700]" />
+              <Star size={16} className="text-primary fill-primary" />
             </div>
             <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stats.avgRating || '5.0'} <span className="text-sm font-bold text-slate-400">/ 5.0</span></p>
             <p className="mt-1 text-xs font-bold text-amber-600 tracking-wider">Verified transaction reviews</p>
@@ -313,7 +314,7 @@ export default function AdminReportsPage() {
                 <div className="space-y-1">
                   <div className="flex justify-between"><span>Engine Diagnostics</span><span className="text-slate-900">{categoriesPercentages.engine}%</span></div>
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-[#FFD700] h-full rounded-full transition-all duration-500" style={{ width: `${categoriesPercentages.engine}%` }} />
+                    <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${categoriesPercentages.engine}%` }} />
                   </div>
                 </div>
                 
@@ -354,13 +355,13 @@ export default function AdminReportsPage() {
               <div className="flex gap-1.5 text-[11px] font-bold uppercase tracking-wider">
                 <button 
                   onClick={() => setTimeRange(7)} 
-                  className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 7 ? 'bg-[#FFD700] border-[#FFD700] text-slate-900 font-extrabold shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
+                  className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 7 ? 'bg-primary border-primary text-slate-900 font-extrabold shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
                 >
                   7 Days View
                 </button>
                 <button 
                   onClick={() => setTimeRange(30)} 
-                  className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 30 ? 'bg-[#FFD700] border-[#FFD700] text-slate-900 font-extrabold shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
+                  className={`rounded-lg px-3 py-1 border transition-all ${timeRange === 30 ? 'bg-primary border-primary text-slate-900 font-extrabold shadow-sm' : 'bg-white text-slate-400 border-slate-200'}`}
                 >
                   30 Days View
                 </button>

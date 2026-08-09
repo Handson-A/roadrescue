@@ -84,7 +84,7 @@ export default function InstallOnboardingPage() {
           
           {/* Top branding section */}
           <div className="text-center space-y-2">
-            <div className="mx-auto w-14 h-14 rounded-2xl bg-[#FFF9EF] border border-[#DCCDA9] flex items-center justify-center text-[#F5D108] shadow-inner mb-3">
+            <div className="mx-auto w-14 h-14 rounded-2xl bg-[#FFF9EF] border border-[#DCCDA9] flex items-center justify-center text-primary shadow-inner mb-3">
               <Smartphone size={28} className="text-[#8A6B08] stroke-[2.2]" />
             </div>
             <h1 className="text-2xl font-black text-slate-950 tracking-tight">Install RoadRescue</h1>
@@ -147,7 +147,7 @@ export default function InstallOnboardingPage() {
                 <div className="space-y-3">
                   <button
                     onClick={handleInstallClick}
-                    className="w-full flex h-12 items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md hover:bg-[#E5C100] active:scale-98 transition duration-150"
+                    className="w-full flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md hover:bg-primary/90 active:scale-98 transition duration-150"
                   >
                     <Download size={16} strokeWidth={2.5} />
                     One-Tap Install Application
@@ -201,7 +201,7 @@ export default function InstallOnboardingPage() {
       {isIOS && !isInstalled && (
         <div className="relative z-20 mx-auto w-full max-w-sm flex flex-col items-center pb-8 animate-bounce">
           <div className="bg-[#1F1B10] border border-white/10 rounded-xl px-4 py-2 text-white shadow-lg text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
-            <Share size={12} className="text-[#F5D108]" />
+            <Share size={12} className="text-primary" />
             Safari Share Sheet is below
           </div>
           <ArrowDown size={18} className="text-[#1F1B10] mt-1.5" />

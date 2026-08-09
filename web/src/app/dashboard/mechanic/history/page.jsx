@@ -83,7 +83,7 @@ export default function MechanicHistoryPage() {
           <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Average Rating</span>
-              <Star size={16} className="text-[#FFD700] fill-[#FFD700]" />
+              <Star size={16} className="text-primary fill-primary" />
             </div>
             <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{avgRating} <span className="text-sm font-bold text-slate-400">/ 5.0</span></p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Driver feedback satisfaction index</p>
@@ -144,7 +144,7 @@ export default function MechanicHistoryPage() {
 
                     {/* Clean structural rating alignment badge */}
                     <div className="shrink-0 self-start sm:self-auto bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-                      <Star size={14} className={job.driver_rating ? 'text-[#FFD700] fill-[#FFD700]' : 'text-slate-300'} />
+                      <Star size={14} className={job.driver_rating ? 'text-primary fill-primary' : 'text-slate-300'} />
                       <span className="text-xs font-bold text-slate-800">
                         {job.driver_rating ? `${job.driver_rating}.0` : 'Unrated'}
                       </span>
