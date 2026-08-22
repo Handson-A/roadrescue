@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/rbac'
 import { sanitizeInput } from '@/lib/validate'
+import { insertNotifications } from '@/lib/rescueLifecycle'
 
 export async function GET() {
   const result = await requireAdmin()
@@ -11,7 +12,7 @@ export async function GET() {
 
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('issue_reports')
     .select(`
       id,
@@ -23,8 +24,30 @@ export async function GET() {
       reporter:profiles!issue_reports_reporter_id_fkey (full_name, role),
       request:request_id (id, service_type, problem_description, incident_address, status)
     `)
+
+  let { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(200)
+
+  if (error && error.message.includes('reason_header')) {
+    const fallbackQuery = supabase
+      .from('issue_reports')
+      .select(`
+        id,
+        request_id,
+        reporter_id,
+        reason,
+        comment,
+        created_at,
+        reporter:profiles!issue_reports_reporter_id_fkey (full_name, role),
+        request:request_id (id, service_type, problem_description, incident_address, status)
+      `)
+    const fbRes = await fallbackQuery
+      .order('created_at', { ascending: false })
+      .limit(200)
+    data = fbRes.data?.map(item => ({ ...item, reason_header: item.reason }))
+    error = fbRes.error
+  }
 
   if (error) {
     console.error('[REPORTS FETCH]:', error)
@@ -62,16 +85,33 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Forbidden: reporter ID mismatch.' }, { status: 403 })
     }
 
-    const { data, error } = await supabase
+    const insertPayload = {
+      request_id: requestId,
+      reporter_id: user.id,
+      comment: comment.trim(),
+    }
+
+    let { data, error } = await supabase
       .from('issue_reports')
       .insert({
-        request_id: requestId,
-        reporter_id: user.id,
+        ...insertPayload,
         reason_header: reasonHeader,
-        comment: comment.trim(),
       })
       .select()
       .single()
+
+    if (error && error.message.includes('reason_header')) {
+      const fbRes = await supabase
+        .from('issue_reports')
+        .insert({
+          ...insertPayload,
+          reason: reasonHeader,
+        })
+        .select()
+        .single()
+      data = fbRes.data ? { ...fbRes.data, reason_header: fbRes.data.reason } : null
+      error = fbRes.error
+    }
 
     if (error) {
       console.error('[REPORTS INSERT]:', error)
@@ -79,6 +119,29 @@ export async function POST(request) {
         { error: error.message || 'Failed to create report.' },
         { status: 500 }
       )
+    }
+
+    // Fetch all admin profiles and notify them of the report
+    try {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin')
+
+      if (admins && admins.length > 0) {
+        const adminNotifs = admins.map(adm => ({
+          profile_id: adm.id,
+          type: 'system',
+          title: 'New Incident Report',
+          body: `A new incident report was filed for request #${requestId.slice(0, 8)}. Reason: ${reasonHeader}.`,
+          request_id: requestId,
+          is_read: false,
+        }))
+        const serviceSupabase = await createServiceClient()
+        await insertNotifications(serviceSupabase, adminNotifs)
+      }
+    } catch (e) {
+      console.warn('Failed to notify admins of incident report:', e)
     }
 
     return NextResponse.json({ report: data }, { status: 201 })

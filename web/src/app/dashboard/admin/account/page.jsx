@@ -103,7 +103,7 @@ export default function AdminAccountPage() {
         <Card className="rounded-2xl border-slate-200 bg-white p-6 shadow-sm relative">
           <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Shield size={16} className="text-[#FFD700]" />
+              <Shield size={16} className="text-primary" />
               Operations Registry Profile
             </h2>
             {!isEditing ? (

@@ -123,9 +123,9 @@ export async function POST(req) {
     Promise.resolve().then(async () => {
       try {
         const { data: nearbyMechanics, error: matchError } = await serviceSupabase.rpc('get_nearby_verified_mechanics', {
-          request_latitude: Number(incidentLat),
-          request_longitude: Number(incidentLng),
-          search_radius_km: 10.0,
+          lat: Number(incidentLat),
+          lng: Number(incidentLng),
+          radius_km: 10.0,
         })
 
         if (matchError) {

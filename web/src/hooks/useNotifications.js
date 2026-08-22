@@ -7,10 +7,21 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { NOTIFICATION_TYPE, USER_ROLE } from '@/lib/constants'
 
+function parseRequestIdFromBody(body) {
+  if (!body) return null
+  const match = body.match(/\[req_id:\s*([a-f0-9-]{36})\]/i)
+  return match ? match[1] : null
+}
+
+function cleanNotificationMessage(message) {
+  if (!message) return ''
+  return message.replace(/\[req_id:\s*[a-f0-9-]{36}\]/i, '').trim()
+}
+
 function getNotificationHref(notification, role) {
   if (!notification) return null
 
-  const requestId = notification.request_id
+  const requestId = notification.request_id || parseRequestIdFromBody(notification.body || notification.message)
   const userRole = role || USER_ROLE.DRIVER
 
   switch (notification.type) {
@@ -55,8 +66,12 @@ export function useNotifications(userId) {
         .limit(20)
 
       if (data) {
-        setNotifications(data)
-        setUnreadCount(data.filter(n => !n.is_read).length)
+        const mapped = data.map(n => ({
+          ...n,
+          message: cleanNotificationMessage(n.body)
+        }))
+        setNotifications(mapped)
+        setUnreadCount(mapped.filter(n => !n.is_read).length)
       }
     }
 
@@ -66,7 +81,7 @@ export function useNotifications(userId) {
     const channel = supabase
       .channel(`notifications-${userId}`)
       .on(
-        'postgres_changes',
+         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
@@ -76,7 +91,11 @@ export function useNotifications(userId) {
         },
         (payload) => {
           const newNotification = payload.new
-          setNotifications(prev => [newNotification, ...prev])
+          const mapped = {
+            ...newNotification,
+            message: cleanNotificationMessage(newNotification.body)
+          }
+          setNotifications(prev => [mapped, ...prev])
           setUnreadCount(prev => prev + 1)
         }
       )

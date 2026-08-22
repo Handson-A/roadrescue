@@ -1,35 +1,3 @@
-// 'use client';
-
-// /**
-//  * Card Component
-//  * Container for grouped content
-//  */
-
-// export default function Card({ children, className = '' }) {
-//   return (
-//     <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
-//       {children}
-//     </div>
-//   );
-// }
-
-// web/src/components/ui/Card.jsx
-
-// export default function Card({ children, className = '', glow = false, onClick }) {
-//   return (
-//     <div
-//       onClick={onClick}
-//       className={[
-//         'card animate-fade-in',
-//         glow ? 'shadow-amber border-amber/30' : '',
-//         onClick ? 'cursor-pointer hover:border-amber/50 transition-colors' : '',
-//         className,
-//       ].join(' ')}
-//     >
-//       {children}
-//     </div>
-//   )
-// }
 import { cn } from '@/lib/utils'
 
 export default function Card({

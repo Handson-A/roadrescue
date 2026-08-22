@@ -23,7 +23,7 @@ export default function MechanicDetailModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Review Specialist Application"
+      title="Review Application"
       size="md"
     >
       <div className="space-y-6">

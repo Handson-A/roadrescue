@@ -29,8 +29,8 @@ const navByRole = {
     { href: '/dashboard/mechanic', label: 'Dashboard', icon: Home },
     { href: '/dashboard/mechanic/requests', label: 'Active Jobs', icon: Radar },
     { href: '/dashboard/mechanic/history', label: 'Job History', icon: History },
-    { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
     { href: '/dashboard/mechanic/navigation', label: 'Navigation', icon: MapPin },
+    { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
     { href: '/dashboard/mechanic/account', label: 'Profile', icon: User },
   ],
   admin: [
@@ -94,8 +94,8 @@ export default function Sidebar() {
     : 'bg-[#F1EAD6] text-[#2A261C] border-r border-[#D8CCAE]'
 
   const activeClass = isAdmin
-    ? 'bg-[#F5D108] text-[#2A261C] shadow-[inset_0_-2px_0_rgba(0,0,0,0.1)]'
-    : 'bg-[#F5D108] text-[#2A261C] shadow-sm'
+    ? 'bg-primary text-[#2A261C] shadow-[inset_0_-2px_0_rgba(0,0,0,0.1)]'
+    : 'bg-primary text-[#2A261C] shadow-sm'
 
   const idleClass = isAdmin
     ? 'text-[#E2D9C2] hover:bg-[#383223] hover:text-[#F5EED9]'
@@ -153,7 +153,7 @@ export default function Sidebar() {
           {isAdmin ? (
             <Link
               href="/dashboard/admin/requests"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
             >
               <ClipboardList size={14} /> Incident Log
             </Link>
@@ -171,7 +171,7 @@ export default function Sidebar() {
               className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
                 isAvailable 
                   ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
-                  : 'bg-[#F5D108] text-[#2A261C] hover:bg-[#e2c107]'
+                  : 'bg-primary text-[#2A261C] hover:bg-primary/90'
               }`}
             >
               <WifiSync size={14} className={isAvailable ? 'animate-pulse' : ''} />

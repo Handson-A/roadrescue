@@ -166,7 +166,7 @@ export default function AdminDashboardPage() {
   return (
     <PageWrapper
       title="Operations Command"
-      description="Real-time control matrix for monitoring emergency dispatches, validating credentials, and managing platform scale."
+      description="Monitor emergency dispatches, validate credentials, and manage platform scale."
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
@@ -205,7 +205,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                 <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-xs">Operations System Online</span>
-                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[#FFD700]">24/7 Live Map</span>
+                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-primary">24/7 Live Map</span>
               </div>
             </div>
 
@@ -243,12 +243,12 @@ export default function AdminDashboardPage() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Verification Vectors</span>
               <h3 className="text-sm font-extrabold text-slate-800 mt-3">Identity Hub Backlog</h3>
               <p className="mt-1 text-4xl font-black text-slate-900 tracking-tight">{pendingMechanics.length}</p>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">Mechanics awaiting application clearances</p>
+              <p className="text-xs font-medium text-slate-400 mt-0.5">Mechanics awaiting clearance</p>
               <Link
                 href="/dashboard/admin/mechanics"
                 className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition-colors"
               >
-                Open Identification Matrix
+                Manage Pending Profiles <ArrowRight size={14} className="ml-2" />
               </Link>
             </Card>
 
@@ -272,8 +272,12 @@ export default function AdminDashboardPage() {
                   <span>Verified mechanics</span>
                   <span className="text-slate-900 font-bold">{stats?.verifiedMechanics ?? 0}</span>
                 </p>
+                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-emerald-50/30 px-4 py-2.5 text-slate-700">
+                  <span>Mechanics online</span>
+                  <span className="text-emerald-600 font-black">{stats?.activeMechanics ?? 0}</span>
+                </p>
                 <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
-                  <span>Active drivers</span>
+                  <span>Registered drivers</span>
                   <span className="text-slate-900 font-bold">{stats?.totalDrivers ?? 0}</span>
                 </p>
               </div>
@@ -309,7 +313,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <p className="text-xs text-slate-400 font-medium leading-normal pt-1">{action.description}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2 text-slate-600 shadow-xs self-start group-hover:bg-[#FFD700] group-hover:text-slate-900 transition-all">
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2 text-slate-600 shadow-xs self-start group-hover:bg-primary group-hover:text-slate-900 transition-all">
                       <Icon size={16} strokeWidth={2.2} />
                     </div>
                   </div>
@@ -361,7 +365,7 @@ export default function AdminDashboardPage() {
                           <span className="text-slate-950 font-mono text-[11px]">{item.count} ({pct}%)</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#F5D108] rounded-full" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     )

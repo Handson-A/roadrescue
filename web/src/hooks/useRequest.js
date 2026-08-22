@@ -24,7 +24,11 @@ export function useRequestStatus(requestId) {
               rating_avg,
               specializations,
               business_name,
-              location_label
+              location_label,
+              service_mode,
+              current_location,
+              is_available,
+              current_status
             )
           )
         `)

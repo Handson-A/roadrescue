@@ -55,7 +55,7 @@ export default function Error({ error, reset }) {
             
             {debugExpanded && (
               <div className="p-4 bg-slate-900 text-slate-100 font-mono text-[11px] leading-relaxed break-all border-t border-slate-100 overflow-x-auto max-h-40 animate-in fade-in slide-in-from-top-1 duration-150">
-                <p className="text-[#FFD700] mb-1 font-bold">
+                <p className="text-primary mb-1 font-bold">
                   Exception Stack Dump
                 </p>
                 {error.message}

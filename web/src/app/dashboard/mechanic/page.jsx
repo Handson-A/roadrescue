@@ -186,7 +186,7 @@ const { data: active, error: activeErr } = await supabase
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
+      <div className="w-full min-h-fit bg-transparent flex items-center justify-center py-12 lg:pl-64">
         <div className="text-center space-y-3">
           <Spinner />
           <p className="text-xs font-mono font-black text-[#7C6B44] uppercase tracking-widest animate-pulse">please wait...</p>
@@ -233,7 +233,7 @@ const { data: active, error: activeErr } = await supabase
             <Button 
               variant={isAvailable ? 'outline' : 'primary'} 
               onClick={handleAvailabilityToggle}
-              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${isAvailable ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-[#F5D108] hover:bg-[#F5D108]/90 text-slate-900'}`}
+              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${isAvailable ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-primary hover:bg-primary/90 text-slate-900'}`}
             >
               {isAvailable ? 'Go Offline' : 'Go Online'}
             </Button>
@@ -251,7 +251,7 @@ const { data: active, error: activeErr } = await supabase
             <p className="mt-1 text-xs text-slate-500 font-medium">Assigned requests in progress</p>
           </Card>
           
-          <Card className={`rounded-xl p-5 shadow-sm border transition-all duration-300 ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/30 border-t-4 border-t-[#F5D108] border-x-[#DCCDA9] border-b-[#DCCDA9] shadow-md shadow-amber-400/5' : 'bg-white border-slate-200'}`}>
+          <Card className={`rounded-xl p-5 shadow-sm border transition-all duration-300 ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/30 border-t-4 border-t-primary border-x-[#DCCDA9] border-b-[#DCCDA9] shadow-md shadow-amber-400/5' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Incoming Requests</span>
               <AlertCircle size={16} className={incomingJobs.length > 0 && isAvailable ? 'text-[#8A6B08]' : 'text-slate-400'} />
@@ -338,7 +338,7 @@ const { data: active, error: activeErr } = await supabase
           <div className="space-y-4 lg:col-span-5">
             <Card className="p-0 overflow-hidden border-slate-200 bg-white shadow-sm rounded-2xl">
               <div className="border-b border-slate-100 bg-slate-900 px-4 py-3.5 text-white flex justify-between items-center">
-                <h4 className="text-xs font-black uppercase tracking-wider text-[#F5D108]">Urgent Broadcast Feed</h4>
+                <h4 className="text-xs font-black uppercase tracking-wider text-primary">Urgent Broadcast Feed</h4>
                 {incomingJobs.length > 0 && <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />}
               </div>
               <div className="p-4">

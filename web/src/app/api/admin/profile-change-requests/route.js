@@ -148,6 +148,19 @@ export async function PATCH(req) {
 
     if (auditUpdateError) throw auditUpdateError
 
+    // Notify the user about their change request review decision
+    try {
+      await serviceSupabase.from('notifications').insert({
+        profile_id: changeRequest.user_id,
+        type: 'system',
+        title: action === 'approved' ? 'Change Request Approved' : 'Change Request Rejected',
+        body: `Your request to update your ${changeRequest.field_key} has been ${action}. ${reviewNotes || ''}`,
+        is_read: false,
+      })
+    } catch (e) {
+      console.warn('Failed to insert change request notification:', e)
+    }
+
     return NextResponse.json({ success: true, request: updatedRecord }, { status: 200 })
   } catch (error) {
     console.error('[SERVER ROUTE FAULT] PATCH change requests failed:', error)

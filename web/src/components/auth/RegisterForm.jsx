@@ -76,48 +76,38 @@ export default function RegisterForm() {
     if (error) throw error
   }
 
-  async function saveDriverProfile(userId) {
-    if (
-      !formData.vehicleMake && !formData.vehicleModel && !formData.vehicleYear && 
-      !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea
-    ) {
-      return
-    }
+ async function saveDriverProfile(userId) {
+  if (
+    !formData.vehicleMake && !formData.vehicleModel && !formData.vehicleYear &&
+    !formData.vehicleColor && !formData.vehiclePlate && !formData.serviceArea &&
+    !formData.emergencyContactName && !formData.emergencyContactPhone
+  ) {
+    return
+  }
 
-    const supabase = createClient()
-    const driverPayload = {}
+  const supabase = createClient()
+  const driverPayload = {}
 
-    if (formData.serviceArea.trim()) {
-      driverPayload.home_area = formData.serviceArea.trim()
-    }
+  if (formData.serviceArea.trim()) {
+    driverPayload.home_area = formData.serviceArea.trim()
+  }
+  if (formData.vehicleMake.trim()) driverPayload.vehicle_make = formData.vehicleMake.trim()
+  if (formData.vehicleModel.trim()) driverPayload.vehicle_model = formData.vehicleModel.trim()
+  if (formData.vehicleYear) driverPayload.vehicle_year = parseInt(formData.vehicleYear, 10) || null
+  if (formData.vehicleColor.trim()) driverPayload.vehicle_color = formData.vehicleColor.trim()
+  if (formData.vehiclePlate.trim()) driverPayload.vehicle_plate = formData.vehiclePlate.trim().toUpperCase()
+  if (formData.emergencyContactName.trim()) driverPayload.emergency_contact_name = formData.emergencyContactName.trim()
+  if (formData.emergencyContactPhone.trim()) driverPayload.emergency_contact_phone = formData.emergencyContactPhone.trim()
 
-    driverPayload.preferences = {
-      vehicle_make: formData.vehicleMake.trim(),
-      vehicle_model: formData.vehicleModel.trim(),
-      vehicle_year: formData.vehicleYear ? parseInt(formData.vehicleYear, 10) || null : null,
-      vehicle_color: formData.vehicleColor.trim(),
-      vehicle_plate: formData.vehiclePlate.trim().toUpperCase()
-    }
+  if (Object.keys(driverPayload).length === 0) return
 
-    const { error } = await supabase
-      .from('driver_profiles')
-      .update(driverPayload)
-      .eq('user_id', userId)
+  const { error } = await supabase
+    .from('driver_profiles')
+    .update(driverPayload)
+    .eq('user_id', userId)
 
-    if (error) throw error
-    
-    if (formData.emergencyContactName.trim() && formData.emergencyContactPhone.trim()) {
-      const { error: contactError } = await supabase
-        .from('user_emergency_contacts')
-        .insert({
-          user_id: userId,
-          name: formData.emergencyContactName.trim(),
-          phone: formData.emergencyContactPhone.trim(),
-          is_primary: true,
-        })
-      
-      if (contactError) console.warn('Emergency contact save failed:', contactError)
-    }
+  if (error) throw error
+
   }
 
   async function handleSubmit(e) {
@@ -128,6 +118,21 @@ export default function RegisterForm() {
       const email = formData.email.trim()
       const fullName = formData.fullName.trim()
       const phone = formData.phone.trim()
+
+      if (phone.length !== 10 || !phone.startsWith('0')) {
+        toast.error('Primary phone number must be exactly 10 digits starting with 0.')
+        setLoading(false)
+        return
+      }
+
+      if (formData.role === 'driver' && formData.emergencyContactPhone.trim()) {
+        const ePhone = formData.emergencyContactPhone.trim()
+        if (ePhone.length !== 10 || !ePhone.startsWith('0')) {
+          toast.error('Emergency contact phone number must be exactly 10 digits starting with 0.')
+          setLoading(false)
+          return
+        }
+      }
 
       if (!fullName || !phone || !email || !formData.password) {
         toast.error('Please fill in your name, phone, email, and password.')
@@ -167,19 +172,19 @@ export default function RegisterForm() {
       const roleLabel = formData.role.toLowerCase()
       const wrapperStyle = "background-color: #FFF8EA; padding: 32px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;"
       const containerStyle = "max-width: 540px; margin: 0 auto; background-color: #ffffff; border: 1px solid #DCCDA9; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(31, 27, 16, 0.03);"
-      const headerStyle = "background: #1F1B10; padding: 32px 24px; text-align: center; border-bottom: 3px solid #F5D108;"
+      const headerStyle = "background: #1F1B10; padding: 32px 24px; text-align: center; border-bottom: 3px solid #f5c400;"
       const bodyStyle = "padding: 32px 24px; color: #1F1B10;"
       const greetingStyle = "font-size: 16px; font-weight: 800; margin-top: 0; margin-bottom: 12px; color: #1F1B10;"
       const textStyle = "font-size: 14px; line-height: 1.6; color: #5E5440; margin-top: 0; margin-bottom: 20px;"
       const parameterBoxStyle = "background-color: #FFF9EF; border: 1px solid #E0D5B7; border-radius: 12px; padding: 16px; margin: 24px 0;"
-      const buttonStyle = "display: inline-block; background-color: #F5D108; color: #1F1B10; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 14px 28px; border-radius: 12px; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(245, 209, 8, 0.2);"
+      const buttonStyle = "display: inline-block; background-color: #f5c400; color: #1F1B10; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 14px 28px; border-radius: 12px; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(245, 196, 0, 0.2);"
       const footerStyle = "text-align: center; padding: 24px; border-top: 1px solid #FFF1D6; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: #7C6B44; background-color: #FFF9EF;"
 
       const structuredEmailContent = `
         <div style="${wrapperStyle}">
           <div style="${containerStyle}">
             <div style="${headerStyle}">
-              <span style="font-size: 10px; font-weight: 900; color: #F5D108; text-transform: uppercase; letter-spacing: 0.2em; display: block; margin-bottom: 6px;">Clearance Authenticated</span>
+              <span style="font-size: 10px; font-weight: 900; color: #f5c400; text-transform: uppercase; letter-spacing: 0.2em; display: block; margin-bottom: 6px;">Clearance Authenticated</span>
               <h1 style="margin: 0; font-size: 20px; font-weight: 900; color: #ffffff;">Welcome to RoadRescue!</h1>
             </div>
             <div style="${bodyStyle}">
@@ -197,7 +202,7 @@ export default function RegisterForm() {
 
               <p style="${textStyle}">Please log into your dashboard to request rescues, update your profile picture, verify your direct contact lines, and prefill any vehicle or garage details to ensure perfect dispatch matching metrics.</p>
               <br>
-              <p style="${textStyle}">If you have any questions or need assistance, please reach out to our support team at <a href="mailto:ayelgumhandson001@gmail.com" style="color: #F5D108; text-decoration: underline;">roadrescuesupportteam@dev</a></p>
+              <p style="${textStyle}">If you have any questions or need assistance, please reach out to our support team at <a href="mailto:ayelgumhandson001@gmail.com" style="color: #f5c400; text-decoration: underline;">roadrescuesupportteam@dev</a></p>
               <p style="${textStyle}">All the best</p>
               <div style="text-align: center; margin-top: 28px;">
                 <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/auth/login" style="${buttonStyle}">Go to Your Dashboard</a>
@@ -355,7 +360,17 @@ export default function RegisterForm() {
                 </div>
                 <div>
                   <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Emergency Phone</label>
-                  <Input placeholder="+233..." value={formData.emergencyContactPhone} onChange={(e) => updateField('emergencyContactPhone', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
+                  <Input 
+                    placeholder="e.g. 0241234567" 
+                    value={formData.emergencyContactPhone} 
+                    onChange={(e) => updateField('emergencyContactPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                    className="rounded-xl border-[#DDD0A8]" 
+                  />
+                  {formData.emergencyContactPhone && (formData.emergencyContactPhone.length !== 10 || !formData.emergencyContactPhone.startsWith('0')) && (
+                    <p className="mt-1 text-[10px] font-bold text-red-500">
+                      ⚠️ Must be exactly 10 digits starting with 0.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -372,7 +387,17 @@ export default function RegisterForm() {
 
         <div>
           <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Phone Number</label>
-          <Input placeholder="+233(0)..." value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" />
+          <Input 
+            placeholder="e.g. 0241234567" 
+            value={formData.phone} 
+            onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+            className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" 
+          />
+          {formData.phone && (formData.phone.length !== 10 || !formData.phone.startsWith('0')) && (
+            <p className="mt-1 text-[10px] font-bold text-red-500">
+              ⚠️ Phone number must be exactly 10 digits starting with 0.
+            </p>
+          )}
         </div>
       </div>
 

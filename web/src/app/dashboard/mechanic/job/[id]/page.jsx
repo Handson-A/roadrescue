@@ -3,8 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import PageWrapper from '@/components/layout/PageWrapper'
+import toast from 'react-hot-toast'
 import Spinner from '@/components/ui/Spinner'
 import ReportModal from '@/components/report/ReportModal'
+import Select from '@/components/ui/Select'
+import Textarea from '@/components/ui/Textarea'
+import Card from '@/components/ui/Card'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -153,17 +157,90 @@ function ActionButton({ onClick, disabled, children, variant = 'primary', classN
 }
 
 /* ─── Main Page ─────────────────────────────────────────────────────────── */
-export default function JobDetailPage() {
+const CANCEL_REASON_OPTIONS = [
+  { value: 'requires_towing', label: 'Vehicle requires towing / heavy equipment I do not have' },
+  { value: 'parts_unavailable', label: 'Required parts/tools are unavailable' },
+  { value: 'driver_unresponsive', label: 'Driver is unresponsive / failed to show up' },
+  { value: 'safety_hazard', label: 'Safety / environmental hazard' },
+  { value: 'other', label: 'Other (specify below)' },
+]
+
+export default function MechanicJobDetailsPage() {
   const params = useParams()
-  const router = useRouter()
   const jobId = params.id
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReasonCategory, setCancelReasonCategory] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
   const supabase = createClient()
   const { user } = useAuth()
   const [localCoords, setLocalCoords] = useState(null)
+  const [mechanicProfile, setMechanicProfile] = useState(null)
+  const [graceTimeLeft, setGraceTimeLeft] = useState(null)
+
+  useEffect(() => {
+    if (!user?.id) return
+    const supabase = createClient()
+
+    async function loadProfile() {
+      const { data } = await supabase
+        .from('mechanic_profiles')
+        .select('is_available, current_status')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      setMechanicProfile(data)
+    }
+    loadProfile()
+
+    const channel = supabase
+      .channel(`my-profile-status-${jobId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mechanic_profiles', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setMechanicProfile(payload.new)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, jobId])
+
+  useEffect(() => {
+    const isActive = ['accepted', 'en_route', 'arrived', 'in_progress'].includes(job?.status)
+    const isOffline = mechanicProfile && mechanicProfile.is_available === false && mechanicProfile.current_status
+
+    if (!isActive || !isOffline) {
+      setGraceTimeLeft(null)
+      return
+    }
+
+    const interval = setInterval(() => {
+      const offlineTime = new Date(mechanicProfile.current_status).getTime()
+      const diffMs = (offlineTime + 600000) - Date.now()
+      if (diffMs <= 0) {
+        setGraceTimeLeft(0)
+        clearInterval(interval)
+        
+        const cancelDueToOffline = async () => {
+          try {
+            await updateStatus('cancelled', { cancellationReason: "couldn't resolve" })
+            toast.error("Dispatch automatically cancelled because you remained offline.")
+          } catch (e) {
+            console.error(e)
+          }
+        }
+        cancelDueToOffline()
+      } else {
+        setGraceTimeLeft(Math.max(0, Math.floor(diffMs / 1000)))
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [job?.status, mechanicProfile?.is_available, mechanicProfile?.current_status, jobId])
 
   const isActive =
     job &&
@@ -189,24 +266,29 @@ export default function JobDetailPage() {
   }, [isActive])
 
   useEffect(() => {
+    if (!jobId) return
+
     async function loadJob() {
       const res = await fetch(`/api/requests/${jobId}`)
       const { request } = await res.json()
       if (res.ok) setJob(request)
       setLoading(false)
     }
-    loadJob()
-  }, [jobId])
 
-  useEffect(() => {
-    if (!jobId) return
+    loadJob()
+
     const channel = supabase
       .channel(`request-status-${jobId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rescue_requests', filter: `id=eq.${jobId}` },
-        (payload) => setJob((prev) => ({ ...prev, ...payload.new }))
+        () => {
+          loadJob()
+        }
       )
       .subscribe()
-    return () => supabase.removeChannel(channel)
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [jobId, supabase])
 
   /* ── Shared update helper ─────────────────────────────────── */
@@ -222,7 +304,6 @@ export default function JobDetailPage() {
       const result = await res.json()
       if (res.ok && result.request) {
         setJob(result.request)
-        if (['en_route', 'accepted'].includes(newStatus)) router.push('/navigation')
       } else {
         alert(result.error || 'Could not update status.')
       }
@@ -230,10 +311,14 @@ export default function JobDetailPage() {
     finally { setUpdating(false) }
   }
 
-  const cancelJob = async () => {
-    const reason = prompt('Reason for cancelling (optional):')
-    if (reason === null) return
-    updateStatus('cancelled', { cancellationReason: reason.trim() || 'Mechanic cancelled job' })
+  const cancelJob = () => {
+    setShowCancelModal(true)
+  }
+
+  const confirmCancelJob = async () => {
+    const finalReason = cancelReason.trim() || 'Mechanic cancelled job'
+    await updateStatus('cancelled', { cancellationReason: finalReason })
+    setShowCancelModal(false)
   }
 
   /* ── Loading / not found states ───────────────────────────── */
@@ -275,6 +360,11 @@ export default function JobDetailPage() {
       title={`Job #${jobId.slice(0, 8).toUpperCase()}`}
       description="Keep the driver updated as you move through each stage."
     >
+      {graceTimeLeft !== null && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse">
+          ⚠️ You are offline. Return online within {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s to prevent automatic dispatch cancellation.
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 items-start">
 
         {/* ── Left column ── */}
@@ -438,7 +528,7 @@ export default function JobDetailPage() {
           {/* Location */}
           <SectionCard icon={MapPin} title="Location">
             <p className="text-xs text-slate-600 mb-3 leading-relaxed">{job.incident_address}</p>
-            <div className="overflow-hidden rounded-xl border border-slate-200 h-[220px] relative z-10">
+            <div className="overflow-hidden rounded-xl h-[220px] relative z-10">
               {mapValid ? (
                 <RescueMap
                   request={job}
@@ -522,6 +612,66 @@ export default function JobDetailPage() {
         requestId={jobId}
         reporterId={user?.id}
       />
+
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">Cancel Job Assignment?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Please select a reason for cancelling this job. Cancellation may impact your dispatch metrics.
+            </p>
+            <Select
+              label="Select Cancellation Reason"
+              id="cancel-reason-category"
+              value={cancelReasonCategory}
+              onChange={(e) => {
+                const val = e.target.value
+                setCancelReasonCategory(val)
+                if (val !== 'other') {
+                  const opt = CANCEL_REASON_OPTIONS.find(o => o.value === val)
+                  setCancelReason(opt ? opt.label : '')
+                } else {
+                  setCancelReason('')
+                }
+              }}
+              options={[{ value: '', label: 'Select a cancellation reason...' }, ...CANCEL_REASON_OPTIONS]}
+            />
+            
+            {(cancelReasonCategory === 'other' || cancelReasonCategory === '') && (
+              <Textarea
+                label="Custom Reason / Explanation"
+                id="cancel-reason"
+                rows={2}
+                placeholder="Please describe why you are cancelling..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
+              />
+            )}
+            <div className="flex gap-2.5 justify-end">
+              <ActionButton 
+                variant="ghost"
+                onClick={() => {
+                  setShowCancelModal(false)
+                  setCancelReasonCategory('')
+                  setCancelReason('')
+                }}
+                className="h-10 text-xs px-4"
+              >
+                Keep Job
+              </ActionButton>
+              <ActionButton 
+                variant="danger"
+                onClick={confirmCancelJob}
+                disabled={updating || !cancelReasonCategory}
+                className="h-10 text-xs px-4"
+              >
+                {updating ? 'Cancelling...' : 'Confirm Cancel'}
+              </ActionButton>
+            </div>
+          </Card>
+        </div>
+      )}
     </PageWrapper>
   )
 }

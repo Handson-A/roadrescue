@@ -26,6 +26,13 @@ const standbyMechanicIcon = new L.Icon({
   iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
 })
 
+// 🟡 YELLOW: Standby active units waiting for assignments
+const yellowMechanicIcon = new L.Icon({
+  ...baseLayout,
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+})
+
 // 🔴 RED: Distressed drivers stranded in the field
 const strandedDriverIcon = new L.Icon({
   ...baseLayout,
@@ -43,7 +50,118 @@ const dispatchedMechanicIcon = new L.Icon({
 export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }) {
   const defaultPosition = [5.6037, -0.1870] // Accra Operations Baseline Hub Center Coordinates
   const [liveLocations, setLiveLocations] = useState({})
+  const [liveIncidents, setLiveIncidents] = useState(activeIncidents)
+  const [onlineMechanics, setOnlineMechanics] = useState({})
+  const [liveMechanics, setLiveMechanics] = useState(mechanics)
 
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setLiveMechanics(mechanics)
+    })
+  }, [mechanics])
+
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('admin-mechanic-profiles-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'mechanic_profiles' },
+        (payload) => {
+          const updated = payload.new
+          setLiveMechanics((prev) => 
+            prev.map((m) => m.user_id === updated.user_id ? { ...m, ...updated } : m)
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // Keep liveIncidents synced with parent activeIncidents props
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setLiveIncidents(activeIncidents)
+    })
+  }, [activeIncidents])
+
+  // 1. Subscribe to INSERT and UPDATE events on rescue_requests to render driver pins instantly
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('admin-requests-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'rescue_requests' },
+        (payload) => {
+          const newRequest = payload.new
+          const isActive = ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(newRequest.status)
+          if (!isActive) return
+
+          setLiveIncidents((prev) => {
+            if (prev.some((req) => req.id === newRequest.id)) return prev
+            return [newRequest, ...prev]
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rescue_requests' },
+        (payload) => {
+          const updatedRequest = payload.new
+          const isActive = ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(updatedRequest.status)
+
+          setLiveIncidents((prev) => {
+            if (isActive) {
+              if (prev.some((req) => req.id === updatedRequest.id)) {
+                return prev.map((req) => req.id === updatedRequest.id ? { ...req, ...updatedRequest } : req)
+              } else {
+                return [updatedRequest, ...prev]
+              }
+            } else {
+              return prev.filter((req) => req.id !== updatedRequest.id)
+            }
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // 2. Subscribe to Supabase Presence to track online mechanics immediately
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+    const channel = supabase.channel('mechanic-presence')
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        const keys = Object.keys(state)
+        const onlineMap = {}
+        keys.forEach((key) => {
+          onlineMap[key] = true
+        })
+        setOnlineMechanics(onlineMap)
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // 3. Subscribe to the standby online-mechanics broadcast channel
   useEffect(() => {
     const { createClient } = require('@/lib/supabase/client')
     const supabase = createClient()
@@ -62,6 +180,36 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       supabase.removeChannel(channel)
     }
   }, [])
+
+  // 4. Dynamically subscribe to active job channels (location-${requestId}) for fanned-out assigned locations
+  useEffect(() => {
+    if (!liveIncidents || liveIncidents.length === 0) return
+
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+    const activeChannels = []
+
+    liveIncidents.forEach((incident) => {
+      if (!['accepted', 'en_route', 'arrived', 'in_progress'].includes(incident.status)) return
+
+      const ch = supabase
+        .channel(`location-${incident.id}`)
+        .on('broadcast', { event: 'location_update' }, (payload) => {
+          const { mechanicId, latitude, longitude } = payload.payload
+          setLiveLocations((prev) => ({
+            ...prev,
+            [mechanicId]: { lat: latitude, lng: longitude }
+          }))
+        })
+      
+      ch.subscribe()
+      activeChannels.push(ch)
+    })
+
+    return () => {
+      activeChannels.forEach((ch) => supabase.removeChannel(ch))
+    }
+  }, [liveIncidents])
 
   // Robust parsing utility targeting multiple relational database string patterns
   const extractCoords = (locationField) => {
@@ -100,7 +248,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       />
 
       {/* ======================= LAYER 1: STRANDED DRIVERS & SECTOR INCIDENTS ======================= */}
-      {activeIncidents?.map((incident) => {
+      {liveIncidents?.map((incident) => {
         const driverCoords = extractCoords(incident.incident_location) || 
                              (incident.incident_lat && incident.incident_lng ? { lat: Number(incident.incident_lat), lng: Number(incident.incident_lng) } : null)
         
@@ -136,13 +284,15 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       })}
 
       {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
-      {mechanics?.map((m) => {
-        const activeAssignment = activeIncidents.find(
+      {liveMechanics?.map((m) => {
+        const activeAssignment = liveIncidents.find(
           (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
         )
 
-        // Only show if available (online) OR active in a dispatch
-        if (!m.is_available && !activeAssignment) return null
+        const isOnline = m.is_available
+
+        // Only show if available (online)
+        if (!isOnline) return null
 
         const liveLoc = liveLocations[m.user_id]
         const mechCoords = liveLoc || extractCoords(m.current_location)
@@ -152,28 +302,34 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
           <Marker 
             key={`mech-marker-${m.user_id}`} // Flattened top-level key
             position={[mechCoords.lat, mechCoords.lng]} 
-            icon={activeAssignment ? dispatchedMechanicIcon : standbyMechanicIcon}
+            icon={activeAssignment ? dispatchedMechanicIcon : yellowMechanicIcon}
           >
             <Popup>
               <div className="p-1 min-w-[170px] font-sans">
                 <h4 className="font-black text-sm text-slate-900 m-0 flex items-center gap-1.5">
-                  <Wrench size={12} className={activeAssignment ? "text-emerald-500" : "text-blue-500"} /> 
+                  <Wrench size={12} className={activeAssignment ? "text-emerald-500" : "text-amber-500"} /> 
                   {m.business_name || 'Independent Specialist'}
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-1 mb-0">
-                  Operator: {m.user?.full_name || m.profiles?.full_name || 'Vetted Specialist'}
+                <p className="text-[11px] text-slate-500 mt-1 mb-0 font-bold">
+                  Name: {m.user?.full_name || m.profiles?.full_name || 'Vetted Specialist'}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 mb-0 font-medium">
+                  Phone: {m.user?.phone || m.profiles?.phone || '—'}
+                </p>
+                <p className="text-[11px] text-emerald-600 mt-0.5 mb-0 font-black">
+                  Status: {activeAssignment ? 'Online / Dispatched' : 'Online / Ready'}
                 </p>
 
                 <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    activeAssignment ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    activeAssignment ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
-                    {activeAssignment ? 'Dispatched' : 'Standby Mode'}
+                    {activeAssignment ? 'Dispatched' : 'Online / Ready'}
                   </span>
                   {(m.user?.phone || m.profiles?.phone) && (
                     <a 
                       href={`tel:${m.user?.phone || m.profiles?.phone}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-amber-600 no-underline"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-emerald-600 no-underline"
                     >
                       <Phone size={10} /> Call Node
                     </a>
@@ -191,7 +347,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
         const mechCoords = liveLoc || extractCoords(m.current_location)
         if (!mechCoords) return null
 
-        const activeAssignment = activeIncidents.find(
+        const activeAssignment = liveIncidents.find(
           (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
         )
         if (!activeAssignment) return null

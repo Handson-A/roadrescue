@@ -1,40 +1,3 @@
-// 'use client';
-
-// /**
-//  * Toast Component
-//  * Notification message display
-//  */
-
-// import { useState, useEffect } from 'react';
-
-// export default function Toast({ message, type = 'info', duration = 5000, onClose }) {
-//   const [isVisible, setIsVisible] = useState(true);
-
-//   useEffect(() => {
-//     const timer = setTimeout(() => {
-//       setIsVisible(false);
-//       onClose?.();
-//     }, duration);
-
-//     return () => clearTimeout(timer);
-//   }, [duration, onClose]);
-
-//   if (!isVisible) return null;
-
-//   const bgColor = {
-//     success: 'bg-green-100 border-green-400 text-green-800',
-//     error: 'bg-red-100 border-red-400 text-red-800',
-//     warning: 'bg-yellow-100 border-yellow-400 text-yellow-800',
-//     info: 'bg-blue-100 border-blue-400 text-blue-800',
-//   }[type];
-
-//   return (
-//     <div className={`fixed bottom-4 right-4 p-4 border-l-4 rounded ${bgColor}`}>
-//       {message}
-//     </div>
-//   );
-// }
-
 
 'use client'
 import { createContext, useContext, useState, useCallback } from 'react'
@@ -72,7 +35,10 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex w-[min(92vw,24rem)] flex-col gap-2 safe-bottom-padding">
+      <div
+        style={{ top: '1rem', right: '1rem', position: 'fixed', zIndex: 9999 }}
+        className="flex w-[min(92vw,24rem)] flex-col gap-2"
+      >
         {toasts.map((toastItem) => (
           <div
             key={toastItem.id}

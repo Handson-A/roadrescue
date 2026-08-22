@@ -106,7 +106,7 @@ export default function DriverDashboard() {
   const recentItems = requests.slice(0, 2)
 
   return (
-    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 flex justify-center items-start pb-24 lg:pb-8">
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-44 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         {/* ==================================================================== */}
@@ -124,7 +124,7 @@ export default function DriverDashboard() {
         {/* Active Membership Identifier Pill */}
         <div className="rounded-xl border border-[#DCCDA9] bg-white px-4 py-2.5 text-xs font-bold tracking-wider text-[#7C6B44] flex justify-between items-center shadow-sm">
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#F5D108] animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             Active Membership
           </span>
           <span className="font-mono text-[11px] text-slate-500">ID: {membershipId}</span>
@@ -135,12 +135,11 @@ export default function DriverDashboard() {
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <Wrench size={80} />
           </div>
-          <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">Hello, {profile?.full_name?.split(' ')?.[0] || 'Driver'}</p>
           <h3 className="mt-1 text-2xl font-black tracking-tight">Need Help Now?</h3>
           <p className="mt-1 text-xs text-white/60">Get connected to nearby certified mechanics with live dispatch tracking.</p>
           <Link
             href="/dashboard/driver/request/new"
-            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F5D108] text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md active:scale-98 transition"
+            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md active:scale-98 transition"
           >
             REQUEST ROADSIDE RESCUE
             <Search size={14} strokeWidth={2.5} />
@@ -168,8 +167,8 @@ export default function DriverDashboard() {
         {/* Live Active Incident Ticket Tracker Panel */}
         {activeRequest && (
           <div className="space-y-3">
-            <div className="border-l-4 border-l-[#F5D108] bg-[#1F1B10] p-4 text-white rounded-r-2xl shadow-sm">
-              <span className="rounded-md bg-[#F5D108] px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-[#1F1B10]">
+            <div className="border-l-4 border-l-primary bg-[#1F1B10] p-4 text-white rounded-r-2xl shadow-sm">
+              <span className="rounded-md bg-primary px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-[#1F1B10]">
                 Live Dispatch Unit: {activeRequest.status}
               </span>
               <div className="mt-3 space-y-1">
@@ -188,7 +187,7 @@ export default function DriverDashboard() {
                 <span>4. Cleared</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-[#F5D108] transition-all duration-500" style={{ width: `${progress}%` }} />
+                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
             </div>
 

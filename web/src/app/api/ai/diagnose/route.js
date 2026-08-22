@@ -139,7 +139,7 @@ export async function POST(request) {
       contents: userContent,
       config: {
         systemInstruction: `You are the RoadRescue diagnostic AI for Ghana. Review vehicle breakdown symptoms and provide a fast, reassuring, professional preliminary mechanical assessment. Return only structured JSON. Keep the problem concise and include safe, actionable recommendations.`,
-        maxOutputTokens: 350,
+        maxOutputTokens: 1024,
         temperature: 0.2,
         responseMimeType: 'application/json',
         responseSchema: {

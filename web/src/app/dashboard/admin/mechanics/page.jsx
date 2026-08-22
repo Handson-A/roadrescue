@@ -12,7 +12,6 @@ import {
   ShieldCheck, User, Check, X, Mail, Phone,
   Briefcase, MapPin, HelpCircle, Clock, Star
 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import MechanicDetailModal from './MechanicDetailModal'
 
 export default function MechanicsVerificationPage() {
@@ -25,21 +24,21 @@ export default function MechanicsVerificationPage() {
   useEffect(() => {
     async function getUrls() {
       if (!selectedMechanic || !selectedMechanic.documents || selectedMechanic.documents.length === 0) return
-      const supabase = createClient()
       const urls = {}
       for (const doc of selectedMechanic.documents) {
         try {
-          const { data, error } = await supabase.storage
-            .from('mechanic-documents')
-            .createSignedUrl(doc.file_url, 3600)
-          
-          if (error) {
-            const { data: pubData } = supabase.storage
-              .from('mechanic-documents')
-              .getPublicUrl(doc.file_url)
-            urls[doc.id] = pubData.publicUrl
-          } else {
+          const res = await fetch('/api/admin/mechanics/document-url', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filePath: doc.file_url }),
+          })
+          if (res.ok) {
+            const data = await res.json()
             urls[doc.id] = data.signedUrl
+          } else {
+            console.error('Failed to fetch admin document URL:', await res.text())
           }
         } catch (e) {
           console.error('Error getting URL for document:', e)

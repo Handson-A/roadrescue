@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Camera, ImagePlus, Wrench, Truck, Disc, Zap, Fuel, HelpCircle } from 'lucide-react'
@@ -15,6 +15,7 @@ import { useDiagnostic } from '@/hooks/useDiagnostic'
 import { useToast } from '@/components/ui/Toast'
 import { SERVICE_TYPE } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/hooks/useAuth'
 
 const serviceOptions = [
   { value: SERVICE_TYPE.REPAIR, label: 'General Repair', icon: Wrench, description: 'Engine diagnostics, mechanical, or electrical failures' },
@@ -28,7 +29,8 @@ const serviceOptions = [
 export default function RequestForm() {
   const router = useRouter()
   const { toast } = useToast()
-  const { diagnose, diagnosis, diagnosing } = useDiagnostic()
+  const { diagnose, diagnosis, diagnosing, error: diagnosticError } = useDiagnostic()
+  const { profile } = useAuth()
 
   const [submitting, setSubmitting] = useState(false)
   const [snapshotUploading, setSnapshotUploading] = useState(false)
@@ -46,6 +48,33 @@ export default function RequestForm() {
     vehicleColor: '',
     vehiclePlate: '',
   })
+
+  useEffect(() => {
+    async function loadDriverVehicleProfile() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: driverProfile } = await supabase
+        .from('driver_profiles')
+        .select('vehicle_make, vehicle_model, vehicle_year, vehicle_color, vehicle_plate')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (driverProfile) {
+        setForm((prev) => ({
+          ...prev,
+          vehicleMake: driverProfile.vehicle_make || '',
+          vehicleModel: driverProfile.vehicle_model || '',
+          vehicleYear: driverProfile.vehicle_year ? String(driverProfile.vehicle_year) : '',
+          vehicleColor: driverProfile.vehicle_color || '',
+          vehiclePlate: driverProfile.vehicle_plate || '',
+        }))
+      }
+    }
+
+    loadDriverVehicleProfile()
+  }, [])
 
   const canSubmit = useMemo(() => {
     return !!(
@@ -130,12 +159,18 @@ export default function RequestForm() {
       return
     }
 
-    await diagnose({
+    const res = await diagnose({
       symptoms: form.problemDescription,
       vehicleMake: form.vehicleMake,
       vehicleModel: form.vehicleModel,
       vehicleYear: form.vehicleYear,
     })
+
+    if (!res) {
+      toast({ message: 'AI Diagnosis failed. Please try again.', type: 'error' })
+    } else {
+      toast({ message: 'AI Diagnosis completed successfully!', type: 'success' })
+    }
   }
 
   async function submitRequest() {
@@ -213,12 +248,12 @@ export default function RequestForm() {
           <h3 className="mt-0.5 text-sm font-black text-[#1F1B10]">Vehicle Snapshot</h3>
         </div>
         <div className="grid gap-4 p-4 sm:grid-cols-2">
-          <Input label="Make *" value={form.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} placeholder="Toyota" />
-          <Input label="Model *" value={form.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} placeholder="Corolla" />
-          <Input label="Year" type="number" value={form.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} placeholder="2018" />
-          <Input label="Color" value={form.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} placeholder="Silver" />
+          <Input label="Make *" value={form.vehicleMake} onChange={(e) => updateField('vehicleMake', e.target.value)} placeholder="e.g. Toyota" />
+          <Input label="Model *" value={form.vehicleModel} onChange={(e) => updateField('vehicleModel', e.target.value)} placeholder="e.g. Corolla" />
+          <Input label="Year" type="number" value={form.vehicleYear} onChange={(e) => updateField('vehicleYear', e.target.value)} placeholder="e.g. 2018" />
+          <Input label="Color" value={form.vehicleColor} onChange={(e) => updateField('vehicleColor', e.target.value)} placeholder="e.g. Silver" />
           <div className="sm:col-span-2">
-            <Input label="Plate Number" value={form.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} placeholder="GR-1234-24" />
+            <Input label="Plate Number" value={form.vehiclePlate} onChange={(e) => updateField('vehiclePlate', e.target.value)} placeholder="e.g. GR-1234-24" />
           </div>
 
           <div className="sm:col-span-2">
@@ -294,12 +329,12 @@ export default function RequestForm() {
                       onClick={() => updateField('serviceType', opt.value)}
                       className={`flex items-start gap-3.5 rounded-xl border p-3 text-left transition-all ${
                         isSelected
-                          ? 'border-[#F5D108] bg-amber-50/40 ring-1 ring-[#F5D108]/30 shadow-xs'
+                          ? 'border-primary bg-primary/10 ring-1 ring-primary/30 shadow-xs'
                           : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50/85'
                       }`}
                     >
                       <div className={`rounded-xl p-2.5 transition-colors shrink-0 ${
-                        isSelected ? 'bg-[#1F1B10] text-[#F5D108]' : 'bg-slate-200/60 text-slate-600'
+                        isSelected ? 'bg-[#1F1B10] text-primary' : 'bg-slate-200/60 text-slate-600'
                       }`}>
                         <Icon size={18} />
                       </div>

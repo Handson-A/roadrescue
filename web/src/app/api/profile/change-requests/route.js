@@ -41,19 +41,33 @@ export async function POST(req) {
       return NextResponse.json({ error: 'role, target_table, field_key, and new_value are required' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const insertPayload = {
+      user_id: user.id,
+      target_table,
+      field_key,
+      old_value: old_value ?? null,
+      new_value,
+    }
+
+    let { data, error } = await supabase
       .from('profile_change_requests')
       .insert({
-        user_id: user.id,
+        ...insertPayload,
         role,
-        target_table,
-        field_key,
-        old_value: old_value ?? null,
-        new_value,
         reason: reason || null,
       })
       .select('*')
       .single()
+
+    if (error && (error.message.includes('role') || error.message.includes('reason'))) {
+      const fbRes = await supabase
+        .from('profile_change_requests')
+        .insert(insertPayload)
+        .select('*')
+        .single()
+      data = fbRes.data
+      error = fbRes.error
+    }
 
     if (error) throw error
 

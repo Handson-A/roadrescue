@@ -11,6 +11,10 @@ function normalizeStatus(value) {
 }
 
 
+// Module-level cache for sharing the presence channel across multiple hook instances
+let sharedPresenceChannel = null
+let sharedPresenceRefCount = 0
+
 export function useMechanicStatus(mechanicId) {
   const supabaseRef = useRef(null)
   const channelRef = useRef(null)
@@ -101,6 +105,33 @@ export function useMechanicStatus(mechanicId) {
     const channel = supabase.channel('online-mechanics')
     channel.subscribe()
 
+    let presenceChannel = sharedPresenceChannel
+
+    if (!presenceChannel) {
+      presenceChannel = supabase.channel('mechanic-presence', {
+        config: { presence: { key: mechanicId } },
+      })
+
+      presenceChannel
+        .on('presence', { event: 'leave' }, () => {
+          // do not auto-offline on disconnect, persist status
+        })
+        .subscribe(async (subStatus) => {
+          if (subStatus === 'SUBSCRIBED') {
+            await presenceChannel.track({ mechanicId, online_at: new Date().toISOString() })
+          }
+        })
+
+      sharedPresenceChannel = presenceChannel
+    } else {
+      // If already subscribed, declare presence again
+      if (presenceChannel.state === 'joined') {
+        presenceChannel.track({ mechanicId, online_at: new Date().toISOString() }).catch(() => {})
+      }
+    }
+
+    sharedPresenceRefCount++
+
     let lastDBSync = 0
 
     const watchId = navigator.geolocation.watchPosition(
@@ -141,6 +172,15 @@ export function useMechanicStatus(mechanicId) {
     return () => {
       navigator.geolocation.clearWatch(watchId)
       supabase.removeChannel(channel)
+
+      sharedPresenceRefCount--
+      if (sharedPresenceRefCount <= 0) {
+        if (sharedPresenceChannel) {
+          supabase.removeChannel(sharedPresenceChannel)
+          sharedPresenceChannel = null
+        }
+        sharedPresenceRefCount = 0
+      }
     }
   }, [isAvailable, mechanicId])
 
@@ -148,16 +188,30 @@ export function useMechanicStatus(mechanicId) {
     async (nextStatus) => {
       if (!mechanicId) return
       const normalized = normalizeStatus(nextStatus)
-
+      const is_available = normalized === 'available'
       const supabase = supabaseRef.current || createClient()
 
-      // New schema: mechanic availability is boolean `is_available`
-      const is_available = normalized === 'available'
+      let currentStatusVal = null
+      if (!is_available) {
+        const { data: activeJobs } = await supabase
+          .from('rescue_requests')
+          .select('id')
+          .eq('mechanic_id', mechanicId)
+          .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
+          .limit(1)
+
+        if (activeJobs && activeJobs.length > 0) {
+          currentStatusVal = new Date().toISOString()
+        }
+      }
 
       // 1. Update status in database immediately so state/UI transitions instantly
       const { error } = await supabase
         .from('mechanic_profiles')
-        .update({ is_available })
+        .update({ 
+          is_available,
+          current_status: currentStatusVal
+        })
         .eq('user_id', mechanicId)
 
       if (error) {

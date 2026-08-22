@@ -5,7 +5,7 @@ import RequestForm from '@/components/request/RequestForm'
 
 export default function NewRequestPage() {
   return (
-    <div className="w-full min-h-screen bg-[#FFF8EA] text-[#1F1B10] p-4 sm:p-6 flex justify-center items-start pb-24 lg:pb-8">
+    <div className="w-full min-h-fit bg-transparent text-[#1F1B10] flex justify-center items-start pt-20 pb-24 md:pt-6 md:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         <div className="flex items-center gap-3 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">

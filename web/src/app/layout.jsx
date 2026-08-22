@@ -36,7 +36,7 @@ export const metadata = {
 }
 
 export const viewport = {
-  themeColor: '#FDFBF7',
+  themeColor: '#1A1A1A',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -53,6 +53,12 @@ export default function RootLayout({
           <ToastProvider>
             <Toaster
               position="top-right"
+              containerStyle={{
+                top: '1rem',
+                right: '1rem',
+                position: 'fixed',
+                zIndex: 9999,
+              }}
               toastOptions={{
                 style: {
                   background: '#fff',

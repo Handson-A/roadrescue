@@ -20,14 +20,16 @@ import { createClient } from '@/lib/supabase/client'
 // ============================================================================
 // Usage: const { broadcastError, isLocationAvailable } = useBroadcastLocation(requestId, mechanicId)
 // Call in mechanic active job view; broadcasts every 15 seconds, persists every 60s
-export function useBroadcastLocation(requestId, mechanicId) {
+export function useBroadcastLocation(requestId, mechanicId, status) {
   const intervalRef = useRef(null)
   const dbSyncCountRef = useRef(0)
   const [broadcastError, setBroadcastError] = useState(null)
   const [isLocationAvailable, setIsLocationAvailable] = useState(true)
 
+  const isInactive = !status || ['completed', 'cancelled'].includes(status)
+
   useEffect(() => {
-    if (!requestId || !mechanicId) return
+    if (!requestId || !mechanicId || isInactive) return
 
     const supabase = createClient()
     const channel = supabase.channel(`location-${requestId}`)
@@ -124,7 +126,7 @@ export function useBroadcastLocation(requestId, mechanicId) {
       if (intervalRef.current) clearInterval(intervalRef.current)
       supabase.removeChannel(channel)
     }
-  }, [requestId, mechanicId])
+  }, [requestId, mechanicId, isInactive])
 
   return { broadcastError, isLocationAvailable }
 }
@@ -134,13 +136,15 @@ export function useBroadcastLocation(requestId, mechanicId) {
 // ============================================================================
 // Usage: const { mechanicLocation, watchError, isConnected } = useWatchMechanicLocation(requestId)
 // Call in driver active request tracking view; receives real-time location updates
-export function useWatchMechanicLocation(requestId) {
+export function useWatchMechanicLocation(requestId, status) {
   const [mechanicLocation, setMechanicLocation] = useState(null)
   const [watchError, setWatchError] = useState(null)
   const [isConnected, setIsConnected] = useState(false)
 
+  const isInactive = !status || ['completed', 'cancelled'].includes(status)
+
   useEffect(() => {
-    if (!requestId) return
+    if (!requestId || isInactive) return
 
     const supabase = createClient()
 
@@ -176,7 +180,7 @@ export function useWatchMechanicLocation(requestId) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [requestId])
+  }, [requestId, isInactive])
 
   return { mechanicLocation, watchError, isConnected }
 }
