@@ -40,9 +40,9 @@ export default function ReportModal({ isOpen, onClose, requestId, reporterId }) 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          request_id: requestId,
-          reporter_id: reporterId,
-          reason,
+          requestId,
+          reporterId,
+          reasonHeader: reason,
           comment: comment.trim(),
         }),
       })

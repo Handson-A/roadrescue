@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import useHideOnScroll from '@/hooks/useHideOnScroll'
-import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, Volume2, VolumeX, X } from 'lucide-react'
+import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, X } from 'lucide-react'
 import Link from 'next/link'
 
 import Avatar from '@/components/ui/Avatar'
@@ -16,7 +16,7 @@ import { timeAgo, truncate } from '@/lib/utils'
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [audioEnabled, setAudioEnabled] = useState(true)
+
   const [searchQuery, setSearchQuery] = useState('')
   const notificationRef = useRef(null)
 
@@ -325,14 +325,7 @@ export default function Navbar() {
             </form>
           )}
 
-          {/* Mute Toggles (Protected from scaling distortion) */}
-          <button
-            onClick={() => setAudioEnabled((prev) => !prev)}
-            className={`rounded-xl border p-2 flex-shrink-0 transition ${audioEnabled ? 'border-[#C8BC9E] bg-[#EDE2CA] text-[#6A5A10]' : 'border-[#D7CCAD] bg-[#F8F4EA] text-[#7A7058]'}`}
-            title={audioEnabled ? 'Mute alerts' : 'Unmute alerts'}
-          >
-            {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          </button>
+
 
           {/* Notification Menu Container */}
           <div ref={notificationRef} className="relative flex-shrink-0">

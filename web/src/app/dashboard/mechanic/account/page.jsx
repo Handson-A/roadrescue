@@ -165,7 +165,7 @@ export default function MechanicAccountPage() {
   const handleChange = (field, value) => {
     let cleanValue = value
     if (field === 'phone' || field === 'secondaryPhone') {
-      cleanValue = value.replace(/[^0-9+]/g, '')
+      cleanValue = value.replace(/\D/g, '').slice(0, 10)
     }
     setFormData((p) => ({ ...p, [field]: cleanValue }))
   }
@@ -272,6 +272,28 @@ export default function MechanicAccountPage() {
       }
 
       setDocuments(prev => [docRecord, ...prev])
+
+      // Find all admin profiles and notify them
+      try {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin')
+
+        if (admins && admins.length > 0) {
+          const adminNotifs = admins.map(adm => ({
+            profile_id: adm.id,
+            type: 'verification',
+            title: 'New Verification Document',
+            body: `Mechanic ${profile?.full_name || 'Partner'} submitted a new document: ${file.name}.`,
+            is_read: false,
+          }))
+          await supabase.from('notifications').insert(adminNotifs)
+        }
+      } catch (notifErr) {
+        console.warn('Failed to notify admins of document submission:', notifErr)
+      }
+
       toast.success('Document uploaded successfully! Profile verification re-queued.')
       
       if (mechanicProfile) {
@@ -378,6 +400,19 @@ export default function MechanicAccountPage() {
   }
 
   const handleSave = async () => {
+    if (formData.phone.trim().length !== 10 || !formData.phone.trim().startsWith('0')) {
+      toast.error('Primary phone number must be exactly 10 digits starting with 0.')
+      return
+    }
+
+    if (formData.secondaryPhone.trim()) {
+      const sPhone = formData.secondaryPhone.trim()
+      if (sPhone.length !== 10 || !sPhone.startsWith('0')) {
+        toast.error('Backup phone number must be exactly 10 digits starting with 0.')
+        return
+      }
+    }
+
     setLoading(true)
     try {
       const supabase = createClient()
@@ -389,11 +424,26 @@ export default function MechanicAccountPage() {
 
       if (profileError) throw profileError
 
+      let currentStatusVal = null
+      if (!formData.availability) {
+        const { data: activeJobs } = await supabase
+          .from('rescue_requests')
+          .select('id')
+          .eq('mechanic_id', user?.id)
+          .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
+          .limit(1)
+
+        if (activeJobs && activeJobs.length > 0) {
+          currentStatusVal = new Date().toISOString()
+        }
+      }
+
       const { error: mechanicError } = await supabase
          .from('mechanic_profiles')
          .update({
            years_experience: formData.yearsExperience ? parseInt(formData.yearsExperience, 10) || 0 : 0,
            is_available: formData.availability,
+           current_status: currentStatusVal,
            specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
            business_name: formData.businessName.trim() || null,
            location_label: formData.serviceArea.trim() || null,
@@ -795,7 +845,14 @@ export default function MechanicAccountPage() {
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Registered Dispatch Phone</span>
               {isEditing ? (
-                <div className="mt-1"><Input value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="+233..." /></div>
+                <div className="mt-1">
+                  <Input value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="e.g. 0241234567" />
+                  {formData.phone && (formData.phone.length !== 10 || !formData.phone.startsWith('0')) && (
+                    <p className="mt-1 text-[10px] font-bold text-red-500">
+                      ⚠️ Must be exactly 10 digits starting with 0.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><Phone size={14} /> {formData.phone || 'No phone registered'}</p>
               )}
@@ -804,7 +861,14 @@ export default function MechanicAccountPage() {
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Backup Communications Line</span>
               {isEditing ? (
-                <div className="mt-1"><Input value={formData.secondaryPhone} onChange={(e) => handleChange('secondaryPhone', e.target.value)} placeholder="Backup phone..." /></div>
+                <div className="mt-1">
+                  <Input value={formData.secondaryPhone} onChange={(e) => handleChange('secondaryPhone', e.target.value)} placeholder="e.g. 0241234567" />
+                  {formData.secondaryPhone && (formData.secondaryPhone.length !== 10 || !formData.secondaryPhone.startsWith('0')) && (
+                    <p className="mt-1 text-[10px] font-bold text-red-500">
+                      ⚠️ Must be exactly 10 digits starting with 0.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><Phone size={14} className="text-slate-400" /> {formData.secondaryPhone || 'Not set'}</p>
               )}

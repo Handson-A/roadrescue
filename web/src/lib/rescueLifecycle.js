@@ -135,14 +135,40 @@ export async function getRequestContext() {
 export async function insertNotifications(serviceClient, notifications) {
   if (!notifications.length) return []
 
-  const { data, error } = await serviceClient
-    .from('notifications')
-    .insert(notifications)
-    .select('*')
+  // Ensure request_id is embedded in the body as [req_id: ID] for fallback parsing on the client
+  const prepped = notifications.map(notif => {
+    let body = notif.body || ''
+    if (notif.request_id && !body.includes('[req_id:')) {
+      body = `${body} [req_id: ${notif.request_id}]`.trim()
+    }
+    return {
+      ...notif,
+      body
+    }
+  })
 
-  if (error) throw error
+  try {
+    const { data, error } = await serviceClient
+      .from('notifications')
+      .insert(prepped)
+      .select('*')
 
-  return data ?? []
+    if (error) throw error
+    return data ?? []
+  } catch (error) {
+    // If the database has no request_id column, retry without it
+    if (error.code === 'PGRST204' || String(error.message || '').includes('request_id')) {
+      const fallbackNotifs = prepped.map(({ request_id, ...rest }) => rest)
+      const { data, error: fallbackError } = await serviceClient
+        .from('notifications')
+        .insert(fallbackNotifs)
+        .select('*')
+
+      if (fallbackError) throw fallbackError
+      return data ?? []
+    }
+    throw error
+  }
 }
 
 export async function getNearbyMechanics(serviceClient, latitude, longitude, searchRadiusKm = 10) {

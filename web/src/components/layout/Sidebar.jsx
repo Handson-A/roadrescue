@@ -29,8 +29,8 @@ const navByRole = {
     { href: '/dashboard/mechanic', label: 'Dashboard', icon: Home },
     { href: '/dashboard/mechanic/requests', label: 'Active Jobs', icon: Radar },
     { href: '/dashboard/mechanic/history', label: 'Job History', icon: History },
-    { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
     { href: '/dashboard/mechanic/navigation', label: 'Navigation', icon: MapPin },
+    { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
     { href: '/dashboard/mechanic/account', label: 'Profile', icon: User },
   ],
   admin: [

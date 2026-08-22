@@ -186,7 +186,7 @@ const { data: active, error: activeErr } = await supabase
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen bg-[#FFF8EA] flex items-center justify-center lg:pl-64">
+      <div className="w-full min-h-fit bg-transparent flex items-center justify-center py-12 lg:pl-64">
         <div className="text-center space-y-3">
           <Spinner />
           <p className="text-xs font-mono font-black text-[#7C6B44] uppercase tracking-widest animate-pulse">please wait...</p>

@@ -119,6 +119,21 @@ export default function RegisterForm() {
       const fullName = formData.fullName.trim()
       const phone = formData.phone.trim()
 
+      if (phone.length !== 10 || !phone.startsWith('0')) {
+        toast.error('Primary phone number must be exactly 10 digits starting with 0.')
+        setLoading(false)
+        return
+      }
+
+      if (formData.role === 'driver' && formData.emergencyContactPhone.trim()) {
+        const ePhone = formData.emergencyContactPhone.trim()
+        if (ePhone.length !== 10 || !ePhone.startsWith('0')) {
+          toast.error('Emergency contact phone number must be exactly 10 digits starting with 0.')
+          setLoading(false)
+          return
+        }
+      }
+
       if (!fullName || !phone || !email || !formData.password) {
         toast.error('Please fill in your name, phone, email, and password.')
         return
@@ -345,7 +360,17 @@ export default function RegisterForm() {
                 </div>
                 <div>
                   <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Emergency Phone</label>
-                  <Input placeholder="+233..." value={formData.emergencyContactPhone} onChange={(e) => updateField('emergencyContactPhone', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
+                  <Input 
+                    placeholder="e.g. 0241234567" 
+                    value={formData.emergencyContactPhone} 
+                    onChange={(e) => updateField('emergencyContactPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                    className="rounded-xl border-[#DDD0A8]" 
+                  />
+                  {formData.emergencyContactPhone && (formData.emergencyContactPhone.length !== 10 || !formData.emergencyContactPhone.startsWith('0')) && (
+                    <p className="mt-1 text-[10px] font-bold text-red-500">
+                      ⚠️ Must be exactly 10 digits starting with 0.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -362,7 +387,17 @@ export default function RegisterForm() {
 
         <div>
           <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Phone Number</label>
-          <Input placeholder="+233(0)..." value={formData.phone} onChange={(e) => updateField('phone', e.target.value)} className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" />
+          <Input 
+            placeholder="e.g. 0241234567" 
+            value={formData.phone} 
+            onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} 
+            className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" 
+          />
+          {formData.phone && (formData.phone.length !== 10 || !formData.phone.startsWith('0')) && (
+            <p className="mt-1 text-[10px] font-bold text-red-500">
+              ⚠️ Phone number must be exactly 10 digits starting with 0.
+            </p>
+          )}
         </div>
       </div>
 

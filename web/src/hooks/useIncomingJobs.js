@@ -50,8 +50,8 @@ export function useIncomingJobs(mechanicId) {
           filter: 'status=eq.pending',
         },
         (payload) => {
-          // new request came in — add to top of the list
-          setPendingJobs(prev => [payload.new, ...prev])
+          // new request came in — refresh the list to resolve nested relationships in real-time
+          fetchPendingJobs()
         }
       )
       .on(

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/rbac'
 import { sanitizeInput } from '@/lib/validate'
+import { insertNotifications } from '@/lib/rescueLifecycle'
 
 export async function GET() {
   const result = await requireAdmin()
@@ -118,6 +119,29 @@ export async function POST(request) {
         { error: error.message || 'Failed to create report.' },
         { status: 500 }
       )
+    }
+
+    // Fetch all admin profiles and notify them of the report
+    try {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin')
+
+      if (admins && admins.length > 0) {
+        const adminNotifs = admins.map(adm => ({
+          profile_id: adm.id,
+          type: 'system',
+          title: 'New Incident Report',
+          body: `A new incident report was filed for request #${requestId.slice(0, 8)}. Reason: ${reasonHeader}.`,
+          request_id: requestId,
+          is_read: false,
+        }))
+        const serviceSupabase = await createServiceClient()
+        await insertNotifications(serviceSupabase, adminNotifs)
+      }
+    } catch (e) {
+      console.warn('Failed to notify admins of incident report:', e)
     }
 
     return NextResponse.json({ report: data }, { status: 201 })

@@ -106,7 +106,7 @@ export default function DriverDashboard() {
   const recentItems = requests.slice(0, 2)
 
   return (
-    <div className="w-full flex-grow bg-[#FFF8EA] text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-44 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-44 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         {/* ==================================================================== */}

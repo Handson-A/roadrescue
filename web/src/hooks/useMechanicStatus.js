@@ -113,13 +113,8 @@ export function useMechanicStatus(mechanicId) {
       })
 
       presenceChannel
-        .on('presence', { event: 'leave' }, async ({ key }) => {
-          if (key === mechanicId) {
-            await supabase
-              .from('mechanic_profiles')
-              .update({ is_available: false })
-              .eq('user_id', mechanicId)
-          }
+        .on('presence', { event: 'leave' }, () => {
+          // do not auto-offline on disconnect, persist status
         })
         .subscribe(async (subStatus) => {
           if (subStatus === 'SUBSCRIBED') {
@@ -193,16 +188,30 @@ export function useMechanicStatus(mechanicId) {
     async (nextStatus) => {
       if (!mechanicId) return
       const normalized = normalizeStatus(nextStatus)
-
+      const is_available = normalized === 'available'
       const supabase = supabaseRef.current || createClient()
 
-      // New schema: mechanic availability is boolean `is_available`
-      const is_available = normalized === 'available'
+      let currentStatusVal = null
+      if (!is_available) {
+        const { data: activeJobs } = await supabase
+          .from('rescue_requests')
+          .select('id')
+          .eq('mechanic_id', mechanicId)
+          .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
+          .limit(1)
+
+        if (activeJobs && activeJobs.length > 0) {
+          currentStatusVal = new Date().toISOString()
+        }
+      }
 
       // 1. Update status in database immediately so state/UI transitions instantly
       const { error } = await supabase
         .from('mechanic_profiles')
-        .update({ is_available })
+        .update({ 
+          is_available,
+          current_status: currentStatusVal
+        })
         .eq('user_id', mechanicId)
 
       if (error) {

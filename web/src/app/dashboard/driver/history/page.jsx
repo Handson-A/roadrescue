@@ -52,7 +52,7 @@ export default function DriverHistoryPage() {
 
   return (
     // FIXED: Appended lg:pl-64 structural layout gutters to isolate sidebar footprint
-    <div className="w-full flex-grow bg-[#FFF8EA] text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-20 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-20 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-4">
         
         <div className="flex items-center gap-3 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
