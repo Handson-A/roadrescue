@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -19,6 +19,8 @@ import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
 import { useAuth } from '@/hooks/useAuth'
 import ReportModal from '@/components/report/ReportModal'
 import { timeAgo, normalizeGeoPoint, formatDistance } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import Select from '@/components/ui/Select'
 
 const ACTIVE_DRIVER_REQUEST_STATUSES = ['accepted', 'en_route', 'arrived', 'in_progress']
 const CANCELLATION_ALLOWED_STATUSES = ['pending', 'accepted']
@@ -38,6 +40,14 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c // Returns distance in km
 }
 
+const CANCEL_REASON_OPTIONS = [
+  { value: 'resolved_on_own', label: 'Vehicle started working / Problem resolved' },
+  { value: 'alternative_help', label: 'Alternative help arrived / Found another mechanic' },
+  { value: 'taking_too_long', label: 'Mechanic is taking too long / Delayed response' },
+  { value: 'incorrect_details', label: 'Incorrect location or vehicle details entered' },
+  { value: 'other', label: 'Other (specify below)' },
+]
+
 export default function DriverRequestTrackingPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -49,14 +59,136 @@ export default function DriverRequestTrackingPage() {
   const [canceling, setCanceling] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [cancelReasonCategory, setCancelReasonCategory] = useState('')
 
   const mechanic = request?.mechanic
   const profileData = mechanic?.mechanic_profiles?.[0] || mechanic?.mechanic_profiles
   const serviceMode = profileData?.service_mode || 'mobile'
+
+  const [graceTimeLeft, setGraceTimeLeft] = useState(null)
+
+  useEffect(() => {
+    const isActive = ['accepted', 'en_route', 'arrived', 'in_progress'].includes(request?.status)
+    const isOffline = profileData && profileData.is_available === false && profileData.current_status
+
+    if (!isActive || !isOffline) {
+      setGraceTimeLeft(null)
+      return
+    }
+
+    const interval = setInterval(() => {
+      const offlineTime = new Date(profileData.current_status).getTime()
+      const diffMs = (offlineTime + 600000) - Date.now()
+      if (diffMs <= 0) {
+        setGraceTimeLeft(0)
+        clearInterval(interval)
+        
+        const cancelDueToOffline = async () => {
+          try {
+            await fetch('/api/requests/status', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                requestId: id,
+                newStatus: 'cancelled',
+                cancellationReason: "couldn't resolve"
+              })
+            })
+            toast.error("Dispatch automatically cancelled because the mechanic remained offline.")
+          } catch (e) {
+            console.error(e)
+          }
+        }
+        cancelDueToOffline()
+      } else {
+        setGraceTimeLeft(Math.max(0, Math.floor(diffMs / 1000)))
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [request?.status, profileData?.is_available, profileData?.current_status, id])
+
+  const [hasRated, setHasRated] = useState(false)
+  const [showRatingModal, setShowRatingModal] = useState(false)
+  const [rating, setRating] = useState(5)
+  const [review, setReview] = useState('')
+  const [submittingRating, setSubmittingRating] = useState(false)
+  const [reviews, setReviews] = useState([])
+
+  useEffect(() => {
+    if (!id) return
+    const supabase = createClient()
+    async function checkReview() {
+      const { data } = await supabase
+        .from('request_reviews')
+        .select('id')
+        .eq('request_id', id)
+        .maybeSingle()
+      if (data) {
+        setHasRated(true)
+      }
+    }
+    checkReview()
+  }, [id])
+
+  useEffect(() => {
+    if (request?.status === 'completed' && !hasRated) {
+      setShowRatingModal(true)
+    } else {
+      setShowRatingModal(false)
+    }
+  }, [request?.status, hasRated])
+
+  useEffect(() => {
+    if (!mechanic?.id) return
+    const supabase = createClient()
+    async function loadReviews() {
+      const { data } = await supabase
+        .from('request_reviews')
+        .select(`
+          id,
+          rating,
+          review,
+          created_at,
+          profiles:driver_id (
+            full_name
+          )
+        `)
+        .eq('mechanic_id', mechanic.id)
+        .order('created_at', { ascending: false })
+        .limit(3)
+      setReviews(data || [])
+    }
+    loadReviews()
+  }, [mechanic?.id, hasRated])
+
+  const submitRating = async () => {
+    setSubmittingRating(true)
+    try {
+      const response = await fetch('/api/requests/rate', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: id, rating, review }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Failed to save rating')
+
+      toast.success('Thank you for rating your mechanic!')
+      setHasRated(true)
+      setShowRatingModal(false)
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
   const isFixed = serviceMode === 'fixed_location'
 
   const incidentLocation = request?.incident_location
   const liveDistanceText = useMemo(() => {
+    if (!request || ['completed', 'cancelled'].includes(request.status)) return null
+
     const targetLocation = isFixed 
       ? profileData?.current_location 
       : mechanicLocation
@@ -68,7 +200,7 @@ export default function DriverRequestTrackingPage() {
     
     const distanceKm = calculateHaversineDistance(driverLat, driverLng, targetLat, targetLng)
     return formatDistance(distanceKm)
-  }, [incidentLocation, mechanicLocation, isFixed, profileData?.current_location])
+  }, [request?.status, incidentLocation, mechanicLocation, isFixed, profileData?.current_location])
 
   // Core orchestration logic handler for secure emergency dispatch cancellation
   async function handleCancelRequest() {
@@ -155,6 +287,11 @@ export default function DriverRequestTrackingPage() {
 
   return (
     <PageWrapper title="Live tracking" description="Track the dispatcher, assigned mechanic, and current lifecycle state.">
+      {graceTimeLeft !== null && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse">
+          ⚠️ Mechanic is offline. Grace period: {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s remaining to reconnect before auto-cancellation.
+        </div>
+      )}
       
       {/* ==================================================================== */}
       {/* MOBILE DISPLAY VIEWPORT LAYOUT                                       */}
@@ -177,6 +314,18 @@ export default function DriverRequestTrackingPage() {
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary animate-pulse">📡 Broadcast Pipeline Active</p>
                   <h2 className="mt-1 text-xl font-black leading-tight text-[#EFE8D4]">Searching for nearest mechanics...</h2>
                   <p className="text-xs text-[#A29A84] mt-1">Signals matching across your local district window.</p>
+                </>
+              ) : request.status === 'completed' ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">✅ Service Resolved</p>
+                  <h2 className="mt-1 text-2xl font-black leading-none text-emerald-400">Completed</h2>
+                  <p className="text-xs text-[#A29A84] mt-1">The rescue dispatch has been successfully completed.</p>
+                </>
+              ) : request.status === 'cancelled' ? (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-400">✕ Request Cancelled</p>
+                  <h2 className="mt-1 text-2xl font-black leading-none text-red-400">Cancelled</h2>
+                  <p className="text-xs text-[#A29A84] mt-1">This rescue request was cancelled.</p>
                 </>
               ) : request.status === 'arrived' ? (
                 <>
@@ -281,6 +430,21 @@ export default function DriverRequestTrackingPage() {
                   Flag Incident
                 </button>
               </div>
+
+              {reviews.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-slate-100 space-y-2 text-left">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Recent Customer Reviews</p>
+                  {reviews.map((rev) => (
+                    <div key={rev.id} className="text-xs border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between text-slate-500">
+                        <span className="font-semibold text-slate-800">{rev.profiles?.full_name || 'Driver'}</span>
+                        <span className="text-amber-500 font-mono">{'★'.repeat(rev.rating)}</span>
+                      </div>
+                      {rev.review && <p className="text-slate-600 italic mt-0.5 leading-relaxed">"{rev.review}"</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-50 border-t border-slate-100 p-3.5 flex items-center justify-between gap-3">
@@ -529,19 +693,42 @@ export default function DriverRequestTrackingPage() {
             <p className="text-xs text-slate-500 leading-relaxed">
               Please let us know if there is a reason for this cancellation. This helps us improve our dispatch matching.
             </p>
-            <Textarea
-              label="Reason"
-              id="cancel-reason"
-              rows={3}
-              placeholder="e.g. Vehicle started working, alternative help arrived..."
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
+            <Select
+              label="Select Cancellation Reason"
+              id="cancel-reason-category"
+              value={cancelReasonCategory}
+              onChange={(e) => {
+                const val = e.target.value
+                setCancelReasonCategory(val)
+                if (val !== 'other') {
+                  const opt = CANCEL_REASON_OPTIONS.find(o => o.value === val)
+                  setCancelReason(opt ? opt.label : '')
+                } else {
+                  setCancelReason('')
+                }
+              }}
+              options={[{ value: '', label: 'Select a cancellation reason...' }, ...CANCEL_REASON_OPTIONS]}
             />
+            
+            {(cancelReasonCategory === 'other' || cancelReasonCategory === '') && (
+              <Textarea
+                label="Custom Reason / Explanation"
+                id="cancel-reason"
+                rows={2}
+                placeholder="Please describe why you are cancelling..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
+              />
+            )}
             <div className="flex gap-2.5 justify-end">
               <Button 
                 variant="outline"
-                onClick={() => setShowCancelModal(false)}
+                onClick={() => {
+                  setShowCancelModal(false)
+                  setCancelReasonCategory('')
+                  setCancelReason('')
+                }}
                 className="h-10 text-xs px-4"
               >
                 Keep Request
@@ -549,10 +736,67 @@ export default function DriverRequestTrackingPage() {
               <Button 
                 variant="danger"
                 onClick={confirmCancelRequest}
-                disabled={canceling}
+                disabled={canceling || !cancelReasonCategory}
                 className="h-10 text-xs px-4"
               >
                 {canceling ? 'Cancelling...' : 'Confirm Cancel'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* RATING DIALOG MODAL */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative text-center">
+            <div className="flex justify-center">
+              <Avatar name={mechanic?.full_name || 'Mechanic'} src={mechanic?.avatar_url} size="xl" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Rescue Successful! 🎉</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Please take a moment to rate your experience with <strong>{mechanic?.full_name || 'your mechanic'}</strong>.
+              </p>
+            </div>
+
+            <div className="flex justify-center gap-2 text-4xl text-amber-500">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setRating(value)}
+                  className={`transition-transform hover:scale-110 active:scale-95 ${value <= rating ? 'text-amber-500' : 'text-slate-200'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            <Textarea
+              label="Optional Feedback"
+              id="rating-feedback"
+              rows={3}
+              placeholder="Tell us about your experience..."
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
+              className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8] text-left"
+            />
+
+            <div className="flex gap-2.5 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowRatingModal(false)}
+                className="h-10 text-xs px-4"
+              >
+                Skip
+              </Button>
+              <Button
+                onClick={submitRating}
+                disabled={submittingRating}
+                className="h-10 text-xs px-4"
+              >
+                {submittingRating ? 'Submitting...' : 'Submit Review'}
               </Button>
             </div>
           </Card>

@@ -54,24 +54,6 @@ export default async function DashboardLayout({ children }) {
 
   const isFullHeightPage = pathname?.includes('/ai') || pathname?.includes('/chat')
 
-  // let mainClass = ""
-  // if (isFullHeightPage) {
-  //   // Chat & Map screens: full viewport size, locked scrolling, simple padding-top matching fixed navbar height
-  //   mainClass = "flex-1 flex flex-col overflow-hidden pt-16 md:pt-[68px]"
-  // } else {
-  //   // Regular scrollable pages: scrollable viewport, clearing fixed navbar (68px) + standard margins
-  //   mainClass = "flex-1 flex flex-col overflow-y-auto px-4 pb-5 pt-16 md:px-6 md:py-6 md:pb-8 md:pt-[92px]"
-  // }
-
-  
-  // let mainClass = ""
-  // if (isFullHeightPage) {
-  //   // Chat & Map screens: full viewport size, locked scrolling, simple padding-top matching thin navbar
-  //   mainClass = "flex-1 flex flex-col overflow-hidden pt-16 md:pt-0"
-  // } else {
-  //   // Regular scrollable pages: scrollable viewport, no mobile top padding (delegated to child pages to avoid scroll gaps)
-  //   mainClass = "flex-1 flex flex-col overflow-y-auto px-4 pb-5 md:px-6 md:py-6 md:pb-8 md:pt-6"
-  // }
 
 let mainClass = ""
   
@@ -86,15 +68,17 @@ let mainClass = ""
 
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F6F2E7] text-[#1f1b10]">
-      <div className="flex flex-1 overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-[#F6F2E7] text-[#1f1b10]">
+      <div className="flex flex-1 min-h-full bg-[#F6F2E7]">
         <Sidebar />
 
-        <div className="flex-1 flex flex-col md:pl-64 min-w-0 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col md:pl-64 min-w-0 min-h-full bg-[#F6F2E7] overflow-hidden">
           <Navbar />
 
-          <main className={mainClass}>
-            {children}
+          <main className={`${mainClass} min-h-full bg-[#F6F2E7]`}>
+            <div className="flex-1 flex flex-col min-h-full bg-[#F6F2E7]">
+              {children}
+            </div>
           </main>
         </div>
       </div>

@@ -26,7 +26,9 @@ export function useRequestStatus(requestId) {
               business_name,
               location_label,
               service_mode,
-              current_location
+              current_location,
+              is_available,
+              current_status
             )
           )
         `)

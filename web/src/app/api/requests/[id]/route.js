@@ -30,7 +30,7 @@ async function fetchRequestDetails(serviceClient, requestId) {
     request.mechanic_id
       ? serviceClient
           .from('mechanic_profiles')
-          .select('rating_avg, rating_count, business_name, specializations, location_label, service_mode, current_location')
+          .select('rating_avg, rating_count, business_name, specializations, location_label, service_mode, current_location, is_available, current_status')
           .eq('user_id', request.mechanic_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -48,6 +48,8 @@ async function fetchRequestDetails(serviceClient, requestId) {
               location_label: mechanicProfileResult.data.location_label,
               service_mode: mechanicProfileResult.data.service_mode || 'mobile',
               current_location: mechanicProfileResult.data.current_location,
+              is_available: mechanicProfileResult.data.is_available,
+              current_status: mechanicProfileResult.data.current_status,
             }
           : null,
       }

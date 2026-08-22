@@ -85,13 +85,14 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
       type: NOTIFICATION_TYPE.NEW_REQUEST,
       title: 'New rescue request',
       body: `New ${serviceType} request ${mechanic.distance_km}km away — ${incidentAddress || 'location pinned'}`,
+      request_id: requestId,
     }))
 
-    const { error: notifError } = await serviceSupabase
-      .from('notifications')
-      .insert(notifications)
-
-    if (notifError) throw notifError
+    try {
+      await insertNotifications(serviceSupabase, notifications)
+    } catch (notifError) {
+      console.error('[BACKGROUND NOTIFICATIONS INSERT ERROR]:', notifError.message)
+    }
 
     // 5. Send email notifications (non-blocking, best-effort)
     nearbyMechanics.forEach((mechanic) => {
@@ -188,7 +189,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
     const mechanicProfilePromise = request.mechanic_id
       ? serviceSupabase
           .from('mechanic_profiles')
-          .select('rating_avg, rating_count, business_name, specializations, location_label')
+          .select('rating_avg, rating_count, business_name, specializations, location_label, is_available, current_status')
           .eq('user_id', request.mechanic_id)
           .maybeSingle()
       : Promise.resolve({ data: null })
@@ -205,6 +206,8 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             ? {
                 business_name: mechanicProfile.data.business_name,
                 location_label: mechanicProfile.data.location_label,
+                is_available: mechanicProfile.data.is_available,
+                current_status: mechanicProfile.data.current_status,
               }
             : null,
         }
@@ -394,14 +397,14 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       )
     }
 
-    // ── FIX 1: mechanic availability update — was unreachable (after early return) ──
+    // ── FIX 1: mechanic availability update ──
     if (newStatus === REQUEST_STATUS.ACCEPTED) {
       await serviceSupabase
         .from('mechanic_profiles')
-        .update({ is_available: false })
+        .update({ is_available: true, current_status: null })
         .eq('user_id', actorId)
         .then(({ error: availabilityError }) => {
-          if (availabilityError) console.warn('Failed to mark mechanic unavailable:', availabilityError)
+          if (availabilityError) console.warn('Failed to mark mechanic online:', availabilityError)
         })
     }
 
@@ -430,6 +433,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             type: notification.type,
             title: 'Request cancelled',
             body: 'The driver cancelled this rescue request.',
+            request_id: request.id,
           })
         } else if (request.driver_id && request.mechanic_id === actorId) {
           notifications.push({
@@ -437,6 +441,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             type: notification.type,
             title: 'Request cancelled',
             body: 'The assigned mechanic cancelled this rescue request.',
+            request_id: request.id,
           })
         } else if (actorRole === 'admin') {
           if (request.driver_id) {
@@ -445,6 +450,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
               type: notification.type,
               title: 'Request cancelled',
               body: 'An admin cancelled this rescue request.',
+              request_id: request.id,
             })
           }
           if (request.mechanic_id) {
@@ -453,6 +459,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
               type: notification.type,
               title: 'Request cancelled',
               body: 'An admin cancelled this rescue request.',
+              request_id: request.id,
             })
           }
         }
@@ -462,7 +469,30 @@ export async function updateRequestStatus(serviceSupabase, payload) {
           type: notification.type,
           title: 'Request update',
           body: notification.message,
+          request_id: request.id,
         })
+      }
+    }
+
+    if (newStatus === REQUEST_STATUS.COMPLETED) {
+      try {
+        const { data: admins } = await serviceSupabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin')
+        if (admins && admins.length > 0) {
+          admins.forEach(adm => {
+            notifications.push({
+              profile_id: adm.id,
+              type: NOTIFICATION_TYPE.SYSTEM,
+              title: 'Request Completed',
+              body: `Rescue request #${request.id.slice(0, 8)} was successfully completed by mechanic.`,
+              request_id: request.id,
+            })
+          })
+        }
+      } catch (adminFetchErr) {
+        console.warn('Failed to fetch admins for request completed notification:', adminFetchErr)
       }
     }
 
@@ -617,6 +647,18 @@ export async function submitRating(supabase, payload) {
       .eq('user_id', request.mechanic_id)
 
     if (updateError) throw updateError
+
+    try {
+      await insertNotifications(supabase, [{
+        profile_id: driverId,
+        type: NOTIFICATION_TYPE.SYSTEM,
+        title: 'Rating Submitted',
+        body: `Your review of ${rating} stars was successfully recorded. Thank you for your feedback!`,
+        request_id: requestId,
+      }])
+    } catch (e) {
+      console.warn('Failed to insert rating notification for driver:', e)
+    }
 
     return { success: true, newAvgRating: Math.round(avgRating * 100) / 100 }
   } catch (error) {

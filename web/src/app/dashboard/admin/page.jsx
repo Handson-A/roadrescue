@@ -272,6 +272,10 @@ export default function AdminDashboardPage() {
                   <span>Verified mechanics</span>
                   <span className="text-slate-900 font-bold">{stats?.verifiedMechanics ?? 0}</span>
                 </p>
+                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-emerald-50/30 px-4 py-2.5 text-slate-700">
+                  <span>Mechanics online</span>
+                  <span className="text-emerald-600 font-black">{stats?.activeMechanics ?? 0}</span>
+                </p>
                 <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
                   <span>Registered drivers</span>
                   <span className="text-slate-900 font-bold">{stats?.totalDrivers ?? 0}</span>

@@ -53,6 +53,12 @@ export default function RootLayout({
           <ToastProvider>
             <Toaster
               position="top-right"
+              containerStyle={{
+                top: '1rem',
+                right: '1rem',
+                position: 'fixed',
+                zIndex: 9999,
+              }}
               toastOptions={{
                 style: {
                   background: '#fff',

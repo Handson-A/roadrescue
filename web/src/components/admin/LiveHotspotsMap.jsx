@@ -26,6 +26,13 @@ const standbyMechanicIcon = new L.Icon({
   iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
 })
 
+// 🟡 YELLOW: Standby active units waiting for assignments
+const yellowMechanicIcon = new L.Icon({
+  ...baseLayout,
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+})
+
 // 🔴 RED: Distressed drivers stranded in the field
 const strandedDriverIcon = new L.Icon({
   ...baseLayout,
@@ -45,6 +52,36 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
   const [liveLocations, setLiveLocations] = useState({})
   const [liveIncidents, setLiveIncidents] = useState(activeIncidents)
   const [onlineMechanics, setOnlineMechanics] = useState({})
+  const [liveMechanics, setLiveMechanics] = useState(mechanics)
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setLiveMechanics(mechanics)
+    })
+  }, [mechanics])
+
+  useEffect(() => {
+    const { createClient } = require('@/lib/supabase/client')
+    const supabase = createClient()
+
+    const channel = supabase
+      .channel('admin-mechanic-profiles-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'mechanic_profiles' },
+        (payload) => {
+          const updated = payload.new
+          setLiveMechanics((prev) => 
+            prev.map((m) => m.user_id === updated.user_id ? { ...m, ...updated } : m)
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   // Keep liveIncidents synced with parent activeIncidents props
   useEffect(() => {
@@ -247,15 +284,15 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       })}
 
       {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
-      {mechanics?.map((m) => {
+      {liveMechanics?.map((m) => {
         const activeAssignment = liveIncidents.find(
           (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
         )
 
-        const isOnline = onlineMechanics[m.user_id] || m.is_available
+        const isOnline = m.is_available
 
-        // Only show if available (online) OR active in a dispatch
-        if (!isOnline && !activeAssignment) return null
+        // Only show if available (online)
+        if (!isOnline) return null
 
         const liveLoc = liveLocations[m.user_id]
         const mechCoords = liveLoc || extractCoords(m.current_location)
@@ -265,28 +302,34 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
           <Marker 
             key={`mech-marker-${m.user_id}`} // Flattened top-level key
             position={[mechCoords.lat, mechCoords.lng]} 
-            icon={activeAssignment ? dispatchedMechanicIcon : standbyMechanicIcon}
+            icon={activeAssignment ? dispatchedMechanicIcon : yellowMechanicIcon}
           >
             <Popup>
               <div className="p-1 min-w-[170px] font-sans">
                 <h4 className="font-black text-sm text-slate-900 m-0 flex items-center gap-1.5">
-                  <Wrench size={12} className={activeAssignment ? "text-emerald-500" : "text-blue-500"} /> 
+                  <Wrench size={12} className={activeAssignment ? "text-emerald-500" : "text-amber-500"} /> 
                   {m.business_name || 'Independent Specialist'}
                 </h4>
-                <p className="text-[11px] text-slate-500 mt-1 mb-0">
-                  Operator: {m.user?.full_name || m.profiles?.full_name || 'Vetted Specialist'}
+                <p className="text-[11px] text-slate-500 mt-1 mb-0 font-bold">
+                  Name: {m.user?.full_name || m.profiles?.full_name || 'Vetted Specialist'}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 mb-0 font-medium">
+                  Phone: {m.user?.phone || m.profiles?.phone || '—'}
+                </p>
+                <p className="text-[11px] text-emerald-600 mt-0.5 mb-0 font-black">
+                  Status: {activeAssignment ? 'Online / Dispatched' : 'Online / Ready'}
                 </p>
 
                 <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    activeAssignment ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    activeAssignment ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
-                    {activeAssignment ? 'Dispatched' : 'Standby Mode'}
+                    {activeAssignment ? 'Dispatched' : 'Online / Ready'}
                   </span>
                   {(m.user?.phone || m.profiles?.phone) && (
                     <a 
                       href={`tel:${m.user?.phone || m.profiles?.phone}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-amber-600 no-underline"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-emerald-600 no-underline"
                     >
                       <Phone size={10} /> Call Node
                     </a>

@@ -35,7 +35,10 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex w-[min(92vw,24rem)] flex-col gap-2 safe-bottom-padding">
+      <div
+        style={{ top: '1rem', right: '1rem', position: 'fixed', zIndex: 9999 }}
+        className="flex w-[min(92vw,24rem)] flex-col gap-2"
+      >
         {toasts.map((toastItem) => (
           <div
             key={toastItem.id}

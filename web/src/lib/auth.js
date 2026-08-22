@@ -31,6 +31,25 @@ export async function signIn({ email, password }) {
 // LOGOUT
 export async function signOut() {
   const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: activeJobs } = await supabase
+      .from('rescue_requests')
+      .select('id')
+      .eq('mechanic_id', user.id)
+      .in('status', ['accepted', 'en_route', 'arrived', 'in_progress'])
+      .limit(1)
+
+    const currentStatusVal = (activeJobs && activeJobs.length > 0) ? new Date().toISOString() : null
+
+    await supabase
+      .from('mechanic_profiles')
+      .update({ 
+        is_available: false, 
+        current_status: currentStatusVal 
+      })
+      .eq('user_id', user.id)
+  }
   const { error } = await supabase.auth.signOut()
   if (error) throw error
 }

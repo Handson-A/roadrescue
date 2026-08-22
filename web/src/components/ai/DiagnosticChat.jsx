@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Send, Zap, ChevronDown, Wrench } from 'lucide-react'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
+import { useAuth } from '@/hooks/useAuth'
 
 const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating', 'Check engine light']
 
 export default function DiagnosticChat({ onDiagnosisComplete }) {
+  const { user } = useAuth()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -14,6 +16,30 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const messageIdRef = useRef(0)
+
+  const storageKey = user?.id ? `roadrescue_ai_history_${user.id}` : null
+
+  useEffect(() => {
+    if (!storageKey) return
+    const stored = localStorage.getItem(storageKey)
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          setMessages(parsed)
+          const maxId = parsed.reduce((max, msg) => Math.max(max, msg.id || 0), 0)
+          messageIdRef.current = maxId
+        }
+      } catch (e) {
+        console.error('Failed to parse stored chat history', e)
+      }
+    }
+  }, [storageKey])
+
+  useEffect(() => {
+    if (!storageKey || messages.length === 0) return
+    localStorage.setItem(storageKey, JSON.stringify(messages))
+  }, [messages, storageKey])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
