@@ -64,7 +64,7 @@ export default function MechanicPage() {
 
       const { data: mechanicData, error: profileErr } = await supabase
         .from('mechanic_profiles')
-        .select('business_name, years_experience, is_available')
+        .select('business_name, years_experience, is_available, rating_avg, rating_count')
         .eq('user_id', currentUserId)
         .maybeSingle()
 
@@ -227,6 +227,10 @@ const { data: active, error: activeErr } = await supabase
                   </span>
                   <span>•</span>
                   <span>Experience: {mechProfile?.years_experience ?? '0'} Years Vetted</span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
+                    ★ {mechProfile?.rating_avg ? Number(mechProfile.rating_avg).toFixed(1) : '5.0'} ({mechProfile?.rating_count ?? 0} reviews)
+                  </span>
                 </div>
               </div>
             </div>
@@ -393,7 +397,7 @@ const { data: active, error: activeErr } = await supabase
               <div className="space-y-1">
                 <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Going offline removes your workshop profile from the active emergency network system. Drivers nearby will not be able to broadcast breakdown signals to your console.
+                  Going offline removes your workshop profile from the active emergency network system. You will need to be online to track broadcast breakdown signals to your terminal.
                 </p>
               </div>
             </div>

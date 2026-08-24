@@ -31,6 +31,7 @@ export default function MechanicAccountPage() {
   const [documents, setDocuments] = useState([])
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [pinningLocation, setPinningLocation] = useState(false)
+  const [reviews, setReviews] = useState([])
 
   // Unified application form schema state instance
   const [formData, setFormData] = useState({
@@ -113,6 +114,23 @@ export default function MechanicAccountPage() {
         console.warn('[DOCUMENTS FETCH FAULT]:', docsErr.message)
       }
 
+      // 6. Fetch reviews
+      const { data: reviewsData, error: reviewsErr } = await supabase
+        .from('request_reviews')
+        .select(`
+          id,
+          rating,
+          review,
+          created_at,
+          driver:profiles!request_reviews_driver_id_fkey (full_name)
+        `)
+        .eq('mechanic_id', currentUserId)
+        .order('created_at', { ascending: false })
+
+      if (reviewsErr) {
+        console.warn('[REVIEWS FETCH FAULT]:', reviewsErr.message)
+      }
+
       if (mounted && userIdRef.current) {
         const resolvePhoneNumber = (profileVal, userObj) => {
           const isValidPhone = (val) => {
@@ -136,6 +154,7 @@ export default function MechanicAccountPage() {
         setMechanicProfile(mechData || null)
         setCompletedRescuesCount(completedCount || 0)
         setDocuments(docsData || [])
+        setReviews(reviewsData || [])
 
         setFormData((prev) => ({
           ...prev,
@@ -560,8 +579,8 @@ export default function MechanicAccountPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><Award size={14} className="text-slate-400" /> Trust Scorecard</p>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-              {mechanicProfile?.average_rating ? `${Number(mechanicProfile.average_rating).toFixed(2)} / 5.0` : '5.0'}
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+              {mechanicProfile?.rating_avg ? `${Number(mechanicProfile.rating_avg).toFixed(1)} ★ (${mechanicProfile.rating_count ?? 0} reviews)` : '5.0 ★ (0 reviews)'}
             </p>
             <p className="mt-1 text-xs font-medium text-slate-500">Aggregated customer evaluation</p>
           </Card>
@@ -825,6 +844,41 @@ export default function MechanicAccountPage() {
               </div>
             )}
           </div>
+        </Card>
+
+        {/* ================= RECENT REVIEWS & FEEDBACK ================= */}
+        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+          <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2 mb-5">
+            <MessageSquare size={16} className="text-amber-400" /> Recent Reviews & Feedback
+          </h3>
+          {reviews.length === 0 ? (
+            <p className="text-xs font-medium text-slate-400 text-center py-6">No client reviews or feedback logged yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((r) => {
+                const driverName = r.driver?.full_name || 'Anonymous Driver'
+                const starsStr = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating)
+                return (
+                  <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50/40 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-500 font-bold text-xs tracking-wider">{starsStr}</span>
+                        <span className="text-[11px] font-bold text-slate-700">by {driverName}</span>
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-400">
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                    {r.review ? (
+                      <p className="mt-2 text-xs text-slate-600 font-medium leading-relaxed">{r.review}</p>
+                    ) : (
+                      <p className="mt-2 text-xs italic text-slate-400">No comment left.</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </Card>
 
         {/* ================= GATED SECURITY LOG VERIFICATION Snapshots ================= */}

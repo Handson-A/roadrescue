@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import useHideOnScroll from '@/hooks/useHideOnScroll'
-import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, X } from 'lucide-react'
+import { ArrowLeft, Bell, CircleHelp, LogOut, Menu, Search, ShieldCheck, X, Fuel } from 'lucide-react'
 import Link from 'next/link'
 
 import Avatar from '@/components/ui/Avatar'
@@ -75,6 +75,23 @@ export default function Navbar() {
   const firstName = profile?.full_name?.split(' ')?.[0] || 'member'
 
   const activeRescueCount = notifications.filter((n) => !n.is_read).length
+
+  const [showFuel, setShowFuel] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setShowFuel(localStorage.getItem('show_fuel_stations') === 'true')
+    }
+  }, [])
+
+  const handleToggleFuel = () => {
+    const nextVal = !showFuel
+    setShowFuel(nextVal)
+    localStorage.setItem('show_fuel_stations', nextVal ? 'true' : 'false')
+    window.dispatchEvent(new CustomEvent('toggle-fuel-stations', { detail: nextVal }))
+  }
+
+  const isTrackingPage = pathname?.includes('/request/') && role === 'driver'
 
   async function handleSignOut() {
     await signOut()
@@ -209,7 +226,22 @@ export default function Navbar() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {isTrackingPage && (
+                <button
+                  type="button"
+                  onClick={handleToggleFuel}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${
+                    showFuel
+                      ? 'bg-amber-500 text-white border-amber-400'
+                      : 'bg-white/10 text-[#EFE8D4] border-white/10 hover:bg-white/20'
+                  }`}
+                >
+                  <Fuel size={12} className={showFuel ? 'animate-pulse' : ''} />
+                  <span>{showFuel ? 'Fuel On' : 'Fuel Off'}</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setOpen((prev) => !prev)}
                 className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
@@ -307,6 +339,20 @@ export default function Navbar() {
 
         {/* Action Controls Anchor Group */}
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-3">
+          {isTrackingPage && (
+            <button
+              type="button"
+              onClick={handleToggleFuel}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 border ${
+                showFuel
+                  ? 'bg-amber-500 text-white border-amber-400'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Fuel size={14} className={showFuel ? 'animate-pulse' : ''} />
+              <span>{showFuel ? 'Fuel Stations' : 'Fuel Off'}</span>
+            </button>
+          )}
           
           {/* Global Search Bar (Exits early on tight tablet dimensions to guard padding rows) */}
           {isDashboardRoot && (

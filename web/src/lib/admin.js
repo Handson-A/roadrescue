@@ -275,7 +275,7 @@ export async function getAdminStats(serviceSupabase) {
         )
       `)
       .eq('verification_status', 'approved')
-      .not('current_location', 'is', null),
+      .eq('is_available', true),
     serviceSupabase
       .from('rescue_requests')
       .select(`
@@ -317,18 +317,26 @@ export async function getAdminStats(serviceSupabase) {
 // ============================================================================
 // 3. ALL RESCUE REQUESTS MANAGER (ADMIN MODULE)
 // ============================================================================
-export async function getAllRequests(serviceSupabase, { status, limit = 50, offset = 0 } = {}) {
+export async function getAllRequests(serviceSupabase, { status, flagged, limit = 50, offset = 0 } = {}) {
+  let selectStr = `
+    *,
+    driver:profiles!rescue_requests_driver_id_fkey (id, full_name, phone),
+    mechanic:profiles!rescue_requests_mechanic_id_fkey (id, full_name, phone)
+  `
+  
+  if (flagged) {
+    selectStr += `, issue_reports!inner(id, comment)`
+  } else {
+    selectStr += `, issue_reports(id, comment)`
+  }
+
   let query = serviceSupabase
     .from('rescue_requests')
-    .select(`
-      *,
-      driver:profiles!rescue_requests_driver_id_fkey (id, full_name, phone),
-      mechanic:profiles!rescue_requests_mechanic_id_fkey (id, full_name, phone)
-    `)
+    .select(selectStr)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (status) {
+  if (status && status !== 'flagged') {
     query = query.eq('status', status)
   }
 

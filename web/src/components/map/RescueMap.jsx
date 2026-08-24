@@ -91,7 +91,20 @@ export default function RescueMap({
   const [driverIcon, setDriverIcon] = useState(null)
   const [mechanicIcon, setMechanicIcon] = useState(null)
   const [strandedIcon, setStrandedIcon] = useState(null)
-  const [showFuelStations, setShowFuelStations] = useState(false)
+  const [showFuelStations, setShowFuelStations] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('show_fuel_stations') === 'true'
+    }
+    return false
+  })
+
+  useEffect(() => {
+    const handleToggle = (e) => {
+      setShowFuelStations(e.detail)
+    }
+    window.addEventListener('toggle-fuel-stations', handleToggle)
+    return () => window.removeEventListener('toggle-fuel-stations', handleToggle)
+  }, [])
 
   useEffect(() => {
     const L = require('leaflet')
@@ -201,22 +214,6 @@ export default function RescueMap({
 
   return (
     <div className="w-full h-full relative flex flex-col justify-between" style={{ minHeight: height }}>
-      {userRole === 'driver' && (
-        <div className="absolute top-4 right-4 z-[400] flex items-center">
-          <button
-            type="button"
-            onClick={() => setShowFuelStations(!showFuelStations)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-lg border backdrop-blur-md ${
-              showFuelStations
-                ? 'bg-amber-500/90 text-white border-amber-400 ring-2 ring-amber-500/20 hover:bg-amber-600/90'
-                : 'bg-white/80 text-slate-700 border-slate-200/80 hover:bg-white/95'
-            }`}
-          >
-            <Fuel size={14} className={showFuelStations ? 'animate-pulse' : ''} />
-            <span>{showFuelStations ? 'Fuel Stations' : 'Fuel Off'}</span>
-          </button>
-        </div>
-      )}
       <MapContainer
         center={mapCenter}
         zoom={14}

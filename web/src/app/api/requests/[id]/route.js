@@ -14,7 +14,7 @@ async function fetchRequestDetails(serviceClient, requestId) {
   if (requestError) throw requestError
   if (!request) return null
 
-  const [driverResult, mechanicResult, mechanicProfileResult] = await Promise.all([
+  const [driverResult, mechanicResult, mechanicProfileResult, reviewResult, reportsResult] = await Promise.all([
     serviceClient
       .from('profiles')
       .select('id, full_name, phone, avatar_url')
@@ -34,6 +34,15 @@ async function fetchRequestDetails(serviceClient, requestId) {
           .eq('user_id', request.mechanic_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    serviceClient
+      .from('request_reviews')
+      .select('rating, review')
+      .eq('request_id', requestId)
+      .maybeSingle(),
+    serviceClient
+      .from('issue_reports')
+      .select('*')
+      .eq('request_id', requestId)
   ])
 
   const mechanic = mechanicResult.data
@@ -55,7 +64,7 @@ async function fetchRequestDetails(serviceClient, requestId) {
       }
     : null
 
-  return formatRequestRow(request, {
+  const formatted = formatRequestRow(request, {
     driver: driverResult.data
       ? {
           id: driverResult.data.id,
@@ -66,6 +75,12 @@ async function fetchRequestDetails(serviceClient, requestId) {
       : null,
     assignedMechanic: mechanic,
   })
+
+  formatted.rating = reviewResult.data?.rating || null
+  formatted.review = reviewResult.data?.review || null
+  formatted.reports = reportsResult.data || []
+
+  return formatted
 }
 
 export async function GET(request, { params }) {
