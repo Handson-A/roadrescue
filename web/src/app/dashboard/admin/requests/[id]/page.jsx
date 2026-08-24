@@ -8,7 +8,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import { timeAgo } from '@/lib/utils'
-import { ArrowLeft, MapPin, User, HardHat, Calendar, Info, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, MapPin, User, HardHat, Calendar, Info, ShieldAlert, CheckCircle } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 
@@ -189,6 +189,80 @@ export default function AdminRequestDetailPage() {
                 )}
               </div>
             </Card>
+
+            {/* Quality & Feedback Section */}
+            {(request.rating || request.review || (request.reports && request.reports.length > 0)) ? (
+              <Card className="p-5 border-slate-200 bg-white space-y-4">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Quality & Feedback</h3>
+                </div>
+
+                {/* Star Rating and Written Feedback */}
+                {(request.rating || request.review) && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400 block">Driver Review Summary</span>
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-2">
+                      {request.rating && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-amber-500 text-xs font-bold tracking-wider">
+                            {'★'.repeat(request.rating) + '☆'.repeat(5 - request.rating)}
+                          </span>
+                          <span className="text-xs font-bold text-slate-700">({request.rating}.0 / 5.0 Rating)</span>
+                        </div>
+                      )}
+                      {request.review && (
+                        <p className="text-xs italic text-slate-600 font-medium leading-relaxed">
+                          &quot;{request.review}&quot;
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Driver-to-Mechanic and Mechanic-to-Driver report/flag status */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400 block">Safety & Conduct Flags</span>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-2.5">
+                    {request.reports && request.reports.length > 0 ? (
+                      request.reports.map((rep) => {
+                        const reporterRole = rep.reporter_id === request.driver_id ? 'Driver' : 'Mechanic'
+                        const targetRole = reporterRole === 'Driver' ? 'Mechanic' : 'Driver'
+                        
+                        // Humanize reason codes
+                        const reasonLabel = rep.reason_header === 'inappropriate_behavior' ? 'Inappropriate Behavior'
+                          : rep.reason_header === 'pricing_issue' ? 'Pricing/Payment Dispute'
+                          : rep.reason_header === 'delay' ? 'Excessive Delay'
+                          : rep.reason_header || 'Reported Incident'
+
+                        return (
+                          <div key={rep.id} className="text-xs border-l-2 border-red-500 pl-3 py-0.5 space-y-0.5">
+                            <p className="font-bold text-red-700">
+                              ⚠️ {reporterRole}-to-{targetRole} Report Filed: {reasonLabel}
+                            </p>
+                            <p className="text-slate-600 font-medium leading-relaxed">
+                              Comment: &quot;{rep.comment}&quot;
+                            </p>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                        <CheckCircle className="text-emerald-500 h-4 w-4" /> No flags logged
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-5 border-slate-200 bg-white">
+                <div className="border-b border-slate-100 pb-3 mb-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Quality & Feedback</h3>
+                </div>
+                <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                  <CheckCircle className="text-emerald-500 h-4 w-4" /> No ratings or incident flags logged for this request.
+                </p>
+              </Card>
+            )}
 
             {/* Workflow Pipeline Tracker */}
             {request.status !== 'cancelled' && (

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
+import { useEffect, useState, useMemo } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import { Wrench, Phone, AlertTriangle, User, ShieldCheck } from 'lucide-react'
 import L from 'leaflet'
 
@@ -19,11 +19,11 @@ const baseLayout = {
   shadowSize: [41, 41]
 }
 
-// 🔵 BLUE: Standby active units waiting for assignments
-const standbyMechanicIcon = new L.Icon({
+// 🔴 RED: Distressed drivers stranded in the field
+const strandedDriverIcon = new L.Icon({
   ...baseLayout,
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
 })
 
 // 🟡 YELLOW: Standby active units waiting for assignments
@@ -33,19 +33,25 @@ const yellowMechanicIcon = new L.Icon({
   iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
 })
 
-// 🔴 RED: Distressed drivers stranded in the field
-const strandedDriverIcon = new L.Icon({
-  ...baseLayout,
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-})
-
 // 🟢 GREEN: En-route field assets dispatched to an incident scene
 const dispatchedMechanicIcon = new L.Icon({
   ...baseLayout,
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
   iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
 })
+
+// Map Bounds Auto-Fit Component
+function FitBounds({ positions }) {
+  const mapHook = useMap()
+  useEffect(() => {
+    if (mapHook && positions.length > 0) {
+      const L = require('leaflet')
+      const bounds = L.latLngBounds(positions)
+      mapHook.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
+    }
+  }, [mapHook, positions])
+  return null
+}
 
 export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }) {
   const defaultPosition = [5.6037, -0.1870] // Accra Operations Baseline Hub Center Coordinates
@@ -54,9 +60,49 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
   const [onlineMechanics, setOnlineMechanics] = useState({})
   const [liveMechanics, setLiveMechanics] = useState(mechanics)
 
+  const allPositions = useMemo(() => {
+    const pos = []
+    
+    // Add driver locations
+    liveIncidents?.forEach((incident) => {
+      const coords = extractCoords(incident.incident_location) || 
+                     (incident.incident_lat && incident.incident_lng ? { lat: Number(incident.incident_lat), lng: Number(incident.incident_lng) } : null)
+      if (coords) pos.push([coords.lat, coords.lng])
+    })
+
+    // Add mechanic locations
+    liveMechanics?.forEach((m) => {
+      const isOnline = m.is_available === true || m.is_online === true || m.status === 'online'
+      if (isOnline) {
+        const liveLoc = liveLocations[m.user_id]
+        const coords = liveLoc || extractCoords(m.current_location)
+        if (coords) pos.push([coords.lat, coords.lng])
+      }
+    })
+
+    return pos
+  }, [liveIncidents, liveMechanics, liveLocations])
+
   useEffect(() => {
     Promise.resolve().then(() => {
-      setLiveMechanics(mechanics)
+      setLiveMechanics((prev) => {
+        const mergedMap = new Map()
+        
+        // Keep currently online mechanics from prev state to prevent disappearing on parent polling
+        prev.forEach((m) => {
+          const isOnline = m.is_available === true || m.is_online === true || m.status === 'online'
+          if (isOnline) {
+            mergedMap.set(m.user_id, m)
+          }
+        })
+
+        // Overlay/merge with newly polled mechanics list
+        mechanics.forEach((m) => {
+          mergedMap.set(m.user_id, m)
+        })
+
+        return Array.from(mergedMap.values())
+      })
     })
   }, [mechanics])
 
@@ -68,12 +114,38 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
       .channel('admin-mechanic-profiles-realtime')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'mechanic_profiles' },
-        (payload) => {
-          const updated = payload.new
-          setLiveMechanics((prev) => 
-            prev.map((m) => m.user_id === updated.user_id ? { ...m, ...updated } : m)
-          )
+        { event: '*', schema: 'public', table: 'mechanic_profiles' },
+        async (payload) => {
+          const updated = payload.new || payload.old
+          if (!updated) return
+
+          const isOnline = updated.is_available === true || updated.is_online === true || updated.status === 'online'
+
+          if (isOnline) {
+            // Fetch profile nested details
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name, phone, avatar_url')
+              .eq('id', updated.user_id)
+              .maybeSingle()
+
+            const newMech = {
+              ...updated,
+              profiles: profile
+            }
+
+            setLiveMechanics((prev) => {
+              const exists = prev.some((m) => m.user_id === updated.user_id)
+              if (exists) {
+                return prev.map((m) => m.user_id === updated.user_id ? newMech : m)
+              } else {
+                return [...prev, newMech]
+              }
+            })
+          } else {
+            // Remove offline mechanics immediately
+            setLiveMechanics((prev) => prev.filter((m) => m.user_id !== updated.user_id))
+          }
         }
       )
       .subscribe()
@@ -211,166 +283,170 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
     }
   }, [liveIncidents])
 
-  // Robust parsing utility targeting multiple relational database string patterns
-  const extractCoords = (locationField) => {
-    if (!locationField) return null
-    
-    // Pattern A: Standard raw array coordinates [longitude, latitude]
-    if (locationField.coordinates && locationField.coordinates.length === 2) {
-      return {
-        lng: locationField.coordinates[0],
-        lat: locationField.coordinates[1]
-      }
-    }
-    
-    // Pattern B: Flat geometry/location parameters mapping fallback
-    if (typeof locationField.lat === 'number' && typeof locationField.lng === 'number') {
-      return { lat: locationField.lat, lng: locationField.lng }
-    }
-    if (typeof locationField.latitude === 'number' && typeof locationField.longitude === 'number') {
-      return { lat: locationField.latitude, lng: locationField.longitude }
-    }
+  const isValidCoordinate = (lat, lng) => {
+    if (typeof lat !== 'number' || typeof lng !== 'number') return false
+    if (isNaN(lat) || isNaN(lng)) return false
+    if (lat === 0 && lng === 0) return false
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false
+    return true
+  }
 
+  // Robust parsing utility targeting multiple relational database string patterns
+  const extractCoords = (obj) => {
+    if (!obj) return null
+    
+    // If it's a coordinate array directly [lng, lat]
+    if (obj.coordinates && Array.isArray(obj.coordinates) && obj.coordinates.length === 2) {
+      const lat = Number(obj.coordinates[1])
+      const lng = Number(obj.coordinates[0])
+      if (isValidCoordinate(lat, lng)) return { lat, lng }
+    }
+    
+    // Otherwise check properties of the object itself
+    const lat = Number(obj.latitude || obj.lat || obj.incident_lat || obj.current_location?.coordinates?.[1] || obj.current_location?.lat || obj.incident_location?.coordinates?.[1] || obj.incident_location?.lat)
+    const lng = Number(obj.longitude || obj.lng || obj.incident_lng || obj.current_location?.coordinates?.[0] || obj.current_location?.lng || obj.incident_location?.coordinates?.[0] || obj.incident_location?.lng)
+
+    if (isValidCoordinate(lat, lng)) {
+      return { lat, lng }
+    }
     return null
   }
 
   return (
-  <div className="w-full h-full min-h-[30rem] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 z-10 relative">
-    <MapContainer 
-      center={defaultPosition} 
-      zoom={12} 
-      scrollWheelZoom={true}
-      className="w-full h-full min-h-[30rem]"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="w-full h-full min-h-[30rem] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 z-10 relative">
+      <MapContainer 
+        center={defaultPosition} 
+        zoom={12} 
+        scrollWheelZoom={true}
+        className="w-full h-full min-h-[30rem]"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      {/* ======================= LAYER 1: STRANDED DRIVERS & SECTOR INCIDENTS ======================= */}
-      {liveIncidents?.map((incident) => {
-        const driverCoords = extractCoords(incident.incident_location) || 
-                             (incident.incident_lat && incident.incident_lng ? { lat: Number(incident.incident_lat), lng: Number(incident.incident_lng) } : null)
-        
-        if (!driverCoords) return null
+        {/* Dynamic map auto-bounds fit component */}
+        <FitBounds positions={allPositions} />
 
-        return (
-          <Marker 
-            key={`incident-${incident.id}`} 
-            position={[driverCoords.lat, driverCoords.lng]} 
-            icon={strandedDriverIcon}
-          >
-            <Popup>
-              <div className="p-1 min-w-[170px] font-sans">
-                <h4 className="font-black text-sm text-red-600 m-0 flex items-center gap-1.5 uppercase tracking-wide">
-                  <AlertTriangle size={13} /> Breakdown Alert
-                </h4>
-                <p className="font-bold text-slate-800 text-xs mt-1.5 mb-0 capitalize">
-                  {incident.service_type?.replace('_', ' ')}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-0.5 mb-0 leading-normal">
-                  {incident.problem_description || 'Awaiting structural relief vectors.'}
-                </p>
-                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-                  <Badge variant={incident.status} label={incident.status} />
-                  <span className="text-[10px] font-mono text-slate-400">
-                    ID: ...{incident.id?.slice(-4)}
-                  </span>
+        {/* ======================= LAYER 1: STRANDED DRIVERS & SECTOR INCIDENTS ======================= */}
+        {liveIncidents?.map((incident) => {
+          const driverCoords = extractCoords(incident.incident_location) || 
+                               (incident.incident_lat && incident.incident_lng ? { lat: Number(incident.incident_lat), lng: Number(incident.incident_lng) } : null)
+          
+          if (!driverCoords) return null
+
+          return (
+            <Marker 
+              key={`incident-${incident.id}`} 
+              position={[driverCoords.lat, driverCoords.lng]} 
+              icon={strandedDriverIcon}
+            >
+              <Popup>
+                <div className="p-1 min-w-[170px] font-sans">
+                  <h4 className="font-black text-sm text-red-600 m-0 flex items-center gap-1.5 uppercase tracking-wide">
+                    <AlertTriangle size={13} /> Breakdown Alert
+                  </h4>
+                  <p className="font-bold text-slate-800 text-xs mt-1.5 mb-0 capitalize">
+                    {incident.service_type?.replace('_', ' ')}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5 mb-0 leading-normal">
+                    {incident.problem_description || 'Awaiting structural relief vectors.'}
+                  </p>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <Badge variant={incident.status} label={incident.status} />
+                    <span className="text-[10px] font-mono text-slate-400">
+                      ID: ...{incident.id?.slice(-4)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Popup>
-          </Marker>
-        )
-      })}
+              </Popup>
+            </Marker>
+          )
+        })}
 
-      {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
-      {liveMechanics?.map((m) => {
-        const activeAssignment = liveIncidents.find(
-          (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
-        )
+        {/* ======================= LAYER 2: FIELD SERVICE MECHANICS (FLATTENED) ======================= */}
+        {liveMechanics?.map((m) => {
+          const activeAssignment = liveIncidents.find(
+            (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
+          )
 
-        const isOnline = m.is_available
+          const isOnline = m.is_available === true || m.is_online === true || m.status === 'online'
 
-        // Only show if available (online)
-        if (!isOnline) return null
+          // Only show if available (online)
+          if (!isOnline) return null
 
-        const liveLoc = liveLocations[m.user_id]
-        const mechCoords = liveLoc || extractCoords(m.current_location)
-        if (!mechCoords) return null
+          const liveLoc = liveLocations[m.user_id]
+          const mechCoords = liveLoc || extractCoords(m.current_location)
+          if (!mechCoords) return null
 
-        return (
-          <Marker 
-            key={`mech-marker-${m.user_id}`} // Flattened top-level key
-            position={[mechCoords.lat, mechCoords.lng]} 
-            icon={activeAssignment ? dispatchedMechanicIcon : yellowMechanicIcon}
-          >
-            <Popup>
-              <div className="p-1 min-w-[170px] font-sans">
-                <h4 className="font-black text-sm text-slate-900 m-0 flex items-center gap-1.5">
-                  <Wrench size={12} className={activeAssignment ? "text-emerald-500" : "text-amber-500"} /> 
-                  {m.business_name || 'Independent Specialist'}
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-1 mb-0 font-bold">
-                  Name: {m.user?.full_name || m.profiles?.full_name || 'Vetted Specialist'}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-0.5 mb-0 font-medium">
-                  Phone: {m.user?.phone || m.profiles?.phone || '—'}
-                </p>
-                <p className="text-[11px] text-emerald-600 mt-0.5 mb-0 font-black">
-                  Status: {activeAssignment ? 'Online / Dispatched' : 'Online / Ready'}
-                </p>
+          return (
+            <Marker 
+              key={`mech-marker-${m.user_id}`} 
+              position={[mechCoords.lat, mechCoords.lng]} 
+              icon={activeAssignment ? dispatchedMechanicIcon : yellowMechanicIcon}
+            >
+              <Popup>
+                <div className="p-1.5 min-w-[190px] font-sans text-xs">
+                  <h4 className="font-black text-sm text-slate-900 m-0 flex items-center gap-1.5 uppercase">
+                    <Wrench size={13} className={activeAssignment ? "text-emerald-500" : "text-amber-500"} /> 
+                    {m.business_name || 'Independent Specialist'}
+                  </h4>
+                  <div className="mt-2 space-y-1 text-slate-600 font-medium">
+                    <p className="m-0"><strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Name</strong> {m.user?.full_name || m.profiles?.full_name || 'Vetted Specialist'}</p>
+                    <p className="m-0"><strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Phone</strong> {m.user?.phone || m.profiles?.phone || '—'}</p>
+                    <p className="m-0">
+                      <strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Live Status</strong>
+                      {activeAssignment ? '🟡 In Active Rescue' : '🟢 Online & Available'}
+                    </p>
+                    <p className="m-0"><strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Last Located</strong> {m.updated_at ? new Date(m.updated_at).toLocaleTimeString() : 'Just now'}</p>
+                  </div>
 
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    activeAssignment ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                    {activeAssignment ? 'Dispatched' : 'Online / Ready'}
-                  </span>
-                  {(m.user?.phone || m.profiles?.phone) && (
-                    <a 
-                      href={`tel:${m.user?.phone || m.profiles?.phone}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-slate-800 hover:text-emerald-600 no-underline"
-                    >
-                      <Phone size={10} /> Call Node
-                    </a>
-                  )}
+                  <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                    {(m.user?.phone || m.profiles?.phone) && (
+                      <a 
+                        href={`tel:${m.user?.phone || m.profiles?.phone}`}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-700 no-underline"
+                      >
+                        <Phone size={10} /> Call Mechanic
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Popup>
-          </Marker>
-        )
-      })}
+              </Popup>
+            </Marker>
+          )
+        })}
 
-      {/* ======================= LAYER 3: ROUTING VECTOR PASSES (SEPARATE FLATTENED STREAM) ======================= */}
-      {mechanics?.map((m) => {
-        const liveLoc = liveLocations[m.user_id]
-        const mechCoords = liveLoc || extractCoords(m.current_location)
-        if (!mechCoords) return null
+        {/* ======================= LAYER 3: ROUTING VECTOR PASSES (SEPARATE FLATTENED STREAM) ======================= */}
+        {mechanics?.map((m) => {
+          const liveLoc = liveLocations[m.user_id]
+          const mechCoords = liveLoc || extractCoords(m.current_location)
+          if (!mechCoords) return null
 
-        const activeAssignment = liveIncidents.find(
-          (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
-        )
-        if (!activeAssignment) return null
+          const activeAssignment = liveIncidents.find(
+            (inc) => inc.mechanic_id === m.user_id && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(inc.status)
+          )
+          if (!activeAssignment) return null
 
-        const driverCoords = extractCoords(activeAssignment.incident_location) || 
-                             (activeAssignment.incident_lat && activeAssignment.incident_lng ? { lat: Number(activeAssignment.incident_lat), lng: Number(activeAssignment.incident_lng) } : null)
-        
-        if (!driverCoords) return null
+          const driverCoords = extractCoords(activeAssignment.incident_location) || 
+                               (activeAssignment.incident_lat && activeAssignment.incident_lng ? { lat: Number(activeAssignment.incident_lat), lng: Number(activeAssignment.incident_lng) } : null)
+          
+          if (!driverCoords) return null
 
-        return (
-          <Polyline 
-            key={`route-trail-${m.user_id}`} // Clean standalone sibling entry
-            positions={[
-              [mechCoords.lat, mechCoords.lng],
-              [driverCoords.lat, driverCoords.lng]
-            ]} 
-            color="#10b981" 
-            weight={3}
-            dashArray="6, 10" 
-          />
-        )
-      })}
-    </MapContainer>
-  </div>
-);
+          return (
+            <Polyline 
+              key={`route-trail-${m.user_id}`} 
+              positions={[
+                [mechCoords.lat, mechCoords.lng],
+                [driverCoords.lat, driverCoords.lng]
+              ]} 
+              color="#10b981" 
+              weight={3}
+              dashArray="6, 10" 
+            />
+          )
+        })}
+      </MapContainer>
+    </div>
+  )
 }

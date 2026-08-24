@@ -217,7 +217,7 @@ export default function Sidebar() {
               <div className="space-y-1">
                 <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
                 <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Going offline removes your workshop profile from active emergency network nodes. Drivers nearby will not be able to broadcast breakdown signals to your console.
+                  Going offline removes your workshop profile from the active emergency network system. You will need to be online to track broadcast breakdown signals to your terminal.
                 </p>
               </div>
             </div>

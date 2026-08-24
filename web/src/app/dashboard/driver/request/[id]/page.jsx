@@ -94,7 +94,7 @@ export default function DriverRequestTrackingPage() {
                 cancellationReason: "couldn't resolve"
               })
             })
-            toast.error("Dispatch automatically cancelled because the mechanic remained offline.")
+            toast.error("Dispatch automatically cancelled due to mechanic's inactivity.")
           } catch (e) {
             console.error(e)
           }

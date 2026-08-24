@@ -30,29 +30,49 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url)
     const role = searchParams.get('role') || null
-    const limit = parseInt(searchParams.get('limit') || '50', 10)
+    const limit = parseInt(searchParams.get('limit') || '1000', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
 
     // Build query explicitly through the service client to bypass driver/mechanic profile RLS blocks
     let query = serviceSupabase
       .from('profiles')
-      .select('*')
+      .select(`
+        *,
+        mechanic_profiles(
+          business_name,
+          rating_avg,
+          years_experience,
+          specializations,
+          verification_status
+        ),
+        driver_profiles(
+          vehicle_make,
+          vehicle_model,
+          vehicle_color,
+          vehicle_year,
+          vehicle_plate,
+          emergency_contact_name,
+          emergency_contact_phone
+        )
+      `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
     // Apply strict filtering parameters
     if (role) {
-      // If a single target role classification is selected, match it exactly
       query = query.eq('role', role)
-    } else {
-      // CRITICAL GUARD: Filter out all global admin entries to keep this dashboard view clean
-      query = query.neq('role', 'admin')
     }
 
     const { data: users, error: dbError } = await query
     if (dbError) throw dbError
 
-    return NextResponse.json({ users: users || [] }, { status: 200 })
+    const mapped = (users || []).map(u => ({
+      ...u,
+      mechanic_profile: u.mechanic_profiles?.[0] || u.mechanic_profiles || null,
+      driver_profile: u.driver_profiles?.[0] || u.driver_profiles || null
+    }))
+
+    return NextResponse.json({ users: mapped }, { status: 200 })
 
   } catch (err) {
     console.error('[SERVER ROUTE FAULT] GET /api/admin/users failed:', err)
