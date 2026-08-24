@@ -28,11 +28,13 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status') || null
+    const flagged = searchParams.get('flagged') === 'true' || status === 'flagged'
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
     const requests = await getAllRequests(serviceSupabase, {
       status,
+      flagged,
       limit,
       offset,
     })

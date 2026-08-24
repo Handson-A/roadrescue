@@ -47,6 +47,7 @@ export default function AdminRequestsPage() {
     
     switch (status) {
       case 'all': return 'bg-slate-900 text-white border-slate-900 shadow-sm'
+      case 'flagged': return 'bg-purple-600 text-white border-purple-600 shadow-sm shadow-purple-600/10'
       case 'pending': return 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-500/10'
       case 'accepted': case 'en_route': case 'arrived': case 'in_progress': 
         return 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/10'
@@ -65,7 +66,7 @@ export default function AdminRequestsPage() {
         
         {/* ================= FILTER CHIPS BAR SCROLLER ================= */}
         <div className="flex flex-wrap gap-2 border-b border-slate-200/60 pb-5">
-          {['all', 'pending', 'accepted', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled'].map((status) => (
+          {['all', 'flagged', 'pending', 'accepted', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}

@@ -32,14 +32,23 @@ export default function MechanicHistoryPage() {
           problem_description,
           completed_at,
           created_at,
-          driver:driver_id (id, full_name)
+          driver:driver_id (id, full_name),
+          request_reviews(
+            rating,
+            review
+          )
         `)
         .eq('mechanic_id', user.id)
         .eq('status', 'completed')
         .order('completed_at', { ascending: false })
 
       if (!error && mounted) {
-        setJobs(data || [])
+        const mappedJobs = (data || []).map(j => ({
+          ...j,
+          driver_rating: j.request_reviews?.[0]?.rating || j.request_reviews?.rating || null,
+          driver_review: j.request_reviews?.[0]?.review || j.request_reviews?.review || null
+        }))
+        setJobs(mappedJobs)
       }
       if (mounted) setLoading(false)
     }
@@ -51,8 +60,9 @@ export default function MechanicHistoryPage() {
   }, [user?.id])
 
   // Compute stats safely
-  const avgRating = jobs.length > 0
-    ? (jobs.reduce((sum, j) => sum + (j.driver_rating || 0), 0) / jobs.length).toFixed(1)
+  const ratedJobs = jobs.filter(j => typeof j.driver_rating === 'number' && j.driver_rating > 0)
+  const avgRating = ratedJobs.length > 0
+    ? (ratedJobs.reduce((sum, j) => sum + j.driver_rating, 0) / ratedJobs.length).toFixed(1)
     : '0.0'
 
   const currentMonthJobs = jobs.filter((j) => {
@@ -85,7 +95,9 @@ export default function MechanicHistoryPage() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Average Rating</span>
               <Star size={16} className="text-primary fill-primary" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{avgRating} <span className="text-sm font-bold text-slate-400">/ 5.0</span></p>
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+              {avgRating} ★ ({ratedJobs.length} reviews)
+            </p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Driver feedback satisfaction index</p>
           </Card>
 
