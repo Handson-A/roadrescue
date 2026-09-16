@@ -178,6 +178,8 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
         <MapContainer
           center={mapCenter}
           zoom={14}
+          maxZoom={19}
+          minZoom={3}
           style={{ height: '300px', width: '100%' }}
           className="rounded-[1.25rem] border border-slate-200"
           scrollWheelZoom={true}
@@ -185,6 +187,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
           />
           {(lat && lng && customIcon) && (
             <Marker position={[Number(lat), Number(lng)]} icon={customIcon} />

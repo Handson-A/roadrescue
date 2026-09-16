@@ -522,16 +522,16 @@ export default function MechanicAccountPage() {
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
 
         {/* ================= HERO IDENTITY INTERFACE ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm relative overflow-hidden">
+        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm relative overflow-hidden">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-start sm:items-center gap-4 min-w-0 flex-1">
               
               <div className="relative group cursor-pointer shrink-0" onClick={() => fileInputRef.current?.click()}>
-                <div className="h-20 w-20 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shadow-inner">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shadow-inner">
                   {formData.avatarUrl ? (
                     <img src={formData.avatarUrl} alt="Avatar profile" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="h-full w-full bg-amber-400 text-slate-950 font-black flex items-center justify-center text-xl tracking-tight">
+                    <div className="h-full w-full bg-amber-400 text-slate-950 font-black flex items-center justify-center text-lg sm:text-xl tracking-tight">
                       {getUserInitials()}
                     </div>
                   )}
@@ -546,20 +546,24 @@ export default function MechanicAccountPage() {
                 <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" disabled={uploadingAvatar} />
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {isEditing ? (
                   <div className="space-y-1.5">
                     <Input 
                       value={formData.fullName} 
                       onChange={(e) => handleChange('fullName', e.target.value)}
-                      className="text-xl font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 outline-none focus:border-amber-400 transition-colors" 
+                      className="text-lg sm:text-xl font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 outline-none focus:border-amber-400 transition-colors" 
                     />
                   </div>
                 ) : (
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight truncate">{formData.fullName || 'Service Provider'}</h2>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-words">
+                    {formData.fullName || 'Service Provider'}
+                  </h2>
                 )}
-                <p className="text-sm font-semibold text-slate-500 mt-0.5 truncate">{formData.businessName || 'Independent Recovery Expert'}</p>
-                <div className="mt-2.5 flex items-center gap-2">
+                <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5 break-words">
+                  {formData.businessName || 'Independent Recovery Expert'}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge label="Profile Active" variant="success" />
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${formData.availability ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
                     {formData.availability ? 'Online' : 'Offline'}
@@ -568,15 +572,15 @@ export default function MechanicAccountPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
               {!isEditing ? (
-                <button onClick={() => setIsEditing(true)} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-black uppercase tracking-wider text-slate-800 shadow-xs hover:bg-slate-50 transition-all active:scale-98">
+                <button onClick={() => setIsEditing(true)} className="rounded-xl border border-slate-200 bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black uppercase tracking-wider text-slate-800 shadow-xs hover:bg-slate-50 transition-all active:scale-98">
                   Edit Parameters
                 </button>
               ) : (
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider border-slate-200">Cancel</Button>
-                  <Button loading={loading} onClick={handleSave} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-xs">Save Configuration</Button>
+                  <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold uppercase tracking-wider border-slate-200">Cancel</Button>
+                  <Button loading={loading} onClick={handleSave} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-xs">Save</Button>
                 </div>
               )}
             </div>
@@ -584,35 +588,36 @@ export default function MechanicAccountPage() {
         </Card>
 
         {/* ================= TRUST METRICS LEDGER ================= */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+          <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><Award size={14} className="text-slate-400" /> Trust Scorecard</p>
-            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-              <Star size={18} className="text-amber-500 fill-amber-500" />
-              <span>{mechanicProfile?.rating_avg ? `${Number(mechanicProfile.rating_avg).toFixed(1)} (${mechanicProfile.rating_count ?? 0} reviews)` : '5.0 (0 reviews)'}</span>
+            <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-1.5 flex-wrap">
+              <Star size={18} className="text-amber-500 fill-amber-500 shrink-0 self-center" />
+              <span>{mechanicProfile?.rating_avg ? Number(mechanicProfile.rating_avg).toFixed(1) : '5.0'}</span>
+              <span className="text-xs font-semibold text-slate-400 font-normal">({mechanicProfile?.rating_count ?? 0} reviews)</span>
             </p>
             <p className="mt-1 text-xs font-medium text-slate-500">Aggregated customer evaluation</p>
           </Card>
 
-          <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+          <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><CheckCircle2 size={14} className="text-slate-400" /> Job Completions</p>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{completedRescuesCount}</p>
+            <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{completedRescuesCount}</p>
             <p className="mt-1 text-xs font-medium text-slate-500">Successful corridor rescue logs</p>
           </Card>
 
-          <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+          <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><Clock size={14} className="text-slate-400" /> Terminal Tenure</p>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
+            <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {mechanicProfile?.created_at ? new Date(mechanicProfile.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'June 2026'}
             </p>
-            <p className="mt-1 text-xs font-medium text-slate-500">Account registrated</p>
+            <p className="mt-1 text-xs font-medium text-slate-500">Account registered</p>
           </Card>
         </div>
 
         {/* ================= WORKPLACE OPTIONS ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs relative">
-          <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2 mb-5">
-            <Building2 size={16} className="text-amber-400" /> Workplace Parameters
+        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs relative">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-5">
+            <Building2 size={15} className="text-amber-500" /> Workplace Parameters
           </h3>
 
           {isEditing ? (
@@ -695,19 +700,19 @@ export default function MechanicAccountPage() {
             <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Service Area Node</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><MapPin size={14} className="text-slate-400" /> {formData.serviceArea || 'Not configured'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words"><MapPin size={14} className="text-slate-400 shrink-0" /> {formData.serviceArea || 'Not configured'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Operational Range</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{formData.serviceRadius ? `${formData.serviceRadius} km deployment radius` : 'Not configured'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 break-words">{formData.serviceRadius ? `${formData.serviceRadius} km deployment radius` : 'Not configured'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Base / Shop Address</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{formData.baseLocationLabel || 'Not specified'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 break-words">{formData.baseLocationLabel || 'Not specified'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Base GPS Coordinates</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800 font-mono">
+                <p className="mt-1 text-sm font-semibold text-slate-800 font-mono break-all">
                   {mechanicProfile?.base_location 
                     ? `${normalizeGeoPoint(mechanicProfile.base_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.base_location)[1].toFixed(6)}` 
                     : 'Not pinned'}
@@ -715,21 +720,21 @@ export default function MechanicAccountPage() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Offline Map Visibility</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
+                <p className="mt-1 text-sm font-semibold text-slate-800 break-words">
                   {formData.showBaseLocationOffline ? 'Public (Visible when offline)' : 'Hidden when offline'}
                 </p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Skills & Specialties</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><Wrench size={14} className="text-slate-400" /> {formData.specializations || 'Not specified'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words"><Wrench size={14} className="text-slate-400 shrink-0" /> {formData.specializations || 'Not specified'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Experience Depth</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{formData.yearsExperience ? `${formData.yearsExperience} Years Vetted Professional` : 'Not documented'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 break-words">{formData.yearsExperience ? `${formData.yearsExperience} Years Vetted Professional` : 'Not documented'}</p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Service Mode</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800 capitalize">
+                <p className="mt-1 text-sm font-semibold text-slate-800 capitalize break-words">
                   {formData.serviceMode === 'fixed_location' 
                     ? 'Fixed Location (Shop-Based)' 
                     : formData.serviceMode === 'hybrid' 
@@ -742,9 +747,9 @@ export default function MechanicAccountPage() {
         </Card>
 
         {/* ================= APPLICATION ENVIRONMENT OPTION SECTIONS ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs relative">
-          <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2 mb-5">
-            <Sliders size={16} className="text-amber-400" /> App Preferences
+        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs relative">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-5">
+            <Sliders size={15} className="text-amber-500" /> App Preferences
           </h3>
 
           <div className="space-y-5">
@@ -796,10 +801,10 @@ export default function MechanicAccountPage() {
         </Card>
 
         {/* ================= IDENTITY & CLEARANCE CREDENTIALS ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <FileText size={16} className="text-amber-500" /> Identity & Clearance Credentials
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <FileText size={15} className="text-amber-500" /> Identity & Clearance Credentials
             </h3>
             <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border ${
               mechanicProfile?.verification_status === 'approved' || mechanicProfile?.verification_status === 'verified'
@@ -822,7 +827,7 @@ export default function MechanicAccountPage() {
 
           <div className="space-y-4">
             {/* Upload Selector */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 disabled={uploadingDoc}
@@ -851,12 +856,12 @@ export default function MechanicAccountPage() {
             {documents.length > 0 ? (
               <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-slate-100 text-slate-500">
+                  <div key={doc.id} className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-slate-100 text-slate-500 shrink-0">
                         <FileText size={16} />
                       </span>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-slate-700 truncate">{doc.document_name}</p>
                         <p className="text-[9px] text-slate-400 font-medium mt-0.5">
                           Uploaded {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : '—'}
@@ -866,7 +871,7 @@ export default function MechanicAccountPage() {
                     <button
                       type="button"
                       onClick={() => handleViewDocument(doc.file_url)}
-                      className="inline-flex h-7 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all"
+                      className="inline-flex h-7 shrink-0 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-all"
                     >
                       View
                     </button>
@@ -885,9 +890,9 @@ export default function MechanicAccountPage() {
         </Card>
 
         {/* ================= RECENT REVIEWS & FEEDBACK ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-          <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2 mb-5">
-            <MessageSquare size={16} className="text-amber-400" /> Recent Reviews & Feedback
+        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-5">
+            <MessageSquare size={15} className="text-amber-500" /> Recent Reviews & Feedback
           </h3>
           {reviews.length === 0 ? (
             <p className="text-xs font-medium text-slate-400 text-center py-6">No client reviews or feedback logged yet.</p>
@@ -897,7 +902,7 @@ export default function MechanicAccountPage() {
                 const driverName = r.driver?.full_name || 'Anonymous Driver'
                 return (
                   <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50/40 p-4">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-0.5">
                           {[...Array(5)].map((_, i) => (
@@ -915,7 +920,7 @@ export default function MechanicAccountPage() {
                       </span>
                     </div>
                     {r.review ? (
-                      <p className="mt-2 text-xs text-slate-600 font-medium leading-relaxed">{r.review}</p>
+                      <p className="mt-2 text-xs text-slate-600 font-medium leading-relaxed break-words">{r.review}</p>
                     ) : (
                       <p className="mt-2 text-xs italic text-slate-400">No comment left.</p>
                     )}
@@ -927,10 +932,10 @@ export default function MechanicAccountPage() {
         </Card>
 
         {/* ================= GATED SECURITY LOG VERIFICATION Snapshots ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <ShieldAlert size={16} className="text-amber-500" /> Gated System Records
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <ShieldAlert size={15} className="text-amber-500" /> Gated System Records
             </h3>
             <span className="text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200/40 font-bold uppercase tracking-wider">Locked</span>
           </div>
@@ -938,7 +943,7 @@ export default function MechanicAccountPage() {
           <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Secure Core Account Email</span>
-              <p className="mt-1 text-sm font-semibold text-slate-400 flex items-center gap-1.5"><Mail size={14} /> {formData.email || '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-400 flex items-center gap-1.5 break-all"><Mail size={14} className="shrink-0" /> {formData.email || '—'}</p>
             </div>
 
             <div>
@@ -954,7 +959,7 @@ export default function MechanicAccountPage() {
                   )}
                 </div>
               ) : (
-                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><Phone size={14} /> {formData.phone || 'No phone registered'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words"><Phone size={14} className="shrink-0" /> {formData.phone || 'No phone registered'}</p>
               )}
             </div>
 
@@ -971,18 +976,18 @@ export default function MechanicAccountPage() {
                   )}
                 </div>
               ) : (
-                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><Phone size={14} className="text-slate-400" /> {formData.secondaryPhone || 'Not set'}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words"><Phone size={14} className="text-slate-400 shrink-0" /> {formData.secondaryPhone || 'Not set'}</p>
               )}
             </div>
 
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Regulatory License Frame</span>
-              <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5"><FileText size={14} className="text-slate-400" /> {formData.licenseNumber || 'Under administrative review'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words"><FileText size={14} className="text-slate-400 shrink-0" /> {formData.licenseNumber || 'Under administrative review'}</p>
             </div>
 
             <div>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Credential Expiration Timestamp</span>
-              <p className="mt-1 text-sm font-semibold text-slate-800">{formData.licenseExpiry ? new Date(formData.licenseExpiry).toLocaleDateString() : '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800 break-words">{formData.licenseExpiry ? new Date(formData.licenseExpiry).toLocaleDateString() : '—'}</p>
             </div>
           </div>
         </Card>

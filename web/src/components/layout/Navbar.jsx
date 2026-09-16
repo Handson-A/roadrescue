@@ -319,24 +319,6 @@ export default function Navbar() {
           </span>
         </div>
 
-        {/* Center: Global Search Bar (Flexible width with max-width cap to prevent collision) */}
-        <div className="flex-1 flex justify-center max-w-xl mx-auto px-2 min-w-0">
-          {isDashboardRoot && (
-            <form
-              className="w-full max-w-md flex items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3.5 py-2 transition-all focus-within:border-primary/60 focus-within:bg-white"
-              onSubmit={handleSearch}
-            >
-              <Search size={16} className="text-[#7A7058] shrink-0" />
-              <input
-                type="search"
-                placeholder={role === 'admin' ? 'Search incidents...' : 'Search requests...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066] min-w-0"
-              />
-            </form>
-          )}
-        </div>
 
         {/* Right: Action Controls Anchor Group (shrink-0 so it is never compressed) */}
         <div className="flex shrink-0 items-center justify-end gap-2.5 lg:gap-3">

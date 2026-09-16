@@ -38,7 +38,7 @@ function FitBounds({ positions }) {
     if (mapHook && positions.length > 0) {
       const L = require('leaflet')
       const bounds = L.latLngBounds(positions)
-      mapHook.fitBounds(bounds, { padding: [50, 50] })
+      mapHook.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 })
     }
   }, [mapHook, positions])
   return null
@@ -74,6 +74,8 @@ export default function RescueMap({
   height = '360px',
   userRole = 'driver',
   isOnline = false,
+  showFooter = true,
+  className = '',
 }) {
   const activeRequestId = request && ['accepted', 'en_route', 'arrived', 'in_progress'].includes(request.status) ? request.id : null
   const { mechanicLocation: watchedLoc } = useWatchMechanicLocation(activeRequestId)
@@ -213,16 +215,19 @@ export default function RescueMap({
   }, [showPolyline, driver, mechanic])
 
   return (
-    <div className="w-full h-full relative flex flex-col justify-between" style={{ minHeight: height }}>
+    <div className={`w-full h-full relative flex flex-col justify-between ${className}`} style={{ minHeight: showFooter ? height : '100%' }}>
       <MapContainer
         center={mapCenter}
         zoom={14}
+        maxZoom={19}
+        minZoom={3}
         style={{ height: '100%', width: '100%', flex: '1 1 auto' }}
-        className="relative z-0"
+        className="relative z-0 h-full w-full"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={19}
         />
         
         <FitBounds positions={positions} />
@@ -294,23 +299,38 @@ export default function RescueMap({
         )}
       </MapContainer>
 
-      {/* Live coordinate info panel footer */}
-      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/80 backdrop-blur-xs z-20">
-        <div className="grid grid-cols-2 gap-4 text-xs">
-          <div>
-            <p className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">Incident Coordinates</p>
-            <p className="font-mono font-bold text-slate-800 mt-0.5">
-              {driver ? `${driver.lat.toFixed(4)}, ${driver.lng.toFixed(4)}` : 'Waiting'}
-            </p>
-          </div>
-          <div>
-            <p className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">Your Location</p>
-            <p className="font-mono font-bold text-slate-800 mt-0.5">
-              {mechanic ? `${mechanic.lat.toFixed(4)}, ${mechanic.lng.toFixed(4)}` : 'Broadcasting Active'}
-            </p>
+      {/* Live coordinate info panel footer (Only shown for card-embedded mode) */}
+      {showFooter && (
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/80 backdrop-blur-xs z-20">
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <p className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">Incident Coordinates</p>
+              <p className="font-mono font-bold text-slate-800 mt-0.5 truncate">
+                {driver ? `${driver.lat.toFixed(4)}, ${driver.lng.toFixed(4)}` : 'Waiting'}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">
+                {userRole === 'mechanic' ? 'Your Location' : 'Responder Location'}
+              </p>
+              <p className="font-mono font-bold text-slate-800 mt-0.5 truncate">
+                {userRole === 'mechanic'
+                  ? isOnline
+                    ? mechanic
+                      ? `${mechanic.lat.toFixed(4)}, ${mechanic.lng.toFixed(4)}`
+                      : 'Acquiring GPS...'
+                    : staticShopLocation
+                      ? 'Shop Base (Offline)'
+                      : 'Offline (Standby)'
+                  : mechanic
+                    ? `${mechanic.lat.toFixed(4)}, ${mechanic.lng.toFixed(4)}`
+                    : 'Awaiting Responder'
+                }
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

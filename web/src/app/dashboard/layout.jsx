@@ -52,7 +52,7 @@ export default async function DashboardLayout({ children }) {
     redirect(homePath)
   }
 
-  const isFullHeightPage = pathname?.includes('/ai') || pathname?.includes('/chat') || pathname?.includes('/explore')
+  const isFullHeightPage = pathname?.includes('/ai') || pathname?.includes('/chat') || pathname?.includes('/explore') || pathname?.includes('/navigation')
 
 
 let mainClass = ""
