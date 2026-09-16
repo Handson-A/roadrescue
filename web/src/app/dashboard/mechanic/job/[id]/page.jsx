@@ -361,8 +361,9 @@ export default function MechanicJobDetailsPage() {
       description="Keep the driver updated as you move through each stage."
     >
       {graceTimeLeft !== null && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse">
-          ⚠️ You are offline. Return online within {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s to prevent automatic dispatch cancellation.
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse flex items-center gap-2">
+          <AlertTriangle size={18} className="text-red-700 shrink-0" />
+          <span>You are offline. Return online within {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s to prevent automatic dispatch cancellation.</span>
         </div>
       )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 items-start">

@@ -198,7 +198,7 @@ export async function PATCH(req) {
             const emailHtml = `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; max-width: 600px; margin: 0 auto; background: #f8f8f8; padding: 20px;">
                 <div style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-                  <h1 style="margin: 0; font-size: 24px;">🔧 Credentials Requested</h1>
+                  <h1 style="margin: 0; font-size: 24px;">Credentials Requested</h1>
                 </div>
                 <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; color: #334155; line-height: 1.6;">
                   <p>Hi <strong>${mechanicProfile.full_name || 'Specialist'}</strong>,</p>

@@ -6,7 +6,7 @@ import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity } from 'lucide-react'
+import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity, AlertTriangle } from 'lucide-react'
 
 export default function DriverAccountPage() {
   const { user, profile, setProfile } = useAuth()
@@ -317,8 +317,9 @@ export default function DriverAccountPage() {
                 <>
                   <Input value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="e.g. 0241234567" />
                   {formData.phone && (formData.phone.length !== 10 || !formData.phone.startsWith('0')) && (
-                    <p className="mt-1 text-[10px] font-bold text-red-500">
-                      ⚠️ Must be exactly 10 digits starting with 0.
+                    <p className="mt-1 text-[10px] font-bold text-red-500 flex items-center gap-1">
+                      <AlertTriangle size={12} className="text-red-500 shrink-0" />
+                      <span>Must be exactly 10 digits starting with 0.</span>
                     </p>
                   )}
                 </>
@@ -391,8 +392,9 @@ export default function DriverAccountPage() {
                 <>
                   <Input value={formData.emergencyContactPhone} onChange={(e) => handleChange('emergencyContactPhone', e.target.value)} placeholder="e.g. 0241234567" />
                   {formData.emergencyContactPhone && (formData.emergencyContactPhone.length !== 10 || !formData.emergencyContactPhone.startsWith('0')) && (
-                    <p className="mt-1 text-[10px] font-bold text-red-500">
-                      ⚠️ Must be exactly 10 digits starting with 0.
+                    <p className="mt-1 text-[10px] font-bold text-red-500 flex items-center gap-1">
+                      <AlertTriangle size={12} className="text-red-500 shrink-0" />
+                      <span>Must be exactly 10 digits starting with 0.</span>
                     </p>
                   )}
                 </>

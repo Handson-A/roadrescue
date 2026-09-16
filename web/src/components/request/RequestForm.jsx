@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { Camera, ImagePlus, Wrench, Truck, Disc, Zap, Fuel, HelpCircle } from 'lucide-react'
+import { Camera, ImagePlus, Wrench, Truck, Disc, Zap, Fuel, HelpCircle, UserCheck, X, MapPin, Star } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -13,6 +13,7 @@ import LocationPicker from '@/components/map/LocationPicker'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import { useDiagnostic } from '@/hooks/useDiagnostic'
 import { useToast } from '@/components/ui/Toast'
+import Modal from '@/components/ui/Modal'
 import { SERVICE_TYPE } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -28,6 +29,9 @@ const serviceOptions = [
 
 export default function RequestForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialMechanicId = searchParams.get('mechanicId') || null
+
   const { toast } = useToast()
   const { diagnose, diagnosis, diagnosing, error: diagnosticError } = useDiagnostic()
   const { profile } = useAuth()
@@ -36,6 +40,9 @@ export default function RequestForm() {
   const [snapshotUploading, setSnapshotUploading] = useState(false)
   const [vehicleImageFile, setVehicleImageFile] = useState(null)
   const [vehicleImagePreview, setVehicleImagePreview] = useState('')
+  const [selectedMechanic, setSelectedMechanic] = useState(null)
+  const [loadingMechanic, setLoadingMechanic] = useState(false)
+
   const [form, setForm] = useState({
     incidentLat: null,
     incidentLng: null,
@@ -47,7 +54,27 @@ export default function RequestForm() {
     vehicleYear: '',
     vehicleColor: '',
     vehiclePlate: '',
+    preferredMechanicId: initialMechanicId,
   })
+
+  useEffect(() => {
+    if (!initialMechanicId) return
+    async function loadSelectedMechanic() {
+      setLoadingMechanic(true)
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('mechanic_public')
+        .select('user_id, business_name, specializations, rating_avg, location_label')
+        .eq('user_id', initialMechanicId)
+        .maybeSingle()
+
+      if (!error && data) {
+        setSelectedMechanic(data)
+      }
+      setLoadingMechanic(false)
+    }
+    loadSelectedMechanic()
+  }, [initialMechanicId])
 
   useEffect(() => {
     async function loadDriverVehicleProfile() {
@@ -173,7 +200,10 @@ export default function RequestForm() {
     }
   }
 
-  async function submitRequest() {
+  const [showOfflineModal, setShowOfflineModal] = useState(false)
+
+  async function submitRequest(overrideForm = null) {
+    const currentForm = overrideForm || form
     if (!canSubmit) {
       toast({ message: 'Please complete the required fields', type: 'warning' })
       return
@@ -191,18 +221,27 @@ export default function RequestForm() {
         })
       }
 
+      const payload = {
+        ...currentForm,
+        vehicleYear: currentForm.vehicleYear ? Number(currentForm.vehicleYear) : null,
+        aiDiagnosticResult: diagnosis || null,
+        vehicle_image_url: vehicleImageUrl,
+      }
+
       const response = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          vehicleYear: form.vehicleYear ? Number(form.vehicleYear) : null,
-          aiDiagnosticResult: diagnosis || null,
-          vehicle_image_url: vehicleImageUrl,
-        }),
+        body: JSON.stringify(payload),
       })
 
       const data = await response.json()
+
+      // Handle specific PROVIDER_OFFLINE (409) conflict response
+      if (response.status === 409 && data.code === 'PROVIDER_OFFLINE') {
+        setShowOfflineModal(true)
+        return
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'Unable to send request')
       }
@@ -216,9 +255,60 @@ export default function RequestForm() {
     }
   }
 
+  const handleConfirmBroadcast = async () => {
+    setShowOfflineModal(false)
+    setSelectedMechanic(null)
+    const broadcastForm = { ...form, preferredMechanicId: null }
+    setForm(broadcastForm)
+    await submitRequest(broadcastForm)
+  }
+
   return (
     <div className="space-y-5">
       
+      {/* PREFERRED MECHANIC FIELD / DISPATCH TARGET */}
+      {selectedMechanic ? (
+        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shrink-0">
+              <UserCheck size={20} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                Preferred Mechanic (Targeted Dispatch)
+              </span>
+              <h4 className="text-sm font-black text-slate-900 mt-0.5">
+                {selectedMechanic.business_name || 'Selected Certified Mechanic'}
+              </h4>
+              <div className="flex items-center gap-1 text-[11px] text-amber-700">
+                {selectedMechanic.location_label && (
+                  <span className="flex items-center gap-1">
+                    <MapPin size={11} className="text-amber-600" />
+                    {selectedMechanic.location_label} •
+                  </span>
+                )}
+                <span className="flex items-center gap-0.5 font-bold">
+                  <Star size={11} className="text-amber-500 fill-amber-500" />
+                  {selectedMechanic.rating_avg ? Number(selectedMechanic.rating_avg).toFixed(1) : '5.0'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedMechanic(null)
+              updateField('preferredMechanicId', null)
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-amber-200 text-xs font-bold text-amber-900 hover:bg-amber-100/80 transition-all cursor-pointer shadow-xs"
+            title="Reset to standard broadcast mode"
+          >
+            <X size={14} />
+            <span>Clear (Broadcast Mode)</span>
+          </button>
+        </div>
+      ) : null}
+
       {/* STEP 1: LOCATION HARNESS CARD */}
       <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white shadow-sm">
         <div className="border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3.5">
@@ -234,8 +324,9 @@ export default function RequestForm() {
             }}
           />
           {form.incidentAddress && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-[#FFF9EF] px-4 py-3 text-xs font-bold text-slate-700 leading-relaxed">
-              📍 Selected Pickup Location: <span className="text-[#1F1B10] font-mono">{form.incidentAddress}</span>
+            <div className="mt-4 rounded-xl border border-amber-200 bg-[#FFF9EF] px-4 py-3 text-xs font-bold text-slate-700 leading-relaxed flex items-center gap-1.5">
+              <MapPin size={14} className="text-[#7C6B44] shrink-0" />
+              <span>Selected Pickup Location: <span className="text-[#1F1B10] font-mono">{form.incidentAddress}</span></span>
             </div>
           )}
         </div>
@@ -372,14 +463,50 @@ export default function RequestForm() {
         <Button 
           fullWidth 
           size="lg" 
-          onClick={submitRequest} 
+          onClick={() => submitRequest()} 
           loading={submitting} 
           disabled={!canSubmit || snapshotUploading}
-          className="bg-slate-900 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 rounded-xl py-3.5 shadow-md disabled:opacity-40"
+          className="bg-slate-900 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-800 rounded-xl py-3.5 shadow-md disabled:opacity-40 cursor-pointer"
         >
           {submitting || snapshotUploading ? 'Initializing Dispatch Gateway...' : 'Send Emergency Dispatch'}
         </Button>
       </div>
+
+      {/* CONFIRMATION DIALOG: PROVIDER OFFLINE (409) FALLBACK TO BROADCAST */}
+      <Modal
+        isOpen={showOfflineModal}
+        onClose={() => setShowOfflineModal(false)}
+        title="Mechanic Currently Unavailable"
+        size="sm"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowOfflineModal(false)}
+              className="text-xs font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmBroadcast}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black"
+            >
+              Broadcast to All Nearby
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-slate-700 leading-relaxed">
+            Selected mechanic <strong className="text-slate-950">{selectedMechanic?.business_name || 'provider'}</strong> is currently unavailable.
+          </p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Would you like to broadcast this request to all nearby active mechanics instead? Your vehicle and breakdown details will be kept.
+          </p>
+        </div>
+      </Modal>
       
     </div>
   )

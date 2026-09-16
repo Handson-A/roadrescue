@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, MapPin } from 'lucide-react'
 
 import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
@@ -111,8 +111,9 @@ export default function DriverHistoryPage() {
                       <p className="mt-1 text-xs text-slate-500 leading-relaxed font-medium">
                         {request.problem_description}
                       </p>
-                      <p className="mt-2 truncate font-mono text-[10px] text-[#7C6B44]">
-                        📍 {request.incident_address || 'Address pinpoint active'}
+                      <p className="mt-2 truncate font-mono text-[10px] text-[#7C6B44] flex items-center gap-1">
+                        <MapPin size={11} className="text-[#7C6B44] shrink-0" />
+                        <span>{request.incident_address || 'Address pinpoint active'}</span>
                       </p>
                     </div>
                     

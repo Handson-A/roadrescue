@@ -60,8 +60,8 @@ export async function PATCH(req) {
       requestId,
       actorId: user.id,
       actorRole: profile.role,
-      mechanicId: targetMechanicId,  // 💡 Forward camelCase key
-      mechanic_id: targetMechanicId, // 💡 Forward snake_case key just in case helper expects it
+      mechanicId: targetMechanicId,  // Forward camelCase key
+      mechanic_id: targetMechanicId, // Forward snake_case key just in case helper expects it
       newStatus: requestedStatus,
       completionNotes,
       performedServices,

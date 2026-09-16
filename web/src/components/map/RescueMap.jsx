@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMap } from 'react-leaflet' 
 import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
 import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
-import { Fuel } from 'lucide-react'
+import { Fuel, AlertTriangle } from 'lucide-react'
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -266,8 +266,8 @@ export default function RescueMap({
             >
               <Popup>
                 <div className="p-1 min-w-[170px] font-sans">
-                  <h4 className="font-bold text-sm text-red-600 m-0 uppercase tracking-wide">
-                    ⚠️ Breakdown Alert
+                  <h4 className="font-bold text-sm text-red-600 m-0 uppercase tracking-wide flex items-center gap-1">
+                    Breakdown Alert
                   </h4>
                   <p className="font-bold text-slate-800 text-xs mt-1.5 mb-0 capitalize">
                     {job.service_type?.replace('_', ' ')}

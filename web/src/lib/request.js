@@ -98,7 +98,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     nearbyMechanics.forEach((mechanic) => {
       sendNotificationEmail({
         to: mechanic.email || `mechanic-${mechanic.user_id}@roadrescue.com`,
-        subject: `🚗 New ${serviceType} Request ${mechanic.distance_km}km away!`,
+        subject: `New ${serviceType} Request ${mechanic.distance_km}km away!`,
         type: 'new_request',
         data: {
           mechanicName: mechanic.full_name,
@@ -513,7 +513,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       if (driver?.email) {
         sendNotificationEmail({
           to: driver.email,
-          subject: '🚗 Mechanic Accepted Your Rescue Request',
+          subject: 'Mechanic Accepted Your Rescue Request',
           type: 'mechanic_accepted',
           data: {
             driverName: driver.full_name,

@@ -82,6 +82,46 @@ export async function POST(req) {
       )
     }
 
+    const preferredMechanicId = body.preferredMechanicId || body.preferred_mechanic_id || null
+
+    // SECURITY & AVAILABILITY GATING FOR TARGETED DISPATCH
+    if (preferredMechanicId) {
+      const { data: targetMechProfile, error: targetMechErr } = await serviceSupabase
+        .from('mechanic_profiles')
+        .select('verification_status, is_available')
+        .eq('user_id', preferredMechanicId)
+        .maybeSingle()
+
+      if (targetMechErr || !targetMechProfile) {
+        return NextResponse.json(
+          { error: 'The selected mechanic profile could not be verified.', code: 'MECHANIC_NOT_FOUND' },
+          { status: 404 }
+        )
+      }
+
+      // 1. Server-side security check: reject if not approved
+      if (targetMechProfile.verification_status !== 'approved') {
+        return NextResponse.json(
+          { 
+            error: 'The selected mechanic is not verified or currently unauthorized for direct dispatch.',
+            code: 'MECHANIC_NOT_APPROVED'
+          },
+          { status: 400 }
+        )
+      }
+
+      // 2. Machine-readable 409 error if mechanic is offline/unavailable at submission time
+      if (targetMechProfile.is_available !== true) {
+        return NextResponse.json(
+          { 
+            error: 'Selected mechanic is currently unavailable.', 
+            code: 'PROVIDER_OFFLINE' 
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     const vehicleImageUrl = body.vehicle_image_url || body.vehicleImageUrl || null
 
     // 1. Insert the rescue request row immediately
@@ -122,23 +162,52 @@ export async function POST(req) {
     // 3. Decoupled asynchronous matching & notifications logic
     Promise.resolve().then(async () => {
       try {
-        const { data: nearbyMechanics, error: matchError } = await serviceSupabase.rpc('get_nearby_verified_mechanics', {
-          lat: Number(incidentLat),
-          lng: Number(incidentLng),
-          radius_km: 10.0,
-        })
+        let targetMechanics = []
 
-        if (matchError) {
-          console.error('[BACKGROUND MATCH ERROR]:', matchError.message)
-          return
+        // BRANCH A: Targeted dispatch to a preferred mechanic selected from map discovery
+        if (preferredMechanicId) {
+          const { data: preferredMech, error: mechErr } = await serviceSupabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('id', preferredMechanicId)
+            .maybeSingle()
+
+          if (!mechErr && preferredMech) {
+            targetMechanics = [{
+              user_id: preferredMech.id,
+              full_name: preferredMech.full_name || 'Mechanic',
+              email: preferredMech.email,
+              distance_km: 'Direct',
+            }]
+          }
         }
 
-        if (nearbyMechanics && nearbyMechanics.length > 0) {
-          const notifications = nearbyMechanics.map((mechanic) => ({
+        // BRANCH B: Standard geospatial broadcast matching (existing behavior unchanged)
+        if (targetMechanics.length === 0) {
+          const { data: nearbyMechanics, error: matchError } = await serviceSupabase.rpc('get_nearby_verified_mechanics', {
+            lat: Number(incidentLat),
+            lng: Number(incidentLng),
+            radius_km: 10.0,
+          })
+
+          if (matchError) {
+            console.error('[BACKGROUND MATCH ERROR]:', matchError.message)
+            return
+          }
+
+          if (nearbyMechanics && nearbyMechanics.length > 0) {
+            targetMechanics = nearbyMechanics
+          }
+        }
+
+        if (targetMechanics.length > 0) {
+          const notifications = targetMechanics.map((mechanic) => ({
             profile_id: mechanic.user_id,
             type: 'new_request',
-            title: 'New rescue request',
-            body: `New ${serviceType} request ${mechanic.distance_km}km away — ${body.incidentAddress || 'location pinned'}`,
+            title: preferredMechanicId ? 'Direct rescue request' : 'New rescue request',
+            body: preferredMechanicId 
+              ? `Direct ${serviceType} request dispatched to you — ${body.incidentAddress || 'location pinned'}`
+              : `New ${serviceType} request ${mechanic.distance_km}km away — ${body.incidentAddress || 'location pinned'}`,
           }))
 
           const { error: notifError } = await serviceSupabase
@@ -150,16 +219,18 @@ export async function POST(req) {
           }
 
           // Send emails asynchronously
-          nearbyMechanics.forEach((mechanic) => {
+          targetMechanics.forEach((mechanic) => {
             sendNotificationEmail({
               to: mechanic.email || `mechanic-${mechanic.user_id}@roadrescue.com`,
-              subject: `🚗 New ${serviceType} Request ${mechanic.distance_km}km away!`,
+              subject: preferredMechanicId
+                ? `Direct ${serviceType} Request from Driver!`
+                : `New ${serviceType} Request ${mechanic.distance_km}km away!`,
               type: 'new_request',
               data: {
                 mechanicName: mechanic.full_name,
                 issueDescription: body.problemDescription,
                 location: body.incidentAddress || 'Location pinned',
-                distance: `${mechanic.distance_km} km`,
+                distance: typeof mechanic.distance_km === 'number' ? `${mechanic.distance_km} km` : `${mechanic.distance_km}`,
                 appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/mechanic/requests`,
               },
             }).catch((err) => {

@@ -12,7 +12,7 @@ import Spinner from '@/components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { timeAgo } from '@/lib/utils'
-import { Radio, AlertCircle, Wrench, DollarSign, ShieldCheck, X, AlertTriangle, MapPin } from 'lucide-react'
+import { Radio, AlertCircle, Wrench, DollarSign, ShieldCheck, X, AlertTriangle, MapPin, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useMechanicStatus } from '@/hooks/useMechanicStatus'
 
@@ -229,7 +229,8 @@ const { data: active, error: activeErr } = await supabase
                   <span>Experience: {mechProfile?.years_experience ?? '0'} Years Vetted</span>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
-                    ★ {mechProfile?.rating_avg ? Number(mechProfile.rating_avg).toFixed(1) : '5.0'} ({mechProfile?.rating_count ?? 0} reviews)
+                    <Star size={12} className="text-amber-500 fill-amber-500" />
+                    <span>{mechProfile?.rating_avg ? Number(mechProfile.rating_avg).toFixed(1) : '5.0'} ({mechProfile?.rating_count ?? 0} reviews)</span>
                   </span>
                 </div>
               </div>

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CarFront, Fuel, Wrench, Search, MapPin, Star } from 'lucide-react'
+import { CarFront, Fuel, Wrench, Search, MapPin, Star, AlertTriangle } from 'lucide-react'
 
 import RequestForm from '@/components/request/RequestForm'
 import RequestStatusBadge from '@/components/request/RequestStatusBadge'
@@ -100,7 +100,7 @@ export default function DriverDashboard() {
   const membershipId = profile?.vehicle_plate || profile?.id?.substring(0, 8) || '—'
   const quickTiles = [
     { label: 'Vehicle Info', value: vehicleLabel, href: '/dashboard/driver/account', icon: CarFront },
-    { label: 'Find Fuel/EV', value: 'Locate refueling grids', href: '/dashboard/driver/request/new', icon: Fuel },
+    { label: 'Explore & Fuel', value: 'Live mechanics & fuel map', href: '/dashboard/driver/explore', icon: Fuel },
   ]
 
   const recentItems = requests.slice(0, 2)
@@ -174,7 +174,10 @@ export default function DriverDashboard() {
               <div className="mt-3 space-y-1">
                 <h4 className="font-mono text-base font-black text-amber-400">Emergency ID #{activeRequest.id?.substring(0,8)}</h4>
                 <p className="text-xs text-white/70 leading-relaxed">{activeRequest.problem_description}</p>
-                <p className="text-[11px] font-mono text-white/40 pt-1">📍 {activeRequest.incident_address || 'Location identified'}</p>
+                <p className="text-[11px] font-mono text-white/40 pt-1 flex items-center gap-1.5">
+                  <MapPin size={12} className="text-white/40 shrink-0" />
+                  <span>{activeRequest.incident_address || 'Location identified'}</span>
+                </p>
               </div>
             </div>
 
@@ -226,7 +229,7 @@ export default function DriverDashboard() {
         <div className="rounded-2xl border border-[#DCCDA9] bg-[#1F1B10] p-4 text-white shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <span className="text-[10px] font-mono font-black uppercase tracking-widest text-amber-400">Emergency Safety Protocol</span>
-            <span className="text-xs">⚠️</span>
+            <AlertTriangle size={15} className="text-amber-400" />
           </div>
           <div className="pt-3 text-center">
             <p className="text-xs text-white/80 font-medium">

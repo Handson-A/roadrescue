@@ -90,7 +90,7 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">🚗 New Rescue Request</h1>
+            <h1 style="margin: 0; font-size: 24px;">New Rescue Request</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.mechanicName || 'Mechanic'}</strong>,</p>
@@ -110,7 +110,7 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">✅ Mechanic Accepted!</h1>
+            <h1 style="margin: 0; font-size: 24px;">Mechanic Accepted</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
@@ -129,7 +129,7 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">🎉 Job Complete!</h1>
+            <h1 style="margin: 0; font-size: 24px;">Job Complete</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
@@ -144,7 +144,7 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">🎉 Until your next smooth mile!</h1>
+            <h1 style="margin: 0; font-size: 24px;">Until your next smooth mile!</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
@@ -158,14 +158,14 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">🚗 Safe Travels Ahead</h1>
+            <h1 style="margin: 0; font-size: 24px;">Safe Travels Ahead</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>
             <p>Your vehicle maintenance tracking log has been updated successfully.</p>
             <div style="background: #fffbeb; border-left: 4px solid #f5c400; padding: 15px; margin: 20px 0; border-radius: 4px;">
               <p style="margin: 0; font-style: italic; font-weight: bold; color: #7c2d12;">
-                "Until your next smooth ride, stay safe and drive responsibly! 🚗💨"
+                "Until your next smooth ride, stay safe and drive responsibly!"
               </p>
             </div>
             <p>Thank you for trusting the RoadRescue dispatch network.</p>
@@ -177,7 +177,7 @@ function buildEmailTemplate(type, data = {}) {
       return `
         <div style="${baseStyle}">
           <div style="${headerStyle}">
-            <h1 style="margin: 0; font-size: 24px;">🚀 Mechanic On The Way</h1>
+            <h1 style="margin: 0; font-size: 24px;">Mechanic On The Way</h1>
           </div>
           <div style="${contentStyle}">
             <p>Hi <strong>${data.driverName || 'Driver'}</strong>,</p>

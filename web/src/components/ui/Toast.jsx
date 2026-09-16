@@ -1,16 +1,17 @@
-
 'use client'
+
 import { createContext, useContext, useState, useCallback } from 'react'
+import { Check, X, Info, AlertTriangle } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
 const ToastContext = createContext(null)
 
 const iconMap = {
-  success: '✓',
-  error: '✕',
-  info: 'i',
-  warning: '!',
+  success: Check,
+  error: X,
+  info: Info,
+  warning: AlertTriangle,
 }
 
 const colorMap = {
@@ -39,22 +40,25 @@ export function ToastProvider({ children }) {
         style={{ top: '1rem', right: '1rem', position: 'fixed', zIndex: 9999 }}
         className="flex w-[min(92vw,24rem)] flex-col gap-2"
       >
-        {toasts.map((toastItem) => (
-          <div
-            key={toastItem.id}
-            className={cn(
-              'flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lift animate-slide-up',
-              colorMap[toastItem.type] || colorMap.info
-            )}
-          >
-            <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/70 text-xs font-black text-current">
-              {iconMap[toastItem.type] || iconMap.info}
-            </span>
-            <p className="text-sm font-medium leading-relaxed text-foreground">
-              {toastItem.message}
-            </p>
-          </div>
-        ))}
+        {toasts.map((toastItem) => {
+          const IconComponent = iconMap[toastItem.type] || iconMap.info
+          return (
+            <div
+              key={toastItem.id}
+              className={cn(
+                'flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lift animate-slide-up',
+                colorMap[toastItem.type] || colorMap.info
+              )}
+            >
+              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/70 text-xs font-black text-current shrink-0">
+                <IconComponent size={14} />
+              </span>
+              <p className="text-sm font-medium leading-relaxed text-foreground">
+                {toastItem.message}
+              </p>
+            </div>
+          )
+        })}
       </div>
     </ToastContext.Provider>
   )

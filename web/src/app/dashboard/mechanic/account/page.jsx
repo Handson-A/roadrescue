@@ -13,7 +13,8 @@ import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { 
   Building2, MapPin, Wrench, ShieldAlert, Award, Clock, 
-  Phone, Mail, FileText, CheckCircle2, Sliders, Bell, MessageSquare, Camera, Loader2 
+  Phone, Mail, FileText, CheckCircle2, Sliders, Bell, MessageSquare, Camera, Loader2,
+  AlertTriangle, Star
 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { normalizeGeoPoint } from '@/lib/utils'
@@ -55,6 +56,8 @@ export default function MechanicAccountPage() {
     notificationPreferences: { jobAlerts: true, messageAlerts: true, push: true },
     communicationPreferences: ['call', 'sms'],
     serviceMode: 'mobile',
+    baseLocationLabel: '',
+    showBaseLocationOffline: false,
   })
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export default function MechanicAccountPage() {
       // 2. Fetch specialized workplace fields using verified schema columns
       const { data: mechData } = await supabase
         .from('mechanic_profiles')
-        .select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, verification_status, created_at, service_mode')
+        .select('business_name, specializations, location_label, is_available, rating_avg, rating_count, years_experience, verification_status, created_at, service_mode, current_location, base_location, base_location_label, show_base_location_offline')
         .eq('user_id', currentUserId)
         .maybeSingle()
 
@@ -173,6 +176,8 @@ export default function MechanicAccountPage() {
           notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
           communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
           serviceMode: mechData?.service_mode || 'mobile',
+          baseLocationLabel: mechData?.base_location_label || '',
+          showBaseLocationOffline: mechData?.show_base_location_offline ?? false,
         }))
       }
     }
@@ -365,7 +370,7 @@ export default function MechanicAccountPage() {
     }))
   }
 
-  const pinShopLocation = () => {
+  const pinBaseLocation = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser')
       return
@@ -379,8 +384,7 @@ export default function MechanicAccountPage() {
           const { error } = await supabase
             .from('mechanic_profiles')
             .update({
-              current_location: `POINT(${longitude} ${latitude})`,
-              location_updated_at: new Date().toISOString(),
+              base_location: `POINT(${longitude} ${latitude})`,
             })
             .eq('user_id', user?.id)
 
@@ -389,18 +393,18 @@ export default function MechanicAccountPage() {
           // Re-fetch mechanic profile locally to display new coordinates
           const { data: updatedProfile } = await supabase
             .from('mechanic_profiles')
-            .select('current_location')
+            .select('base_location')
             .eq('user_id', user?.id)
             .maybeSingle()
             
           setMechanicProfile((prev) => ({
             ...prev,
-            current_location: updatedProfile?.current_location || prev?.current_location
+            base_location: updatedProfile?.base_location || prev?.base_location
           }))
 
-          toast.success('Shop location pinned successfully!')
+          toast.success('Base/Shop location pinned successfully!')
         } catch (err) {
-          toast.error('Failed to pin shop location: ' + err.message)
+          toast.error('Failed to pin base location: ' + err.message)
         } finally {
           setPinningLocation(false)
         }
@@ -467,6 +471,8 @@ export default function MechanicAccountPage() {
            business_name: formData.businessName.trim() || null,
            location_label: formData.serviceArea.trim() || null,
            service_mode: formData.serviceMode,
+           base_location_label: formData.baseLocationLabel.trim() || null,
+           show_base_location_offline: formData.showBaseLocationOffline,
          })
          .eq('user_id', user?.id)
  
@@ -496,6 +502,8 @@ export default function MechanicAccountPage() {
          is_available: formData.availability,
          years_experience: formData.yearsExperience,
          service_mode: formData.serviceMode,
+         base_location_label: formData.baseLocationLabel,
+         show_base_location_offline: formData.showBaseLocationOffline,
        }))
 
       toast.success('Profile configurations updated successfully')
@@ -579,8 +587,9 @@ export default function MechanicAccountPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><Award size={14} className="text-slate-400" /> Trust Scorecard</p>
-            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-              {mechanicProfile?.rating_avg ? `${Number(mechanicProfile.rating_avg).toFixed(1)} ★ (${mechanicProfile.rating_count ?? 0} reviews)` : '5.0 ★ (0 reviews)'}
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Star size={18} className="text-amber-500 fill-amber-500" />
+              <span>{mechanicProfile?.rating_avg ? `${Number(mechanicProfile.rating_avg).toFixed(1)} (${mechanicProfile.rating_count ?? 0} reviews)` : '5.0 (0 reviews)'}</span>
             </p>
             <p className="mt-1 text-xs font-medium text-slate-500">Aggregated customer evaluation</p>
           </Card>
@@ -632,34 +641,55 @@ export default function MechanicAccountPage() {
                   ]}
                 />
               </div>
-              {['fixed_location', 'hybrid'].includes(formData.serviceMode) && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 mt-2">
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5"><MapPin size={14} className="text-amber-500" /> Shop Geo-Coordinates</p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {mechanicProfile?.current_location 
-                        ? `Pinned Coordinates: ${normalizeGeoPoint(mechanicProfile.current_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.current_location)[1].toFixed(6)}` 
-                        : 'No coordinates pinned. Please click the button to set your shop location.'}
-                    </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input 
+                  label="Base Location / Shop Address" 
+                  value={formData.baseLocationLabel} 
+                  onChange={(e) => handleChange('baseLocationLabel', e.target.value)} 
+                  placeholder="e.g. Shop 4, Spintex Road, near Shell" 
+                />
+                <div className="flex flex-col justify-end">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <input
+                      id="showBaseLocationOffline"
+                      type="checkbox"
+                      checked={formData.showBaseLocationOffline}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showBaseLocationOffline: e.target.checked }))}
+                      className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
+                    />
+                    <label htmlFor="showBaseLocationOffline" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                      Show base location to drivers on map when offline
+                    </label>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={pinShopLocation}
-                    disabled={pinningLocation}
-                    className="shrink-0 h-10 px-4 rounded-xl border border-amber-200 bg-white text-xs font-bold uppercase tracking-wider text-amber-800 hover:bg-[#F5F0E0] hover:border-[#BCA86A] transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {pinningLocation ? (
-                      <>
-                        <Loader2 size={13} className="animate-spin" /> Pinning...
-                      </>
-                    ) : (
-                      <>
-                        <MapPin size={13} /> Pin Current Location
-                      </>
-                    )}
-                  </Button>
                 </div>
-              )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4 mt-2">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5"><MapPin size={14} className="text-amber-500" /> Registered Base/Shop GPS Coordinates</p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {mechanicProfile?.base_location 
+                      ? `Pinned Base Coordinates: ${normalizeGeoPoint(mechanicProfile.base_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.base_location)[1].toFixed(6)}` 
+                      : 'No base coordinates pinned. Click the button to pin your shop/home base location.'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={pinBaseLocation}
+                  disabled={pinningLocation}
+                  className="shrink-0 h-10 px-4 rounded-xl border border-amber-200 bg-white text-xs font-bold uppercase tracking-wider text-amber-800 hover:bg-[#F5F0E0] hover:border-[#BCA86A] transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  {pinningLocation ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Pinning...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin size={13} /> Pin Base Location
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
@@ -670,6 +700,24 @@ export default function MechanicAccountPage() {
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Operational Range</span>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{formData.serviceRadius ? `${formData.serviceRadius} km deployment radius` : 'Not configured'}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Base / Shop Address</span>
+                <p className="mt-1 text-sm font-semibold text-slate-800">{formData.baseLocationLabel || 'Not specified'}</p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Base GPS Coordinates</span>
+                <p className="mt-1 text-sm font-semibold text-slate-800 font-mono">
+                  {mechanicProfile?.base_location 
+                    ? `${normalizeGeoPoint(mechanicProfile.base_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.base_location)[1].toFixed(6)}` 
+                    : 'Not pinned'}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Offline Map Visibility</span>
+                <p className="mt-1 text-sm font-semibold text-slate-800">
+                  {formData.showBaseLocationOffline ? 'Public (Visible when offline)' : 'Hidden when offline'}
+                </p>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Skills & Specialties</span>
@@ -689,16 +737,6 @@ export default function MechanicAccountPage() {
                       : 'Mobile Responder'}
                 </p>
               </div>
-              {['fixed_location', 'hybrid'].includes(formData.serviceMode) && (
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Shop Coordinates</span>
-                  <p className="mt-1 text-sm font-semibold text-slate-800 font-mono">
-                    {mechanicProfile?.current_location 
-                      ? `${normalizeGeoPoint(mechanicProfile.current_location)[0].toFixed(6)}, ${normalizeGeoPoint(mechanicProfile.current_location)[1].toFixed(6)}` 
-                      : 'Not pinned'}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </Card>
@@ -857,12 +895,19 @@ export default function MechanicAccountPage() {
             <div className="space-y-4">
               {reviews.map((r) => {
                 const driverName = r.driver?.full_name || 'Anonymous Driver'
-                const starsStr = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating)
                 return (
                   <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50/40 p-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-amber-500 font-bold text-xs tracking-wider">{starsStr}</span>
+                        <div className="flex items-center gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={12}
+                              className={i < r.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}
+                            />
+                          ))}
+                        </div>
                         <span className="text-[11px] font-bold text-slate-700">by {driverName}</span>
                       </div>
                       <span className="text-[10px] font-medium text-slate-400">
@@ -902,8 +947,9 @@ export default function MechanicAccountPage() {
                 <div className="mt-1">
                   <Input value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="e.g. 0241234567" />
                   {formData.phone && (formData.phone.length !== 10 || !formData.phone.startsWith('0')) && (
-                    <p className="mt-1 text-[10px] font-bold text-red-500">
-                      ⚠️ Must be exactly 10 digits starting with 0.
+                    <p className="mt-1 text-[10px] font-bold text-red-500 flex items-center gap-1">
+                      <AlertTriangle size={12} className="text-red-500 shrink-0" />
+                      <span>Must be exactly 10 digits starting with 0.</span>
                     </p>
                   )}
                 </div>
@@ -918,8 +964,9 @@ export default function MechanicAccountPage() {
                 <div className="mt-1">
                   <Input value={formData.secondaryPhone} onChange={(e) => handleChange('secondaryPhone', e.target.value)} placeholder="e.g. 0241234567" />
                   {formData.secondaryPhone && (formData.secondaryPhone.length !== 10 || !formData.secondaryPhone.startsWith('0')) && (
-                    <p className="mt-1 text-[10px] font-bold text-red-500">
-                      ⚠️ Must be exactly 10 digits starting with 0.
+                    <p className="mt-1 text-[10px] font-bold text-red-500 flex items-center gap-1">
+                      <AlertTriangle size={12} className="text-red-500 shrink-0" />
+                      <span>Must be exactly 10 digits starting with 0.</span>
                     </p>
                   )}
                 </div>

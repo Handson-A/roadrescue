@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Fuel } from 'lucide-react'
+import { Fuel, Compass } from 'lucide-react'
 import toast from 'react-hot-toast' // Added hot-toast import
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -199,8 +199,9 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider flex-1">
-          📍 Detect Location
+        <Button variant="outline" onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider flex-1 flex items-center justify-center gap-1.5">
+          <Compass size={14} />
+          <span>Detect Location</span>
         </Button>
         <button
           type="button"

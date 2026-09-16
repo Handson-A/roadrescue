@@ -91,13 +91,13 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
           if (openingHours) {
             const pTime = document.createElement('p')
             pTime.className = 'text-[10px] text-emerald-600 font-semibold mt-1 mb-0'
-            pTime.innerText = `⏰ ${openingHours}`
+            pTime.innerText = `Hours: ${openingHours}`
             popupDiv.appendChild(pTime)
           }
 
           const badge = document.createElement('span')
           badge.className = 'inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 mt-2 mb-2'
-          badge.innerText = '⛽ Fuel Station'
+          badge.innerText = 'Fuel Station'
           popupDiv.appendChild(badge)
 
           if (onSelectPickup) {
