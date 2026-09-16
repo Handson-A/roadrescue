@@ -98,7 +98,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     nearbyMechanics.forEach((mechanic) => {
       sendNotificationEmail({
         to: mechanic.email || `mechanic-${mechanic.user_id}@roadrescue.com`,
-        subject: `🚗 New ${serviceType} Request ${mechanic.distance_km}km away!`,
+        subject: `New ${serviceType} Request ${mechanic.distance_km}km away!`,
         type: 'new_request',
         data: {
           mechanicName: mechanic.full_name,
@@ -288,18 +288,44 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         const isDriverOwner = actorRole === 'driver' && request.driver_id === actorId
         const isAssignedMechanic = actorRole === 'mechanic' && request.mechanic_id === actorId
         const isAdmin = actorRole === 'admin'
+        const isSystem = actorRole === 'system'
 
-        if (!isDriverOwner && !isAssignedMechanic && !isAdmin) {
+        if (!isDriverOwner && !isAssignedMechanic && !isAdmin && !isSystem) {
           throw new Error('Not authorized to cancel this request')
         }
 
-        const forbiddenStatuses = [
-          REQUEST_STATUS.EN_ROUTE,
-          REQUEST_STATUS.ARRIVED,
-          REQUEST_STATUS.IN_PROGRESS,
-        ]
-        if (forbiddenStatuses.includes(request.status)) {
-          throw new Error('Not authorized to cancel this request once the mechanic is en route, has arrived, or has started work')
+        if (isDriverOwner) {
+          const allowedDriverStatuses = [
+            REQUEST_STATUS.PENDING,
+            REQUEST_STATUS.OFFERED,
+            REQUEST_STATUS.ACCEPTED,
+            REQUEST_STATUS.EN_ROUTE,
+          ]
+          if (!allowedDriverStatuses.includes(request.status)) {
+            throw new Error('Drivers cannot cancel a request once the mechanic has arrived on-site or work is in progress')
+          }
+        }
+
+        if (isAssignedMechanic) {
+          const allowedMechanicStatuses = [
+            REQUEST_STATUS.PENDING,
+            REQUEST_STATUS.OFFERED,
+            REQUEST_STATUS.ACCEPTED,
+            REQUEST_STATUS.EN_ROUTE,
+            REQUEST_STATUS.ARRIVED,
+          ]
+          if (!allowedMechanicStatuses.includes(request.status)) {
+            throw new Error('Mechanics cannot cancel a request once work is in progress. Please submit an issue report or follow the dispute resolution path.')
+          }
+          if (!cancellationReason || !cancellationReason.trim()) {
+            throw new Error('A cancellation reason is required for mechanic cancellations')
+          }
+        }
+
+        if (isSystem) {
+          if (request.status === REQUEST_STATUS.COMPLETED || request.status === REQUEST_STATUS.CANCELLED) {
+            throw new Error('Cannot auto-cancel a request that is already terminal')
+          }
         }
       } else {
         if (actorRole !== 'mechanic' && actorRole !== 'admin') {
@@ -443,6 +469,25 @@ export async function updateRequestStatus(serviceSupabase, payload) {
             body: 'The assigned mechanic cancelled this rescue request.',
             request_id: request.id,
           })
+        } else if (actorRole === 'system') {
+          if (request.driver_id) {
+            notifications.push({
+              profile_id: request.driver_id,
+              type: notification.type,
+              title: 'Request cancelled',
+              body: 'The rescue request was automatically cancelled due to mechanic inactivity (system timeout).',
+              request_id: request.id,
+            })
+          }
+          if (request.mechanic_id) {
+            notifications.push({
+              profile_id: request.mechanic_id,
+              type: notification.type,
+              title: 'Request cancelled',
+              body: 'The rescue request was automatically cancelled due to inactivity timeout.',
+              request_id: request.id,
+            })
+          }
         } else if (actorRole === 'admin') {
           if (request.driver_id) {
             notifications.push({
@@ -513,7 +558,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       if (driver?.email) {
         sendNotificationEmail({
           to: driver.email,
-          subject: '🚗 Mechanic Accepted Your Rescue Request',
+          subject: 'Mechanic Accepted Your Rescue Request',
           type: 'mechanic_accepted',
           data: {
             driverName: driver.full_name,
@@ -592,7 +637,22 @@ export async function cancelRequest(serviceSupabase, payload) {
     actorId: driverId,
     actorRole: 'driver',
     newStatus: REQUEST_STATUS.CANCELLED,
-    cancellationReason: reason,
+    cancellationReason: reason ? `user: ${reason}` : 'user: driver cancelled request',
+  })
+}
+
+// ============================================================================
+// SYSTEM / TIMEOUT AUTO-CANCEL REQUEST
+// ============================================================================
+export async function systemAutoCancelRequest(serviceSupabase, payload) {
+  const { requestId, reason } = payload
+
+  return updateRequestStatus(serviceSupabase, {
+    requestId,
+    actorId: 'system',
+    actorRole: 'system',
+    newStatus: REQUEST_STATUS.CANCELLED,
+    cancellationReason: reason ? `system_timeout: ${reason}` : 'system_timeout: mechanic inactivity timeout',
   })
 }
 

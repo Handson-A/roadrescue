@@ -13,8 +13,8 @@ export default function DiagnosticResult({ diagnosis }) {
   const { problem, severity, recommendations = [], estimated_causes = [] } = diagnosis
 
   return (
-    <div className="rounded-xl border border-[#DCCDA9] bg-amber-50/50 p-4 space-y-3 shadow-sm">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3.5">
+      <div className="flex items-center justify-between pb-2 border-b border-[#E5D0A7]/50">
         <span className="text-xs font-bold text-[#7C6B44] uppercase tracking-wider">
           AI Diagnosis
         </span>
@@ -22,26 +22,26 @@ export default function DiagnosticResult({ diagnosis }) {
       </div>
 
       <div>
-        <span className="text-sm font-black text-[#1F1B10]">{problem}</span>
+        <h4 className="text-sm font-black text-[#1F1B10] leading-snug">{problem}</h4>
       </div>
 
       {estimated_causes.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-1 pt-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C6B44]">Likely Causes</p>
-          <ul className="list-disc list-inside space-y-0.5">
+          <ul className="list-disc list-inside space-y-1">
             {estimated_causes.map((cause, idx) => (
-              <li key={idx} className="text-xs text-slate-700">{cause}</li>
+              <li key={idx} className="text-xs text-slate-700 leading-relaxed">{cause}</li>
             ))}
           </ul>
         </div>
       )}
 
       {recommendations.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-1 pt-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C6B44]">Recommendations</p>
-          <ul className="list-disc list-inside space-y-0.5">
+          <ul className="list-disc list-inside space-y-1">
             {recommendations.map((rec, idx) => (
-              <li key={idx} className="text-xs text-slate-700">{rec}</li>
+              <li key={idx} className="text-xs text-slate-700 leading-relaxed">{rec}</li>
             ))}
           </ul>
         </div>

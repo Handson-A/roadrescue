@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -62,10 +63,10 @@ export default function Modal({
             {onClose && (
               <button
                 onClick={onClose}
-                className="rounded-full border border-border p-2 text-muted hover:bg-surfaceAlt hover:text-foreground focus-ring"
+                className="rounded-full border border-border p-2 text-muted hover:bg-surfaceAlt hover:text-foreground focus-ring cursor-pointer"
                 aria-label="Close"
               >
-                ✕
+                <X size={16} />
               </button>
             )}
           </div>

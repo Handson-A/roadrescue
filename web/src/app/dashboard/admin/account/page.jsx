@@ -10,7 +10,7 @@ import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, Shield, Lock, ShieldCheck, KeyRound } from 'lucide-react'
+import { User, Mail, Phone, Shield, Lock, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react'
 
 export default function AdminAccountPage() {
   const { user, profile } = useAuth()
@@ -192,10 +192,10 @@ export default function AdminAccountPage() {
             Your identity maintains complete access clearance matrices across the global backend architecture, including:
           </p>
           <ul className="grid gap-2 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-100 p-4 rounded-xl">
-            <li className="flex items-center gap-2">✓ User framework management and validation vectors</li>
-            <li className="flex items-center gap-2">✓ Emergency field technician credential moderation</li>
-            <li className="flex items-center gap-2">✓ Realtime transit dispatch tracking & escalation channels</li>
-            <li className="flex items-center gap-2">✓ Comprehensive platform analytics documentation</li>
+            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> User framework management and validation vectors</li>
+            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> Emergency field technician credential moderation</li>
+            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> Realtime transit dispatch tracking & escalation channels</li>
+            <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> Comprehensive platform analytics documentation</li>
           </ul>
         </Card>
 

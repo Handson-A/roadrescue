@@ -42,32 +42,12 @@ export async function PATCH(req, { params }) {
 
     const requestedStatus = normalizeStatus(rawStatus)
 
-    // Check if the update is for "cancelled"
-    if (requestedStatus === 'cancelled') {
-      // 1. Fetch current status from the database
-      const { data: currentRequest, error: fetchError } = await serviceSupabase
-        .from('rescue_requests')
-        .select('status')
-        .eq('id', requestId)
-        .maybeSingle()
-
-      if (fetchError || !currentRequest) {
-        return NextResponse.json({ error: 'Request not found' }, { status: 404 })
-      }
-
-      // 2. Prevent cancellation if it has already reached en_route, arrived, or in_progress
-      const forbiddenStatuses = ['en_route', 'arrived', 'in_progress']
-      if (forbiddenStatuses.includes(currentRequest.status)) {
-        return NextResponse.json(
-          { error: 'Cannot cancel request once the mechanic is en route or has arrived' },
-          { status: 403 }
-        )
-      }
-    }
-
-    const cancellationReason = normalizeString(
+    const rawCancellationReason = normalizeString(
       body.reason ?? body.cancellationReason ?? body.cancellation_reason
     )
+    const cancellationReason = requestedStatus === 'cancelled' && rawCancellationReason
+      ? (rawCancellationReason.startsWith('user:') || rawCancellationReason.startsWith('system_timeout:') ? rawCancellationReason : `user: ${rawCancellationReason}`)
+      : rawCancellationReason
     const completionNotes = normalizeString(
       body.completionNotes ?? body.completion_notes
     )

@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import { signUp } from '@/lib/auth'
 import { USER_ROLE } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
+import { AlertTriangle, Info } from 'lucide-react'
 
 export default function RegisterForm() {
   const router = useRouter()
@@ -367,8 +368,8 @@ export default function RegisterForm() {
                     className="rounded-xl border-[#DDD0A8]" 
                   />
                   {formData.emergencyContactPhone && (formData.emergencyContactPhone.length !== 10 || !formData.emergencyContactPhone.startsWith('0')) && (
-                    <p className="mt-1 text-[10px] font-bold text-red-500">
-                      ⚠️ Must be exactly 10 digits starting with 0.
+                    <p className="mt-1 text-[10px] font-bold text-red-500 flex items-center gap-1">
+                      <AlertTriangle size={12} className="shrink-0" /> Must be exactly 10 digits starting with 0.
                     </p>
                   )}
                 </div>
@@ -394,8 +395,8 @@ export default function RegisterForm() {
             className="w-full h-[46px] rounded-xl border-[#DDD0A8] bg-[#FFFBF4]" 
           />
           {formData.phone && (formData.phone.length !== 10 || !formData.phone.startsWith('0')) && (
-            <p className="mt-1 text-[10px] font-bold text-red-500">
-              ⚠️ Phone number must be exactly 10 digits starting with 0.
+            <p className="mt-1 text-[10px] font-bold text-red-500 flex items-center gap-1">
+              <AlertTriangle size={12} className="shrink-0" /> Phone number must be exactly 10 digits starting with 0.
             </p>
           )}
         </div>
@@ -440,7 +441,7 @@ export default function RegisterForm() {
 
       <button
         type="button"
-        onClick={() => toast('Coming soon, register manually for now.', { icon: 'ℹ️' })}
+        onClick={() => toast('Coming soon, register manually.', { icon: <Info size={16} className="text-amber-600" /> })}
         className="flex w-full h-[50px] items-center justify-center rounded-[12px] border border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] cursor-pointer"
       >
         <svg className="mr-2.5 h-4 w-4" viewBox="0 0 24 24">

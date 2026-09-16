@@ -95,8 +95,9 @@ export default function MechanicHistoryPage() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Average Rating</span>
               <Star size={16} className="text-primary fill-primary" />
             </div>
-            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-              {avgRating} ★ ({ratedJobs.length} reviews)
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Star size={18} className="text-amber-500 fill-amber-500" />
+              <span>{avgRating} ({ratedJobs.length} reviews)</span>
             </p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Driver feedback satisfaction index</p>
           </Card>

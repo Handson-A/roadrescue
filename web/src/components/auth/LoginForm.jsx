@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { signIn } from '@/lib/auth'
+import { Info } from 'lucide-react'
 
 export default function LoginForm() {
   const router = useRouter()
@@ -81,7 +82,7 @@ export default function LoginForm() {
 
       <button
         type="button"
-        onClick={() => toast('Coming soon, register manually for now.', { icon: 'ℹ️' })}
+        onClick={() => toast('Coming soon, register manually.', { icon: <Info size={16} className="text-amber-600" /> })}
         className="flex w-full h-[50px] items-center justify-center rounded-[12px] border border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] cursor-pointer"
       >
         <svg className="mr-2.5 h-4 w-4" viewBox="0 0 24 24">

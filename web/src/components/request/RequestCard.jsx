@@ -1,6 +1,7 @@
 'use client';
 
 import Badge from '@/components/ui/Badge';
+import { MapPin, Car } from 'lucide-react';
 
 export default function RequestCard({ request, isActive = false }) {
   const getStatusColor = (status) => {
@@ -23,8 +24,14 @@ export default function RequestCard({ request, isActive = false }) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="font-semibold text-gray-900">{request.issue}</h3>
-          <p className="text-sm text-gray-600 mt-1">📍 {request.location}</p>
-          <p className="text-sm text-gray-600">🚗 {request.vehicleDetails}</p>
+          <p className="text-sm text-gray-600 mt-1 flex items-center gap-1.5">
+            <MapPin size={14} className="text-gray-400 shrink-0" />
+            <span>{request.location}</span>
+          </p>
+          <p className="text-sm text-gray-600 flex items-center gap-1.5 mt-0.5">
+            <Car size={14} className="text-gray-400 shrink-0" />
+            <span>{request.vehicleDetails}</span>
+          </p>
         </div>
         <Badge variant={getStatusColor(request.status)}>{request.status}</Badge>
       </div>

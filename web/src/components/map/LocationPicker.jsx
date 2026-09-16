@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Fuel } from 'lucide-react'
+import { Fuel, Compass } from 'lucide-react'
 import toast from 'react-hot-toast' // Added hot-toast import
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -178,6 +178,8 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
         <MapContainer
           center={mapCenter}
           zoom={14}
+          maxZoom={19}
+          minZoom={3}
           style={{ height: '300px', width: '100%' }}
           className="rounded-[1.25rem] border border-slate-200"
           scrollWheelZoom={true}
@@ -185,6 +187,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
           />
           {(lat && lng && customIcon) && (
             <Marker position={[Number(lat), Number(lng)]} icon={customIcon} />
@@ -199,8 +202,9 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider flex-1">
-          📍 Detect Location
+        <Button variant="outline" onClick={detectLocation} className="h-11 rounded-xl text-xs font-bold uppercase tracking-wider flex-1 flex items-center justify-center gap-1.5">
+          <Compass size={14} />
+          <span>Detect Location</span>
         </Button>
         <button
           type="button"

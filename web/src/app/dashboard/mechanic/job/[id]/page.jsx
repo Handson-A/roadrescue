@@ -25,7 +25,6 @@ import {
   Cpu,
   Calendar,
   CheckCircle2,
-  Circle,
   Clock,
   Navigation,
   Zap,
@@ -361,8 +360,9 @@ export default function MechanicJobDetailsPage() {
       description="Keep the driver updated as you move through each stage."
     >
       {graceTimeLeft !== null && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse">
-          ⚠️ You are offline. Return online within {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s to prevent automatic dispatch cancellation.
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse flex items-center gap-2">
+          <AlertTriangle size={18} className="text-red-700 shrink-0" />
+          <span>You are offline. Return online within {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s to prevent automatic dispatch cancellation.</span>
         </div>
       )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 items-start">
@@ -436,16 +436,21 @@ export default function MechanicJobDetailsPage() {
             {/* AI diagnostic */}
             {job.ai_diagnostic_result && (
               <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <Cpu size={14} className="text-blue-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-700">AI diagnostic</span>
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Cpu size={14} className="text-blue-500 shrink-0" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-700">AI Diagnostic</span>
+                  </div>
                   {job.ai_diagnostic_result.severity && (
-                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                      Severity: {job.ai_diagnostic_result.severity}
-                    </span>
+                    <Badge
+                      label={job.ai_diagnostic_result.severity}
+                      variant={job.ai_diagnostic_result.severity}
+                      dot
+                      className="text-[10px] font-bold"
+                    />
                   )}
                 </div>
-                <p className="text-sm text-slate-700">
+                <p className="text-sm font-medium text-slate-700">
                   {job.ai_diagnostic_result.problem || job.ai_diagnostic_result.summary}
                 </p>
                 {job.ai_diagnostic_result.recommendations?.length > 0 && (
@@ -593,7 +598,7 @@ export default function MechanicJobDetailsPage() {
                 </div>
               )}
 
-              {['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(job.status) && (
+              {['pending', 'accepted', 'en_route', 'arrived'].includes(job.status) && (
                 <>
                   {next && <div className="h-px bg-slate-100" />}
                   <ActionButton variant="danger" onClick={cancelJob} disabled={updating}>

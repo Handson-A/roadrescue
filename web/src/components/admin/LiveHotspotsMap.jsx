@@ -19,21 +19,21 @@ const baseLayout = {
   shadowSize: [41, 41]
 }
 
-// 🔴 RED: Distressed drivers stranded in the field
+// RED: Distressed drivers stranded in the field
 const strandedDriverIcon = new L.Icon({
   ...baseLayout,
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
   iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
 })
 
-// 🟡 YELLOW: Standby active units waiting for assignments
+// YELLOW: Standby active units waiting for assignments
 const yellowMechanicIcon = new L.Icon({
   ...baseLayout,
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
   iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
 })
 
-// 🟢 GREEN: En-route field assets dispatched to an incident scene
+// GREEN: En-route field assets dispatched to an incident scene
 const dispatchedMechanicIcon = new L.Icon({
   ...baseLayout,
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -396,7 +396,17 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
                     <p className="m-0"><strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Phone</strong> {m.user?.phone || m.profiles?.phone || '—'}</p>
                     <p className="m-0">
                       <strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Live Status</strong>
-                      {activeAssignment ? '🟡 In Active Rescue' : '🟢 Online & Available'}
+                      {activeAssignment ? (
+                        <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold text-xs">
+                          <span className="h-2 w-2 rounded-full bg-amber-500" />
+                          In Active Rescue
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold text-xs">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          Online & Available
+                        </span>
+                      )}
                     </p>
                     <p className="m-0"><strong className="text-slate-400 font-bold uppercase text-[9px] tracking-wide block">Last Located</strong> {m.updated_at ? new Date(m.updated_at).toLocaleTimeString() : 'Just now'}</p>
                   </div>

@@ -28,10 +28,13 @@ export default function Navbar() {
 
   const visibleOnScroll = useHideOnScroll({ threshold: 10, initialVisible: true })
   const visible = isDashboardRoot ? visibleOnScroll : true
-
-  const hrs = new Date().getHours()
-  const greeting = hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
+  const [greeting, setGreeting] = useState('Welcome')
   const router = useRouter()
+  
+  useEffect(() => {
+    const hrs = new Date().getHours()
+    setGreeting(hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening')
+  }, [])
   
   const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
 
@@ -72,7 +75,7 @@ export default function Navbar() {
     }
   }, [])
   
-  const firstName = profile?.full_name?.split(' ')?.[0] || 'member'
+  const fullName = profile?.full_name || 'member'
 
   const activeRescueCount = notifications.filter((n) => !n.is_read).length
 
@@ -125,7 +128,7 @@ export default function Navbar() {
     if (pathname.includes('/request/')) return 'Live tracking'
     if (pathname.includes('/activity')) return 'Activity Log'
     if (pathname.includes('/history')) return 'Job History'
-    if (pathname.includes('/account')) return 'My Profile'
+    if (pathname.includes('/account')) return 'Profile'
     if (pathname.includes('/reports')) return 'Incident Reports'
     if (pathname.includes('/mechanics')) return 'Verified Mechanics'
     if (pathname.includes('/requests')) return 'Active Dispatch'
@@ -147,27 +150,28 @@ export default function Navbar() {
   const hasAvatar = !!profile?.avatar_url;
 
   return (
-    <header className={`fixed top-0 left-0 right-0 md:left-64 z-30 transition-transform duration-300 ease-in-out ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
-      
-      {/* ==================================================================== */}
-      {/* MODERNIZED MOBILE HEADER DISPLAY GRID                              */}
-      {/* ==================================================================== */}
-      <div className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-lg transition-all duration-300">
+    <header className={`fixed top-0 left-0 right-0 md:left-64 z-[900] transition-transform duration-300 ease-in-out ${visible ? 'translate-y-0' : '-translate-y-full'}`}>
+    
+      {/*  MOBILE HEADER DISPLAY GRID  */}
+
+      <div className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-2xl transition-all duration-300 border-b border-white/[0.08] relative">
         {isDashboardRoot ? (
-          <div className="px-5 pb-6 pt-5">
+          <div className="px-5 pb-5 pt-4">
             {/* Top row: Greeting & Profile/Notification Toggles */}
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-lg font-bold text-primary">{greeting}, {firstName}</h1>
-                <p className="text-[11px] font-medium text-[#A29A84] truncate mt-0.5 opacity-85">
-                  {authenticatedEmail}
+                <p className="text-[14px] font-medium text-[#A29A84] truncate opacity-85" suppressHydrationWarning>
+                  {greeting},
                 </p>
+                <h1 className="text-lg font-bold text-primary truncate">
+                  {fullName}
+                </h1>
               </div>
 
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setOpen((prev) => !prev)}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10 active:scale-95 transition-transform"
+                  className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10 active:scale-95 transition-transform cursor-pointer"
                   aria-label="Open notifications"
                 >
                   <Bell size={18} />
@@ -178,35 +182,13 @@ export default function Navbar() {
 
                  <button
                    onClick={handleProfileClick}
-                   className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full active:scale-95 transition-transform bg-transparent"
+                   className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full active:scale-95 transition-transform bg-transparent cursor-pointer"
                    aria-label="Open profile"
                  >
                    <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
                  </button>
               </div>
             </div>
-
-            {/* Premium, sleek Search form input */}
-            <form
-              className="mt-5 flex items-center gap-2.5 rounded-xl bg-white/[0.04] px-3.5 py-2 border border-white/[0.08] focus-within:border-primary/40 focus-within:bg-white/[0.06] transition-all duration-200"
-              onSubmit={handleSearch}
-            >
-              <Search size={16} className="shrink-0 text-[#A29A84]" />
-              <input
-                type="search"
-                placeholder={role === 'mechanic' ? "Search service logs..." : "Search locations or garages..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-sm text-[#EFE8D4] placeholder:text-[#6C6552] outline-none"
-              />
-              <button
-                type="submit"
-                className="flex h-7 items-center justify-center rounded-lg bg-primary px-3.5 text-xs font-bold uppercase tracking-wider text-[#1E1B15] active:scale-95 transition-transform"
-              >
-                Go
-              </button>
-            </form>
-
           </div>
         ) : (
           /* Sub-route / Inner Page Header context */
@@ -214,7 +196,7 @@ export default function Navbar() {
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={handleBack}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFE8D4] text-[#1E1B15] shadow-sm active:scale-95 transition-transform"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFE8D4] text-[#1E1B15] shadow-sm active:scale-95 transition-transform cursor-pointer"
                 aria-label="Go back"
               >
                 <ArrowLeft size={16} strokeWidth={2.5} />
@@ -244,7 +226,7 @@ export default function Navbar() {
 
               <button
                 onClick={() => setOpen((prev) => !prev)}
-                className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10 cursor-pointer"
                 aria-label="Open notifications"
               >
                 <Bell size={16} />
@@ -253,7 +235,7 @@ export default function Navbar() {
 
               <button
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-[#EFE8D4] border border-white/10 cursor-pointer"
                 aria-label="Open menu"
               >
                 {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
@@ -262,15 +244,15 @@ export default function Navbar() {
 
             {/* Mobile Context Dropdown menu */}
             {mobileMenuOpen && (
-              <div className="absolute right-5 top-[60px] z-50 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#26221A] p-1 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-5 top-[60px] z-[9999] w-48 overflow-hidden rounded-xl border border-white/15 bg-[#26221A] p-1 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false)
                     handleProfileClick()
                   }}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-[#EFE8D4] hover:bg-white/5"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-[#EFE8D4] hover:bg-white/10 cursor-pointer"
                 >
-                  <span>My Profile</span>
+                  <span>Profile</span>
                   <ShieldCheck size={14} className="text-emerald-400" />
                 </button>
                 <button
@@ -278,7 +260,7 @@ export default function Navbar() {
                     setMobileMenuOpen(false)
                     handleSignOut()
                   }}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/10"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/15 cursor-pointer"
                 >
                   <span>Sign Out</span>
                   <LogOut size={14} />
@@ -324,21 +306,22 @@ export default function Navbar() {
           </div>
         )}
       </div>
-      {/* ==================================================================== */}
+
       {/* DESKTOP HEADER DISPLAY GRID                                         */}
-      {/* ==================================================================== */}
-      <div className="hidden items-center justify-between gap-3 border-b border-[#D8CCAE] bg-[#F5F0E2] px-4 py-3 md:flex lg:px-6">
+
+      <div className="hidden items-center justify-between gap-4 border-b border-[#D8CCAE] bg-[#F5F0E2] px-4 py-3.5 md:flex lg:px-6">
         
-        {/* Brand Container - Clamped to prevent pushing items right */}
-        <div className="min-w-0 flex-shrink-0 flex items-center gap-3">
+        {/* Left: Brand Container - Clamped to prevent pushing items right */}
+        <div className="min-w-0 shrink-0 flex items-center gap-3">
           <h1 className="text-2xl lg:text-3xl font-black text-[#6A5A10] tracking-tight">RoadRescue</h1>
           <span className="hidden xl:inline-block rounded-full border border-[#C8BC9E] bg-[#EFE6D1] px-3 py-0.5 text-[10px] font-black uppercase tracking-widest text-[#6F654D]">
             {role === 'admin' ? 'Operations' : role === 'mechanic' ? 'Field Service' : 'Client System'}
           </span>
         </div>
 
-        {/* Action Controls Anchor Group */}
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-3">
+
+        {/* Right: Action Controls Anchor Group (shrink-0 so it is never compressed) */}
+        <div className="flex shrink-0 items-center justify-end gap-2.5 lg:gap-3">
           {isTrackingPage && (
             <button
               type="button"
@@ -353,29 +336,10 @@ export default function Navbar() {
               <span>{showFuel ? 'Fuel Stations' : 'Fuel Off'}</span>
             </button>
           )}
-          
-          {/* Global Search Bar (Exits early on tight tablet dimensions to guard padding rows) */}
-          {isDashboardRoot && (
-            <form
-              className="hidden w-full max-w-xs xl:max-w-md items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#EFE6D1] px-3 py-2 lg:flex min-w-0"
-              onSubmit={handleSearch}
-            >
-              <Search size={16} className="text-[#7A7058] flex-shrink-0" />
-              <input
-                type="search"
-                placeholder={role === 'admin' ? 'Search incidents...' : 'Search requests...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-sm text-[#3C3527] outline-none placeholder:text-[#8A8066] min-w-0"
-              />
-            </form>
-          )}
-
-
 
           {/* Notification Menu Container */}
-          <div ref={notificationRef} className="relative flex-shrink-0">
-            <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm active:scale-95 transition-transform">
+          <div ref={notificationRef} className="relative shrink-0">
+            <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm active:scale-95 transition-transform cursor-pointer">
               <Bell size={18} />
               {unreadCount > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
             </button>
@@ -387,7 +351,7 @@ export default function Navbar() {
                     <p className="text-sm font-black text-slate-900">Notifications</p>
                     <p className="text-[11px] text-slate-500">Live dispatch updates</p>
                   </div>
-                  {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs font-bold text-amber-600 hover:underline">Mark all read</button>}
+                  {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs font-bold text-amber-600 hover:underline cursor-pointer">Mark all read</button>}
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
@@ -422,9 +386,9 @@ export default function Navbar() {
           {/* Profile Quick-Link Widget */}
           <button
             onClick={handleProfileClick}
-            className="hidden sm:flex items-center gap-2 rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] px-3 py-1.5 transition hover:bg-[#EFE6D1] min-w-0 max-w-[180px] lg:max-w-xs"
+            className="hidden sm:flex items-center gap-2.5 rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] px-3 py-1.5 transition hover:bg-[#EFE6D1] shrink-0 max-w-[200px] lg:max-w-xs cursor-pointer"
           >
-            <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online={true} className="flex-shrink-0" />
+            <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online={true} className="shrink-0" />
             <div className="leading-tight text-left min-w-0 hidden xl:block">
               <p className="text-xs font-black text-[#2D271C] truncate">{profile?.full_name || 'Rescue Driver'}</p>
               <p className="text-[10px] text-[#6E634B] font-medium truncate">{authenticatedEmail}</p>
@@ -434,7 +398,7 @@ export default function Navbar() {
           {/* Sign Out Trigger Button */}
           <button
             onClick={handleSignOut}
-            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 lg:px-4 text-xs font-black uppercase tracking-wider text-red-700 flex-shrink-0 transition hover:bg-red-100"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 lg:px-4 text-xs font-black uppercase tracking-wider text-red-700 shrink-0 transition hover:bg-red-100 cursor-pointer"
           >
             <LogOut size={14} />
             <span className="hidden lg:inline">Logout</span>
