@@ -24,9 +24,11 @@
 *   **Transactional Notification**: Matching records and automated emails (Resend) are sent to available, verified mechanics in the background.
 
 ### B. Map Koordinations & Refueling Grids
-*   **Leaflet Integration**: Renders maps using OpenStreetMap tiles (no API keys required).
+*   **Leaflet Integration**: Renders maps using OpenStreetMap tiles (no API keys required), enforcing standard zoom boundaries (`maxZoom={19}`, `minZoom={3}`, `fitBounds` capped at `maxZoom: 16`).
+*   **Unified Full-Bleed Map Architecture**: Driver Explore (`/dashboard/driver/explore`) and Mechanic Navigation (`/dashboard/mechanic/navigation`) share a standardized layout container (`FullBleedMapShell.jsx`), presenting a 100% viewport map canvas layered with floating status pills, recenter controls, and bottom inspection sheets.
+*   **Mobile Map Separation**: To optimize mechanic operational focus on mobile devices, live GPS tracking maps are isolated to the dedicated Navigation tab, allowing the primary Service Console dashboard to prioritize actionable feeds (Active Jobs and Urgent Incident Broadcasts).
 *   **Dynamic Fuel/EV Stations**: Replaces hardcoded mock locations with a live Supabase query to `public.fuel_ev_stations`. The map displays stations (orange for fuel, violet for EV) and allows drivers to pin breakdowns directly to them.
-*   **Bidirectional Tracker**: When a job is accepted, hooks update the mechanic's availability (`is_available = false`). While `en_route` or `in_progress`, the driver tracks the mechanic's live location via WebSockets.
+*   **Bidirectional Tracker**: When a job is accepted, hooks update the mechanic's availability (`is_available = false`). While `en_route` or `in_progress`, the driver tracks the mechanic's live location via WebSockets. When toggled offline, geolocation watchers halt and static shop base coordinates or offline standby indicators are displayed.
 
 ### C. Secure Request Cancellation Guard
 *   **State Control**: Driver and mechanic cancellation actions are restricted to `pending` or `accepted` states.
