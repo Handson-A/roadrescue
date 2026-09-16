@@ -95,42 +95,38 @@ export async function updateMechanicVerification(
   serviceSupabase,
   mechanicUserId,
   newStatus,
-  adminId
+  adminId,
+  reason = null
 ) {
   const statusMap = {
     verified: 'approved',
     approve: 'approved',
   }
-  const dbStatus = statusMap[newStatus] || newStatus
+
+  // Option (b): If more_info is requested, keep the verification_status as 'pending'
+  // and store the request-for-info message in rejection_reason without altering the DB enum.
+  const isMoreInfo = newStatus === 'more_info'
+  const dbStatus = isMoreInfo ? 'pending' : (statusMap[newStatus] || newStatus)
 
   // Commits the review metadata directly to the true log tracking table
   const updatePayload = {
     status: dbStatus,
     reviewed_by: adminId,
     reviewed_at: new Date().toISOString(),
+    rejection_reason: isMoreInfo
+      ? (reason || 'Additional information/credentials requested by admin')
+      : (newStatus === 'rejected' ? (reason || 'Verification rejected by admin') : null),
   }
 
-  let { data, error } = await serviceSupabase
+  const { data, error } = await serviceSupabase
     .from('mechanic_verifications')
     .update(updatePayload)
     .eq('mechanic_id', mechanicUserId)
     .select()
 
-  if (error && error.message.includes('more_info') && dbStatus === 'more_info') {
-    updatePayload.status = 'pending'
-    updatePayload.notes = 'System requested more info'
-    const fbRes = await serviceSupabase
-      .from('mechanic_verifications')
-      .update(updatePayload)
-      .eq('mechanic_id', mechanicUserId)
-      .select()
-    data = fbRes.data
-    error = fbRes.error
-  }
-
   if (error) throw error
 
-  // Also update verification_status in mechanic_profiles (this is a text column, so it always succeeds)
+  // Also update verification_status in mechanic_profiles
   const { error: profileError } = await serviceSupabase
     .from('mechanic_profiles')
     .update({ verification_status: dbStatus })

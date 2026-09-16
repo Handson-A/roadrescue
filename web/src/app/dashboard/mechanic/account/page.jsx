@@ -7,13 +7,12 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import ToggleChip from '@/components/ui/ToggleChip'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { 
   Building2, MapPin, Wrench, ShieldAlert, Award, Clock, 
-  Phone, Mail, FileText, CheckCircle2, Sliders, Bell, MessageSquare, Camera, Loader2,
+  Phone, Mail, FileText, CheckCircle2, MessageSquare, Camera, Loader2,
   AlertTriangle, Star
 } from 'lucide-react'
 import Select from '@/components/ui/Select'
@@ -50,11 +49,7 @@ export default function MechanicAccountPage() {
     licenseNumber: '',
     licenseExpiry: '',
     availability: false,
-    theme: 'system',
-    preferredLanguage: 'en',
     secondaryPhone: '',
-    notificationPreferences: { jobAlerts: true, messageAlerts: true, push: true },
-    communicationPreferences: ['call', 'sms'],
     serviceMode: 'mobile',
     baseLocationLabel: '',
     showBaseLocationOffline: false,
@@ -83,7 +78,7 @@ export default function MechanicAccountPage() {
         .eq('user_id', currentUserId)
         .maybeSingle()
 
-      // 3. Query centralized application app profile preferences table
+      // 3. Query secondary phone from preferences table
       let preferenceData = null
       try {
         const response = await fetch('/api/profile/preferences', { cache: 'no-store' })
@@ -170,11 +165,7 @@ export default function MechanicAccountPage() {
           serviceArea: mechData?.location_label || '',
           yearsExperience: mechData?.years_experience || '',
           availability: mechData?.is_available ?? false,
-          theme: preferenceData?.theme || 'System',
-          preferredLanguage: preferenceData?.preferred_language || 'English',
           secondaryPhone: preferenceData?.secondary_phone || '',
-          notificationPreferences: preferenceData?.notification_preferences || { jobAlerts: true, messageAlerts: true, push: true },
-          communicationPreferences: preferenceData?.communication_preferences || ['call', 'sms'],
           serviceMode: mechData?.service_mode || 'mobile',
           baseLocationLabel: mechData?.base_location_label || '',
           showBaseLocationOffline: mechData?.show_base_location_offline ?? false,
@@ -349,26 +340,7 @@ export default function MechanicAccountPage() {
     }
   }
 
-  const toggleNotification = (field) => {
-    if (!isEditing) return
-    setFormData((prev) => ({
-      ...prev,
-      notificationPreferences: {
-        ...prev.notificationPreferences,
-        [field]: !prev.notificationPreferences?.[field],
-      },
-    }))
-  }
 
-  const toggleCommunication = (value) => {
-    if (!isEditing) return
-    setFormData((prev) => ({
-      ...prev,
-      communicationPreferences: prev.communicationPreferences.includes(value)
-        ? prev.communicationPreferences.filter((item) => item !== value)
-        : [...prev.communicationPreferences, value],
-    }))
-  }
 
   const pinBaseLocation = () => {
     if (!navigator.geolocation) {
@@ -483,11 +455,7 @@ export default function MechanicAccountPage() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            theme: formData.theme,
-            preferred_language: formData.preferredLanguage,
             secondary_phone: formData.secondaryPhone,
-            notification_preferences: formData.notificationPreferences,
-            communication_preferences: formData.communicationPreferences,
           }),
         })
       } catch (prefErr) {
@@ -746,59 +714,7 @@ export default function MechanicAccountPage() {
           )}
         </Card>
 
-        {/* ================= APPLICATION ENVIRONMENT OPTION SECTIONS ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs relative">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-5">
-            <Sliders size={15} className="text-amber-500" /> App Preferences
-          </h3>
 
-          <div className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="System Theme" value={formData.theme} disabled={!isEditing} onChange={(e) => handleChange('theme', e.target.value)} placeholder="system, dark, or light" />
-              <Input label="Preferred Language" value={formData.preferredLanguage} disabled={!isEditing} onChange={(e) => handleChange('preferredLanguage', e.target.value)} placeholder="en, fr, etc." />
-            </div>
-
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-2">
-                <Bell size={12} className="inline mr-1" /> Alert Dispatch Routing Toggles
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {['jobAlerts', 'messageAlerts', 'push'].map((field) => {
-                  const isChecked = formData.notificationPreferences?.[field]
-                  return (
-                    <ToggleChip
-                      key={field}
-                      label={field.replace('Alerts', ' Alerts')}
-                      checked={isChecked}
-                      readOnly={!isEditing}
-                      onChange={() => toggleNotification(field)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-2">
-                <MessageSquare size={12} className="inline mr-1" /> Active Communication Channels
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {['call', 'sms', 'whatsapp'].map((channel) => {
-                  const isSelected = formData.communicationPreferences.includes(channel)
-                  return (
-                    <ToggleChip
-                      key={channel}
-                      label={channel}
-                      checked={isSelected}
-                      readOnly={!isEditing}
-                      onChange={() => toggleCommunication(channel)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </Card>
 
         {/* ================= IDENTITY & CLEARANCE CREDENTIALS ================= */}
         <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">

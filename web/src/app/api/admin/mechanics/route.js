@@ -60,11 +60,11 @@ export async function PATCH(req) {
     const { user } = await requireAdmin(supabase)
 
     const body = await req.json()
-    const { mechanicUserId, newStatus } = body
+    const { mechanicUserId, newStatus, reason } = body
 
     // Standardize input mappings parameters
     const statusMap = { verified: 'approved', approve: 'approved' }
-    const dbStatus = statusMap[newStatus] || newStatus
+    const dbStatus = newStatus === 'more_info' ? 'pending' : (statusMap[newStatus] || newStatus)
 
     if (!mechanicUserId || !newStatus) {
       return NextResponse.json(
@@ -78,7 +78,8 @@ export async function PATCH(req) {
       serviceSupabase,
       mechanicUserId,
       newStatus,
-      user.id   // adminId tracking parameter for database logs audit trail
+      user.id,  // adminId tracking parameter for database logs audit trail
+      reason
     )
 
     // 2. Map verification status straight to the true matching schema field column

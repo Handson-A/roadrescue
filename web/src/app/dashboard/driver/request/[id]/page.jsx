@@ -23,7 +23,7 @@ import { createClient } from '@/lib/supabase/client'
 import Select from '@/components/ui/Select'
 
 const ACTIVE_DRIVER_REQUEST_STATUSES = ['accepted', 'en_route', 'arrived', 'in_progress']
-const CANCELLATION_ALLOWED_STATUSES = ['pending', 'accepted']
+const CANCELLATION_ALLOWED_STATUSES = ['pending', 'offered', 'accepted', 'en_route']
 
 // Internal mathematical helper to calculate true physical distance over earth curvature
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
@@ -85,13 +85,12 @@ export default function DriverRequestTrackingPage() {
         
         const cancelDueToOffline = async () => {
           try {
-            await fetch('/api/requests/status', {
-              method: 'PATCH',
+            await fetch('/api/requests/auto-cancel', {
+              method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 requestId: id,
-                newStatus: 'cancelled',
-                cancellationReason: "couldn't resolve"
+                reason: "mechanic went offline / inactivity timeout"
               })
             })
             toast.error("Dispatch automatically cancelled due to mechanic's inactivity.")

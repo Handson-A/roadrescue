@@ -598,7 +598,7 @@ export default function MechanicJobDetailsPage() {
                 </div>
               )}
 
-              {['pending', 'accepted', 'en_route', 'arrived', 'in_progress'].includes(job.status) && (
+              {['pending', 'accepted', 'en_route', 'arrived'].includes(job.status) && (
                 <>
                   {next && <div className="h-px bg-slate-100" />}
                   <ActionButton variant="danger" onClick={cancelJob} disabled={updating}>
