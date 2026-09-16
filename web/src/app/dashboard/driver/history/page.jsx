@@ -51,22 +51,13 @@ export default function DriverHistoryPage() {
   }, [requests, filter])
 
   return (
-    // FIXED: Appended lg:pl-64 structural layout gutters to isolate sidebar footprint
-    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-20 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-1 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-3 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-4">
         
-        <div className="flex items-center gap-3 rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
-          
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-[#1F1B10]">Request History</h1>
-            <p className="text-xs text-[#7C6B44] font-medium">Review past dispatches and archives</p>
-          </div>
-        </div>
 
         <div className="rounded-2xl border border-[#DCCDA9] bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#7C6B44]">Rescue Archive</p>
               <h2 className="mt-0.5 text-base font-black text-[#1F1B10]">Past Dispatches</h2>
             </div>
             

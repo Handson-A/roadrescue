@@ -57,15 +57,23 @@ export default function RootLayout({
                 top: '1rem',
                 right: '1rem',
                 position: 'fixed',
-                zIndex: 9999,
+                zIndex: 99999,
               }}
               toastOptions={{
                 style: {
-                  background: '#fff',
+                  background: '#ffffff',
                   color: '#0f172a',
                   border: '1px solid #e2e8f0',
                   borderRadius: '16px',
-                  boxShadow: '0 18px 40px rgba(15, 23, 42, 0.12)',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                },
+                success: {
+                  iconTheme: {
+                    primary: '#16a34a',
+                    secondary: '#ffffff',
+                  },
                 },
               }}
             />

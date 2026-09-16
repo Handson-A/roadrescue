@@ -101,36 +101,6 @@ function AuthLayoutContent({ children }) {
             {children}
           </div>
         </div>
-
-        {/* Bottom tips bar */}
-        <div className="relative overflow-hidden border-t border-[#C8B57A]/30 bg-[#1A1609]">
-          {/* Gradient overlay */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#1A1609_0%,#120F0A_100%)]" />
-
-          {/* Ambient glow */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(245,209,8,0.08),transparent_60%)]" />
-
-          <video
-            className="absolute inset-0 h-full w-full object-cover opacity-[0.12] mix-blend-screen"
-            src={backgroundVideo}
-            autoPlay
-            muted
-            loop
-            playsInline
-            aria-hidden="true"
-          />
-
-          <div className="relative z-10 px-5 py-5 flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-400/80">
-                Safety Directive
-              </span>
-            </div>
-            <RotatingTips compact={true} />
-          </div>
-        </div>
-
       </div>
 
     </div>

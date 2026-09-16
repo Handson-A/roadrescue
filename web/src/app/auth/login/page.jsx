@@ -13,7 +13,7 @@ export default function LoginPage() {
           RoadRescue
         </span>
         <h1 className="text-3xl font-black text-slate-950">Welcome Back</h1>
-        <p className="text-sm text-slate-500">Sign in to access your dispatch console.</p>
+        <p className="text-sm text-slate-500">Sign in to continue.</p>
       </div>
 
       <LoginForm />
@@ -28,7 +28,7 @@ export default function LoginPage() {
           className="inline-flex items-center gap-1.5 rounded-full border border-[#DCCDA9] bg-[#FFF9EF] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-[#7C6B44] transition-all hover:bg-[#F5EDD0] shadow-xs"
         >
           <Smartphone size={14} className="text-[#7C6B44]" />
-          <span>Use RoadRescue as App(PWA)</span>
+          <span>Use as an App(PWA)</span>
         </Link>
       </div>
     </div>

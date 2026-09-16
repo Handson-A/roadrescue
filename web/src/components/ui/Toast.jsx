@@ -14,19 +14,26 @@ const iconMap = {
   warning: AlertTriangle,
 }
 
-const colorMap = {
-  success: 'border-success/20 bg-success/10 text-success',
-  error: 'border-danger/20 bg-danger/10 text-danger',
-  info: 'border-slate-200 bg-slate-50 text-slate-700',
-  warning: 'border-warning/20 bg-warning/10 text-warning',
+const iconBadgeStyle = {
+  success: 'bg-emerald-100 text-emerald-600',
+  error: 'bg-rose-100 text-rose-600',
+  info: 'bg-amber-100 text-amber-700',
+  warning: 'bg-amber-100 text-amber-700',
 }
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
 
-  const toast = useCallback(({ message, type = 'info', duration = 4000 }) => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, message, type }])
+  const toast = useCallback(({ message, type = 'info', duration = 4000, id: customId }) => {
+    const id = customId || Date.now() + Math.random()
+    setToasts((prev) => {
+      // If toast with this id already exists, update its message and type rather than appending a duplicate
+      const exists = prev.some((t) => t.id === id)
+      if (exists) {
+        return prev.map((t) => (t.id === id ? { id, message, type } : t))
+      }
+      return [...prev, { id, message, type }]
+    })
 
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((current) => current.id !== id))
@@ -37,23 +44,28 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div
-        style={{ top: '1rem', right: '1rem', position: 'fixed', zIndex: 9999 }}
-        className="flex w-[min(92vw,24rem)] flex-col gap-2"
+        style={{ top: '1rem', right: '1rem', position: 'fixed', zIndex: 99999 }}
+        className="flex w-[min(92vw,24rem)] flex-col gap-2 pointer-events-none"
       >
         {toasts.map((toastItem) => {
           const IconComponent = iconMap[toastItem.type] || iconMap.info
+          const badgeClass = iconBadgeStyle[toastItem.type] || iconBadgeStyle.info
+
           return (
             <div
               key={toastItem.id}
+              style={{
+                backgroundColor: '#ffffff',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+              }}
               className={cn(
-                'flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lift animate-slide-up',
-                colorMap[toastItem.type] || colorMap.info
+                'pointer-events-auto flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 animate-slide-up text-[#0f172a]'
               )}
             >
-              <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white/70 text-xs font-black text-current shrink-0">
-                <IconComponent size={14} />
+              <span className={cn('flex h-7 w-7 items-center justify-center rounded-xl text-xs font-black shrink-0', badgeClass)}>
+                <IconComponent size={15} strokeWidth={2.5} />
               </span>
-              <p className="text-sm font-medium leading-relaxed text-foreground">
+              <p className="text-xs font-bold leading-relaxed text-[#0f172a]">
                 {toastItem.message}
               </p>
             </div>

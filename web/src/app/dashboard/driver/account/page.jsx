@@ -236,7 +236,7 @@ export default function DriverAccountPage() {
   }
 
   return (
-    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-20 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-1 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-3 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
       <div className="w-full max-w-2xl flex flex-col gap-5">
         
         {/* Profile Card Header with Dynamic Avatar Management Terminal */}

@@ -25,7 +25,6 @@ import {
   Cpu,
   Calendar,
   CheckCircle2,
-  Circle,
   Clock,
   Navigation,
   Zap,
@@ -437,16 +436,21 @@ export default function MechanicJobDetailsPage() {
             {/* AI diagnostic */}
             {job.ai_diagnostic_result && (
               <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <Cpu size={14} className="text-blue-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-700">AI diagnostic</span>
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Cpu size={14} className="text-blue-500 shrink-0" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-700">AI Diagnostic</span>
+                  </div>
                   {job.ai_diagnostic_result.severity && (
-                    <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                      Severity: {job.ai_diagnostic_result.severity}
-                    </span>
+                    <Badge
+                      label={job.ai_diagnostic_result.severity}
+                      variant={job.ai_diagnostic_result.severity}
+                      dot
+                      className="text-[10px] font-bold"
+                    />
                   )}
                 </div>
-                <p className="text-sm text-slate-700">
+                <p className="text-sm font-medium text-slate-700">
                   {job.ai_diagnostic_result.problem || job.ai_diagnostic_result.summary}
                 </p>
                 {job.ai_diagnostic_result.recommendations?.length > 0 && (

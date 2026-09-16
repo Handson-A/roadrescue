@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { 
   Wrench, Fuel, Search, Navigation, AlertTriangle, Star, 
-  MapPin, Phone, ShieldCheck, ChevronRight, X, Clock, Compass, Eye
+  MapPin,  ChevronRight, X, Compass
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeGeoPoint, formatDistance } from '@/lib/utils'
@@ -13,6 +13,7 @@ import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
+import MechanicClusterLayer from '@/components/map/MechanicClusterLayer'
 
 // Dynamic imports for Leaflet components (SSR-safe)
 const MapContainer = dynamic(
@@ -22,17 +23,52 @@ const MapContainer = dynamic(
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false })
 const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false })
 
-function MapController({ center, zoom }) {
+function MapController({ center, zoom, onViewportChange }) {
   const { useMap } = require('react-leaflet')
   const map = useMap()
+  const debounceRef = useRef(null)
+  const isInitializedRef = useRef(false)
+
+  // Smoothly center the map when user location or initial position changes
   useEffect(() => {
-    if (map && center) {
-      map.setView(center, zoom || map.getZoom())
-      setTimeout(() => {
-        map.invalidateSize()
-      }, 100)
+    if (map && center && center[0] && center[1]) {
+      if (!isInitializedRef.current) {
+        map.setView(center, zoom || map.getZoom() || 13)
+        isInitializedRef.current = true
+      }
     }
   }, [map, center, zoom])
+
+  useEffect(() => {
+    if (!map || !onViewportChange) return
+
+    const handleMoveEnd = () => {
+      try {
+        const bounds = map.getBounds()
+        const mapCenter = map.getCenter()
+        if (bounds && mapCenter && bounds.isValid && bounds.isValid()) {
+          if (debounceRef.current) clearTimeout(debounceRef.current)
+          debounceRef.current = setTimeout(() => {
+            onViewportChange(bounds, mapCenter)
+          }, 400)
+        }
+      } catch (e) {
+        console.warn('Viewport bounds not yet initialized:', e)
+      }
+    }
+
+    // Trigger after map ready
+    map.whenReady(() => {
+      handleMoveEnd()
+    })
+
+    map.on('moveend', handleMoveEnd)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      map.off('moveend', handleMoveEnd)
+    }
+  }, [map, onViewportChange])
+
   return null
 }
 
@@ -129,8 +165,30 @@ export default function DriverExploreMap() {
     }
   }, [])
 
-  // Fetch approved mechanics and resolve marker rules
-  const fetchApprovedMechanics = useCallback(async () => {
+  // State for zoom out limit warning (e.g. > 30km radius)
+  const [zoomTooLow, setZoomTooLow] = useState(false)
+  const MAX_RADIUS_KM = 30
+
+  // Fetch approved mechanics and resolve marker rules constrained by viewport bounds
+  const fetchApprovedMechanics = useCallback(async (bounds, center) => {
+    if (!bounds || !center) return
+
+    const south = bounds.getSouth()
+    const west = bounds.getWest()
+    const north = bounds.getNorth()
+    const east = bounds.getEast()
+
+    // Calculate viewport diagonal radius in km
+    const radiusKm = calculateDistanceKm(center.lat, center.lng, north, east)
+
+    if (radiusKm && radiusKm > MAX_RADIUS_KM) {
+      setZoomTooLow(true)
+      setMechanics([])
+      setLoading(false)
+      return
+    }
+
+    setZoomTooLow(false)
     setLoading(true)
     setError(null)
     const supabase = createClient()
@@ -141,7 +199,15 @@ export default function DriverExploreMap() {
        * 1. WHERE verification_status = 'approved' only (unverified/pending never appear)
        * 2. Query mechanic_profiles with exact confirmed column names:
        *    is_available, current_location, base_location, base_location_label, show_base_location_offline
+       * 3. Bounds-constrained with padding (15%) to avoid edge pops
        */
+      const latPadding = Math.abs(north - south) * 0.15
+      const lngPadding = Math.abs(east - west) * 0.15
+      const minLat = south - latPadding
+      const maxLat = north + latPadding
+      const minLng = west - lngPadding
+      const maxLng = east + lngPadding
+
       const { data, error: fetchErr } = await supabase
         .from('mechanic_profiles')
         .select(`
@@ -164,7 +230,7 @@ export default function DriverExploreMap() {
 
       if (fetchErr) throw fetchErr
 
-      // Process and apply strict marker filtering rules
+      // Process and apply strict marker filtering & bounds containment rules
       const validMechanics = []
 
       for (const m of (data || [])) {
@@ -175,12 +241,15 @@ export default function DriverExploreMap() {
           if (m.current_location) {
             const coords = normalizeGeoPoint(m.current_location)
             if (coords && coords[0] && coords[1]) {
-              validMechanics.push({
-                ...m,
-                statusMode: 'online',
-                markerCoordinates: coords,
-                displayLocationLabel: m.location_label || 'Current GPS Location',
-              })
+              const [lat, lng] = coords
+              if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
+                validMechanics.push({
+                  ...m,
+                  statusMode: 'online',
+                  markerCoordinates: coords,
+                  displayLocationLabel: m.location_label || 'Current GPS Location',
+                })
+              }
             }
           }
         } else {
@@ -188,15 +257,17 @@ export default function DriverExploreMap() {
           if (m.show_base_location_offline === true && m.base_location) {
             const coords = normalizeGeoPoint(m.base_location)
             if (coords && coords[0] && coords[1]) {
-              validMechanics.push({
-                ...m,
-                statusMode: 'offline',
-                markerCoordinates: coords,
-                displayLocationLabel: m.base_location_label || m.location_label || 'Workshop / Base',
-              })
+              const [lat, lng] = coords
+              if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
+                validMechanics.push({
+                  ...m,
+                  statusMode: 'offline',
+                  markerCoordinates: coords,
+                  displayLocationLabel: m.base_location_label || m.location_label || 'Workshop / Base',
+                })
+              }
             }
           }
-          // Otherwise suppressed entirely from results
         }
       }
 
@@ -208,10 +279,6 @@ export default function DriverExploreMap() {
       setLoading(false)
     }
   }, [])
-
-  useEffect(() => {
-    fetchApprovedMechanics()
-  }, [fetchApprovedMechanics])
 
   // Filtered mechanics based on search & availability filters
   const visibleMechanics = useMemo(() => {
@@ -248,12 +315,12 @@ export default function DriverExploreMap() {
   }, [selectedMechanic, userLocation])
 
   return (
-    <div className="relative w-full h-full flex-1 flex flex-col overflow-hidden bg-[#F6F2E7]">
+    <div className="relative w-full h-full min-h-[calc(100dvh-4rem)] md:min-h-0 flex-1 flex flex-col overflow-hidden bg-[#F6F2E7]">
       
-      {/* ==================================================================== */}
-      {/* FLOATING TOP CONTROLS & SEARCH BAR                                   */}
-      {/* ==================================================================== */}
-      <div className="absolute top-4 left-4 right-4 z-[500] max-w-lg mx-auto flex flex-col gap-2 pointer-events-auto">
+      
+      {/* FLOATING TOP CONTROLS & SEARCH BAR */}
+      
+      <div className="absolute top-4 left-4 right-4 z-20 max-w-lg mx-auto flex flex-col gap-2 pointer-events-auto">
         
         {/* Search Input Box */}
         <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-[#DCCDA9] shadow-lg">
@@ -286,7 +353,13 @@ export default function DriverExploreMap() {
             }`}
           >
             <Wrench size={13} className={showMechanics ? 'text-amber-400' : 'text-slate-500'} />
-            Mechanics ({visibleMechanics.length})
+            <span>
+              {visibleMechanics.length > 0
+                ? `Mechanics (${visibleMechanics.length})`
+                : loading
+                ? 'Searching mechanics...'
+                : 'Mechanics'}
+            </span>
           </button>
 
           <button
@@ -298,7 +371,7 @@ export default function DriverExploreMap() {
             }`}
           >
             <Fuel size={13} className={showFuelStations ? 'text-amber-200' : 'text-amber-600'} />
-            Fuel Stations
+            <span>Fuel Stations</span>
           </button>
 
           {showMechanics && (
@@ -331,23 +404,19 @@ export default function DriverExploreMap() {
             </div>
           )}
         </div>
+
+        {/* Zoom Out / Radius Cap Warning Banner */}
+        {zoomTooLow && (
+          <div className="bg-amber-500 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold shadow-md border border-amber-400 flex items-center gap-2 animate-in fade-in duration-200">
+            <AlertTriangle size={15} className="text-slate-950 shrink-0" />
+            <span>Map view too wide. Zoom in to see nearby mechanics and fuel stations.</span>
+          </div>
+        )}
       </div>
 
-      {/* ==================================================================== */}
-      {/* PERSISTENT FLOATING ACTION BUTTON: SKIP TO REQUEST                   */}
-      {/* ==================================================================== */}
-      <div className="absolute bottom-20 md:bottom-8 right-4 z-[500] pointer-events-auto">
-        <Button
-          onClick={() => router.push('/dashboard/driver/request/new')}
-          className="h-12 px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-[#1F1B10] font-black shadow-xl border-2 border-white flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          <AlertTriangle size={18} className="text-[#1F1B10]" />
-          <span>Skip to Request</span>
-        </Button>
-      </div>
-
-      {/* Recenter button */}
-      <div className="absolute bottom-36 md:bottom-24 right-4 z-[500] pointer-events-auto">
+      {/* FLOATING ACTION CONTROL STACK (Recenter + Skip to Request Form) */}
+      <div className="absolute bottom-28 md:bottom-10 right-4 z-[500] pointer-events-auto flex flex-col items-end gap-2.5">
+        {/* Recenter button */}
         <button
           onClick={() => {
             if (navigator.geolocation) {
@@ -357,64 +426,73 @@ export default function DriverExploreMap() {
               })
             }
           }}
-          className="h-10 w-10 bg-white/95 text-slate-700 rounded-xl border border-[#DCCDA9] shadow-lg flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+          className="h-11 w-11 bg-white/95 text-slate-700 rounded-2xl border border-[#DCCDA9] shadow-lg flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
           title="Re-center on my location"
+          aria-label="Re-center on my location"
         >
-          <Compass size={20} className="text-[#7C6B44]" />
+          <Compass size={22} className="text-[#7C6B44]" />
         </button>
+
+        {/* Skip to Request Button (Pill Action) */}
+        <Button
+          onClick={() => router.push('/dashboard/driver/request')}
+          variant="dark"
+          size="md"
+          className="h-11 px-4 rounded-full shadow-xl border border-slate-700/80 text-xs font-bold uppercase tracking-wider transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+        >
+          <span>Skip</span>
+          <ChevronRight size={16} className="text-amber-400" />
+        </Button>
       </div>
 
-      {/* ==================================================================== */}
-      {/* EDGE-TO-EDGE LEAFLET MAP                                             */}
-      {/* ==================================================================== */}
-      <div className="w-full h-full flex-1 relative z-0">
+      
+      {/* EDGE-TO-EDGE LEAFLET MAP */}
+      
+      <div className="w-full h-full flex-1 relative z-0 min-h-[350px]">
         <MapContainer
           center={userLocation}
           zoom={13}
-          style={{ height: '100%', width: '100%' }}
+          minZoom={3}
+          maxZoom={19}
+          style={{ height: '100%', width: '100%', minHeight: '100%' }}
           zoomControl={false}
           className="h-full w-full"
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
+            minZoom={3}
           />
 
-          <MapController center={userLocation} />
+          <MapController 
+            center={userLocation} 
+            onViewportChange={fetchApprovedMechanics}
+          />
 
           {/* User Location Marker */}
           {userIcon && (
             <Marker position={userLocation} icon={userIcon} />
           )}
 
-          {/* Mechanic Markers */}
-          {showMechanics && visibleMechanics.map((m) => {
-            const isOnline = m.statusMode === 'online'
-            const icon = isOnline ? onlineIcon : offlineIcon
-            if (!icon) return null
+          {/* Clustered Mechanic Markers Layer */}
+          {showMechanics && (
+            <MechanicClusterLayer
+              mechanics={visibleMechanics}
+              onlineIcon={onlineIcon}
+              offlineIcon={offlineIcon}
+              onSelectMechanic={(m) => setSelectedMechanic(m)}
+            />
+          )}
 
-            return (
-              <Marker
-                key={m.user_id}
-                position={m.markerCoordinates}
-                icon={icon}
-                eventHandlers={{
-                  click: () => {
-                    setSelectedMechanic(m)
-                  },
-                }}
-              />
-            )
-          })}
-
-          {/* Overpass Live Fuel/EV Layer */}
+          {/* Clustered Overpass Live Fuel/EV Layer */}
           <OverpassFuelLayer isActive={showFuelStations} />
         </MapContainer>
       </div>
 
-      {/* ==================================================================== */}
-      {/* BOTTOM INSPECTION DRAWER FOR SELECTED MECHANIC                       */}
-      {/* ==================================================================== */}
+      
+      {/* BOTTOM INSPECTION DRAWER FOR SELECTED MECHANIC  */}
+      
       {selectedMechanic && (
         <div className="absolute bottom-0 left-0 right-0 z-[600] p-4 bg-gradient-to-t from-black/20 to-transparent pointer-events-none">
           <div className="max-w-lg mx-auto bg-white rounded-3xl border border-[#DCCDA9] shadow-2xl overflow-hidden pointer-events-auto transition-all animate-in slide-in-from-bottom-6 duration-300">
@@ -523,18 +601,18 @@ export default function DriverExploreMap() {
                   className="h-12 rounded-2xl border-2 border-slate-200 text-slate-800 font-black text-xs uppercase tracking-wider hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Navigation size={15} className="text-slate-600" />
-                  Directions
+                  Directions Only
                 </Button>
 
                 <Button
                   type="button"
                   onClick={() => {
-                    router.push(`/dashboard/driver/request/new?mechanicId=${selectedMechanic.user_id}`)
+                    router.push(`/driver/request?mechanicId=${selectedMechanic.user_id}`)
                   }}
                   className="h-12 rounded-2xl bg-primary hover:bg-primary-hover text-[#1F1B10] font-black text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Wrench size={15} className="text-[#1F1B10]" />
-                  Request Help
+                  Request Assistance
                 </Button>
               </div>
 

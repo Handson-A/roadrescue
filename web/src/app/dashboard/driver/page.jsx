@@ -3,9 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CarFront, Fuel, Wrench, Search, MapPin, Star, AlertTriangle } from 'lucide-react'
+import { CarFront, Fuel, Wrench, MapPin, Star, AlertTriangle } from 'lucide-react'
 
-import RequestForm from '@/components/request/RequestForm'
 import RequestStatusBadge from '@/components/request/RequestStatusBadge'
 import RescueMap from '@/components/map/RescueMap'
 import Card from '@/components/ui/Card'
@@ -106,20 +105,9 @@ export default function DriverDashboard() {
   const recentItems = requests.slice(0, 2)
 
   return (
-    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-44 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
-      <div className="w-full max-w-2xl flex flex-col gap-5">
-        
-        {/* ==================================================================== */}
-        {/* APP INFRASTRUCTURE MODULES (Unified Content Column)                  */}
-        {/* ==================================================================== */}
-        
-        {/* Subtitle Directive Card Block */}
-        <div className="rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
-          <h2 className="text-xl font-black tracking-tight text-[#1F1B10]">Dashboard</h2>
-          <p className="mt-1 text-xs leading-relaxed text-[#7C6B44]">
-           Request emergency vehicle assistance and monitor your mechanic&#39;s arrival coordinates in real time.
-          </p>
-        </div>
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-1 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-6 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
+      <div className="w-full max-w-2xl flex flex-col gap-4">
+
 
         {/* Active Membership Identifier Pill */}
         <div className="rounded-xl border border-[#DCCDA9] bg-white px-4 py-2.5 text-xs font-bold tracking-wider text-[#7C6B44] flex justify-between items-center shadow-sm">
@@ -137,13 +125,7 @@ export default function DriverDashboard() {
           </div>
           <h3 className="mt-1 text-2xl font-black tracking-tight">Need Help Now?</h3>
           <p className="mt-1 text-xs text-white/60">Get connected to nearby certified mechanics with live dispatch tracking.</p>
-          <Link
-            href="/dashboard/driver/request/new"
-            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md active:scale-98 transition"
-          >
-            REQUEST ROADSIDE RESCUE
-            <Search size={14} strokeWidth={2.5} />
-          </Link>
+         
         </div>
 
         {/* Quick Info Parameter Action Grid */}

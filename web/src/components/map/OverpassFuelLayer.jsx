@@ -1,21 +1,83 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useMap } from 'react-leaflet'
+
+const MAX_RADIUS_KM = 30 // Cap query radius to 30km to prevent excessive queries
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
 
 export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
   const map = useMap()
-  const layerGroupRef = useRef(null)
+  const clusterGroupRef = useRef(null)
   const debounceTimerRef = useRef(null)
+  const abortControllerRef = useRef(null)
+  const isActiveRef = useRef(isActive)
+  const [zoomTooLow, setZoomTooLow] = useState(false)
+
+  // Keep isActiveRef updated in sync synchronously
+  useEffect(() => {
+    isActiveRef.current = isActive
+    if (!isActive) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+      if (clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
+      }
+    }
+  }, [isActive])
 
   const fetchFuelStations = useCallback(async () => {
-    if (!map || !isActive) return
+    if (!map || !isActiveRef.current) {
+      if (clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
+      }
+      return
+    }
 
     const bounds = map.getBounds()
     const south = bounds.getSouth()
     const west = bounds.getWest()
     const north = bounds.getNorth()
     const east = bounds.getEast()
+
+    // Calculate viewport diagonal radius in km
+    const center = map.getCenter()
+    const radiusKm = calculateDistanceKm(center.lat, center.lng, north, east)
+
+    if (radiusKm && radiusKm > MAX_RADIUS_KM) {
+      setZoomTooLow(true)
+      if (clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
+      }
+      return
+    }
+
+    setZoomTooLow(false)
+
+    // Abort any preceding query in flight
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    const currentController = new AbortController()
+    abortControllerRef.current = currentController
 
     // Overpass QL query: Fetch fuel amenities within bounding box (nodes and ways)
     const query = `
@@ -26,21 +88,49 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
       );
       out center;
     `
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`
+    const OVERPASS_ENDPOINTS = [
+      'https://overpass-api.de/api/interpreter',
+      'https://lz4.overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+    ]
+
+    let data = null
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      if (!isActiveRef.current || currentController.signal.aborted) return
+
+      try {
+        const timeoutId = setTimeout(() => currentController.abort(), 6000)
+
+        const response = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, {
+          signal: currentController.signal,
+          headers: { Accept: 'application/json' },
+        })
+        clearTimeout(timeoutId)
+
+        if (response.ok) {
+          data = await response.json()
+          break
+        }
+      } catch (err) {
+        // Fallback to next endpoint
+        continue
+      }
+    }
+
+    // Check if still active before mutating leaflet cluster layer
+    if (!data || !isActiveRef.current || currentController.signal.aborted) {
+      if (!isActiveRef.current && clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
+      }
+      return
+    }
 
     try {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error(`Overpass API error: ${response.statusText}`)
-      const data = await response.json()
-
-      // If active state changed during the fetch request, exit early
-      if (!isActive) return
-
       const L = require('leaflet')
 
       // Clear previous markers
-      if (layerGroupRef.current) {
-        layerGroupRef.current.clearLayers()
+      if (clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
       }
 
       const fuelIcon = new L.Icon({
@@ -52,9 +142,9 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
         shadowSize: [41, 41]
       })
 
-      if (data.elements) {
+      if (data.elements && clusterGroupRef.current && isActiveRef.current) {
+        const markersToAdd = []
         data.elements.forEach((element) => {
-          // Extract latitude and longitude. For ways, Overpass with "out center" returns center.lat/lon
           const lat = element.lat || (element.center && element.center.lat)
           const lng = element.lon || (element.center && element.center.lon)
 
@@ -65,7 +155,6 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
           const operator = element.tags?.operator || ''
           const openingHours = element.tags?.['opening_hours'] || ''
 
-          // Build custom DOM element for popup with native events
           const popupDiv = document.createElement('div')
           popupDiv.className = 'p-1 min-w-[170px] font-sans'
 
@@ -112,42 +201,61 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
           }
 
           const marker = L.marker([lat, lng], { icon: fuelIcon }).bindPopup(popupDiv)
-
-          if (layerGroupRef.current) {
-            layerGroupRef.current.addLayer(marker)
-          }
+          markersToAdd.push(marker)
         })
+
+        if (isActiveRef.current) {
+          clusterGroupRef.current.addLayers(markersToAdd)
+        }
       }
     } catch (error) {
       console.error('Error fetching live fuel stations:', error)
     }
-  }, [map, isActive, onSelectPickup])
+  }, [map, onSelectPickup])
 
-  // Initialize L.layerGroup and mount to map
+  // Initialize MarkerClusterGroup for Fuel Stations (distinct orange cluster styling)
   useEffect(() => {
-    if (!map) return
+    if (!map || typeof window === 'undefined') return
 
     const L = require('leaflet')
-    if (!layerGroupRef.current) {
-      layerGroupRef.current = L.layerGroup().addTo(map)
+    require('leaflet.markercluster')
+
+    if (!clusterGroupRef.current) {
+      clusterGroupRef.current = L.markerClusterGroup({
+        disableClusteringAtZoom: 14,
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        maxZoom: 19,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount()
+          return L.divIcon({
+            html: `<div class="flex items-center justify-center h-9 w-9 rounded-full bg-amber-600 text-white font-black text-xs border-2 border-white shadow-lg ring-2 ring-amber-500/40"><span>${count}</span></div>`,
+            className: 'custom-fuel-cluster-icon',
+            iconSize: L.point(36, 36),
+            iconAnchor: [18, 18],
+          })
+        },
+      })
+      map.addLayer(clusterGroupRef.current)
     }
 
     return () => {
-      if (layerGroupRef.current) {
-        layerGroupRef.current.clearLayers()
-        layerGroupRef.current.remove()
-        layerGroupRef.current = null
+      if (clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
+        map.removeLayer(clusterGroupRef.current)
+        clusterGroupRef.current = null
       }
     }
   }, [map])
 
-  // Set up moveend listener with debounce timer when active
+  // Set up moveend listener with debounce timer and active guard
   useEffect(() => {
     if (!map) return
 
     if (!isActive) {
-      if (layerGroupRef.current) {
-        layerGroupRef.current.clearLayers()
+      if (clusterGroupRef.current) {
+        clusterGroupRef.current.clearLayers()
       }
       return
     }
@@ -156,12 +264,15 @@ export default function OverpassFuelLayer({ isActive, onSelectPickup }) {
     fetchFuelStations()
 
     const handleMoveEnd = () => {
+      if (!isActiveRef.current) return
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
       }
       debounceTimerRef.current = setTimeout(() => {
-        fetchFuelStations()
-      }, 500)
+        if (isActiveRef.current) {
+          fetchFuelStations()
+        }
+      }, 400)
     }
 
     map.on('moveend', handleMoveEnd)

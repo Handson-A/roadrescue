@@ -30,6 +30,7 @@ export default function Badge({
   label,
   variant = 'default',
   dot = false,
+  icon,
   className,
 }) {
   const content = label ?? children
@@ -37,13 +38,14 @@ export default function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]',
+        'inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold uppercase tracking-wider leading-none select-none shrink-0',
         variantMap[variant] || variantMap.default,
         className
       )}
     >
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-      <span className="normal-case tracking-normal">{content}</span>
+      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current shrink-0" />}
+      {icon && <span className="inline-flex items-center justify-center shrink-0">{icon}</span>}
+      <span className="normal-case tracking-normal inline-flex items-center">{content}</span>
     </span>
   )
 }
