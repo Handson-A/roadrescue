@@ -8,7 +8,7 @@ import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
 import { timeAgo } from '@/lib/utils'
-import { ArrowLeft, MapPin, User, HardHat, Calendar, Info, ShieldAlert, CheckCircle } from 'lucide-react'
+import { ArrowLeft, MapPin, User, HardHat, Calendar, Info, ShieldAlert, CheckCircle, Star, AlertTriangle } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 
@@ -204,9 +204,15 @@ export default function AdminRequestDetailPage() {
                     <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-2">
                       {request.rating && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-amber-500 text-xs font-bold tracking-wider">
-                            {'★'.repeat(request.rating) + '☆'.repeat(5 - request.rating)}
-                          </span>
+                          <div className="flex items-center gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                size={13}
+                                className={i < request.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}
+                              />
+                            ))}
+                          </div>
                           <span className="text-xs font-bold text-slate-700">({request.rating}.0 / 5.0 Rating)</span>
                         </div>
                       )}
@@ -236,8 +242,9 @@ export default function AdminRequestDetailPage() {
 
                         return (
                           <div key={rep.id} className="text-xs border-l-2 border-red-500 pl-3 py-0.5 space-y-0.5">
-                            <p className="font-bold text-red-700">
-                              ⚠️ {reporterRole}-to-{targetRole} Report Filed: {reasonLabel}
+                            <p className="font-bold text-red-700 flex items-center gap-1.5">
+                              <AlertTriangle size={13} className="text-red-600 shrink-0" />
+                              <span>{reporterRole}-to-{targetRole} Report Filed: {reasonLabel}</span>
                             </p>
                             <p className="text-slate-600 font-medium leading-relaxed">
                               Comment: &quot;{rep.comment}&quot;

@@ -104,31 +104,73 @@ export function useNotifications(userId) {
     return () => supabase.removeChannel(channel)
   }, [userId])
 
-  // mark a notification as read
+  // mark a notification as read with optimistic update
   async function markAsRead(notificationId) {
-    const supabase = createClient()
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', notificationId)
+    if (!notificationId) return
 
+    // Optimistic update
     setNotifications(prev =>
       prev.map(n => (n.id === notificationId ? { ...n, is_read: true } : n))
     )
     setUnreadCount(prev => Math.max(0, prev - 1))
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId)
+
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err)
+      // Rollback on error: re-fetch state
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('profile_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (data) {
+        const mapped = data.map(n => ({
+          ...n,
+          message: cleanNotificationMessage(n.body)
+        }))
+        setNotifications(mapped)
+        setUnreadCount(mapped.filter(n => !n.is_read).length)
+      }
+    }
   }
 
+  // mark all notifications as read with optimistic update
   async function markAllAsRead() {
-    const supabase = createClient()
-    await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      // New schema: notifications uses profile_id (not user_id)
-      .eq('profile_id', userId)
-      .eq('is_read', false)
+    if (!userId) return
 
+    const previousNotifications = notifications
+    const previousUnreadCount = unreadCount
+
+    // 1. Optimistically update state immediately
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
     setUnreadCount(0)
+
+    try {
+      // 2. Execute database mutation
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('profile_id', userId)
+        .eq('is_read', false)
+
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err)
+      // Rollback on failure
+      setNotifications(previousNotifications)
+      setUnreadCount(previousUnreadCount)
+    }
   }
 
   return {

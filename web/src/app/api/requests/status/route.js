@@ -43,9 +43,12 @@ export async function PATCH(req) {
       );
     }
 
-    const cancellationReason = normalizeString(
+    const rawCancellationReason = normalizeString(
       body.reason ?? body.cancellationReason ?? body.cancellation_reason
     )
+    const cancellationReason = requestedStatus === 'cancelled' && rawCancellationReason
+      ? (rawCancellationReason.startsWith('user:') || rawCancellationReason.startsWith('system_timeout:') ? rawCancellationReason : `user: ${rawCancellationReason}`)
+      : rawCancellationReason
     const completionNotes = normalizeString(
       body.completionNotes ?? body.completion_notes
     )
@@ -60,8 +63,8 @@ export async function PATCH(req) {
       requestId,
       actorId: user.id,
       actorRole: profile.role,
-      mechanicId: targetMechanicId,  // 💡 Forward camelCase key
-      mechanic_id: targetMechanicId, // 💡 Forward snake_case key just in case helper expects it
+      mechanicId: targetMechanicId,  // Forward camelCase key
+      mechanic_id: targetMechanicId, // Forward snake_case key just in case helper expects it
       newStatus: requestedStatus,
       completionNotes,
       performedServices,

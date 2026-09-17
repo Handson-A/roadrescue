@@ -27,7 +27,7 @@ export async function POST(request) {
   // for (const mechanic of nearbyMechanics) {
   //   await sendNotificationEmail({
   //     to: mechanic.email,
-  //     subject: `🚗 New Rescue Request: ${issue_description}`,
+  //     subject: `New Rescue Request: ${issue_description}`,
   //     type: 'new_request',
   //     data: { },
   //   })
@@ -51,7 +51,7 @@ export async function PATCH(request, { params }) {
   // Send email to driver that job is done (example)
   // await sendNotificationEmail({
   //   to: driver.email,
-  //   subject: '🎉 Your Rescue Service Is Complete!',
+  //   subject: 'Your Rescue Service Is Complete!',
   //   type: 'job_completed',
   //   data: { driverName: driver.full_name, mechanicName: mechanic.full_name, appUrl: 'https://roadrescue-gh.vercel.app/requests' },
   // })

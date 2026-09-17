@@ -21,6 +21,7 @@ import { useMechanicStatus } from '@/hooks/useMechanicStatus'
 const navByRole = {
   driver: [
     { href: '/dashboard/driver', label: 'Dashboard', icon: Home },
+    { href: '/dashboard/driver/explore', label: 'Explore Map', icon: MapPin },
     { href: '/dashboard/driver/ai', label: 'AI Diagnostics', icon: Brain },
     { href: '/dashboard/driver/history', label: 'Incident Archive', icon: History },
     { href: '/dashboard/driver/account', label: 'Account', icon: User },

@@ -1,14 +1,28 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, useCallback } from 'react'
 import { Send, Zap, ChevronDown, Wrench } from 'lucide-react'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import { useAuth } from '@/hooks/useAuth'
 
 const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating', 'Check engine light']
 
+function subscribeToStorage(callback) {
+  window.addEventListener('storage', callback)
+  return () => window.removeEventListener('storage', callback)
+}
+
 export default function DiagnosticChat({ onDiagnosisComplete }) {
   const { user } = useAuth()
+  const storageKey = user?.id ? `roadrescue_ai_history_${user.id}` : null
+
+  const getSnapshot = useCallback(() => {
+    if (!storageKey || typeof window === 'undefined') return '[]'
+    return localStorage.getItem(storageKey) || '[]'
+  }, [storageKey])
+
+  const rawStored = useSyncExternalStore(subscribeToStorage, getSnapshot, () => '[]')
+  
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,25 +30,25 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const messageIdRef = useRef(0)
+  const isHydratedRef = useRef(false)
 
-  const storageKey = user?.id ? `roadrescue_ai_history_${user.id}` : null
-
+  // Initialize once on mount with stored messages if local state is empty
   useEffect(() => {
-    if (!storageKey) return
-    const stored = localStorage.getItem(storageKey)
-    if (stored) {
+    if (!isHydratedRef.current && rawStored) {
       try {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed)) {
-          setMessages(parsed)
-          const maxId = parsed.reduce((max, msg) => Math.max(max, msg.id || 0), 0)
-          messageIdRef.current = maxId
+        const parsed = JSON.parse(rawStored)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          isHydratedRef.current = true
+          queueMicrotask(() => {
+            setMessages(parsed)
+            messageIdRef.current = parsed.reduce((max, msg) => Math.max(max, msg.id || 0), 0)
+          })
         }
       } catch (e) {
         console.error('Failed to parse stored chat history', e)
       }
     }
-  }, [storageKey])
+  }, [rawStored])
 
   useEffect(() => {
     if (!storageKey || messages.length === 0) return
@@ -110,12 +124,12 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
   }
 
   return (
-    <div className="ai-assist-container min-h-0 w-full flex-1 flex flex-col overflow-hidden bg-transparent has-mobile-nav">
+    <div className="w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-[#FFF8EA]">
 
-      {/* ── MESSAGES ───────────────────────────────────────────────────── */}
-      <div className="chat-messages-viewport min-h-0">
+      {/* ── MESSAGE HISTORY (MIDDLE): The ONLY scrollable region ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-4 overscroll-contain">
         {isEmpty && !loading ? (
-          <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="flex-1 flex items-center justify-center px-4 py-12">
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#F5EDD0] text-[#7A261E] shadow-sm">
                 <Wrench size={22} />
@@ -154,12 +168,19 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
             ))}
 
             {loading && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-3 rounded-[26px] border border-[#E5D0A7] bg-white px-4 py-3 shadow-sm">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#B8A060] animate-pulse" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#B8A060] animate-pulse delay-150" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#B8A060] animate-pulse delay-300" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8F7B45]">Analyzing...</span>
+              <div className="flex justify-start animate-in fade-in duration-200">
+                <div className="max-w-[88%]">
+                  <div className="mb-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] bg-[#F5EDD0] text-[#7A261E]">
+                    RoadRescue
+                  </div>
+                  <div className="rounded-[28px] rounded-tl-[18px] rounded-br-[18px] border border-[#E5D0A7] bg-white px-5 py-3.5 shadow-sm flex items-center gap-3">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-[#B8A060] animate-bounce [animation-delay:-0.3s]" />
+                      <span className="h-2 w-2 rounded-full bg-[#B8A060] animate-bounce [animation-delay:-0.15s]" />
+                      <span className="h-2 w-2 rounded-full bg-[#B8A060] animate-bounce" />
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#8F7B45]">Analyzing...</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -169,46 +190,71 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
         )}
       </div>
 
-      {/* ── INPUT DOCK ─────────────────────────────────────────────────── */}
-      <div className="chat-input-dock shrink-0">
+      {/* ── INPUT FOOTER (BOTTOM): Fixed group containing divider, suggestion chips, input bar ── */}
+      <div className="shrink-0 z-40 bg-[#F6F2E7]/95 backdrop-blur-md border-t border-[#E0D5B7] shadow-[0_-4px_10px_rgba(0,0,0,0.04)] px-4 pt-3 pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-4">
 
-        {/* Quick prompts — hidden when keyboard is open to free vertical space */}
+        {/* Suggestion Chips Row */}
         {promptsVisible && (
-          <div className="mb-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                disabled={loading}
-                onClick={() => handleSendMessage(prompt)}
-                className="min-w-30 whitespace-nowrap rounded-full border border-[#D8C99A] bg-white px-3 py-2 text-[12px] font-semibold text-[#4A4330] transition hover:bg-[#F5EDD0] hover:border-[#C0A860] disabled:opacity-40 active:scale-95 shrink-0"
-              >
-                {prompt}
-              </button>
-            ))}
+          <div className="relative mb-3">
+            <div className="flex gap-2 overflow-x-auto px-0.5 pb-1 scrollbar-none">
+              {quickPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleSendMessage(prompt)}
+                  className="whitespace-nowrap rounded-full border border-[#D8C99A] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#4A4330] shadow-2xs transition hover:bg-[#F5EDD0] hover:border-[#C0A860] disabled:opacity-40 active:scale-95 shrink-0 cursor-pointer"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Input row */}
-        <div className="flex items-center gap-2 rounded-[28px] border border-[#DCCDA9] bg-white px-3 py-3 shadow-sm focus-within:border-[#B8A060] transition-colors">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            disabled={loading}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-            placeholder="Describe your car's symptoms..."
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-[#2A261C] placeholder:text-[#A19258] outline-none disabled:opacity-50"
-            style={{ fontSize: '16px' }}
-          />
+        {/* Text Input Bar */}
+        <div className="flex items-center gap-2 rounded-[28px] border border-[#DCCDA9] bg-white px-4 py-2 shadow-sm focus-within:border-[#B8A060] transition-colors">
+  <textarea
+    ref={inputRef}
+    rows={1}
+    value={input}
+    disabled={loading}
+    onChange={(e) => {
+      setInput(e.target.value)
+      e.target.style.height = 'auto'
+      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
+    }}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleSendMessage()
+        if (inputRef.current) {
+          inputRef.current.style.height = 'auto'
+        }
+      }
+    }}
+    placeholder={loading ? "Diagnosing..." : "Describe your car's symptoms..."}
+    className="min-w-0 flex-1 resize-none bg-transparent p-0 text-[16px] leading-6 text-[#2A261C] placeholder:text-[#A19258] outline-none disabled:opacity-50 max-h-[120px] overflow-y-auto block"
+    style={{ height: '24px' }}
+  />
+  {/* send button */}
           <button
             type="button"
             disabled={loading || !input.trim()}
-            onClick={() => handleSendMessage()}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-[#1A1609] text-white transition hover:bg-[#2C2410] disabled:opacity-30 active:scale-95"
+            onClick={() => {
+              handleSendMessage()
+              if (inputRef.current) {
+                inputRef.current.style.height = 'auto'
+              }
+            }}
+            aria-label="Send message"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#1A1609] text-white transition hover:bg-[#2C2410] disabled:opacity-30 active:scale-95 cursor-pointer mb-0.5"
           >
-            <Send size={16} strokeWidth={2} />
+            {loading ? (
+              <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Send size={15} strokeWidth={2.2} />
+            )}
           </button>
         </div>
       </div>

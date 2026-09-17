@@ -3,17 +3,19 @@ import { cn } from '@/lib/utils'
 import Spinner from '@/components/ui/Spinner'
 
 const variantMap = {
-  primary: 'bg-primary text-white shadow-soft hover:bg-primaryDark hover:shadow-lift',
+  primary: 'bg-primary text-slate-950 shadow-soft hover:bg-primaryDark hover:shadow-lift',
   secondary: 'bg-accent text-white hover:bg-slate-800 shadow-soft',
+  dark: 'bg-slate-900 text-white hover:bg-slate-800 shadow-soft',
+  warning: 'bg-amber-500 text-slate-950 hover:bg-amber-600 shadow-soft',
   outline: 'border border-border bg-white text-foreground hover:border-primary/40 hover:bg-surfaceAlt',
   ghost: 'bg-transparent text-foreground hover:bg-surfaceAlt',
   danger: 'bg-danger text-white hover:bg-red-700',
 }
 
 const sizeMap = {
-  sm: 'h-10 px-3 text-sm rounded-xl',
-  md: 'h-12 px-4 text-sm rounded-xl',
-  lg: 'h-14 px-6 text-base rounded-2xl',
+  sm: 'min-h-[36px] h-9 px-3 text-xs rounded-xl',
+  md: 'min-h-[44px] h-11 px-4 text-sm rounded-xl',
+  lg: 'min-h-[48px] h-12 px-6 text-sm rounded-2xl',
 }
 
 export default function Button({
@@ -34,7 +36,7 @@ export default function Button({
       type={type}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 font-semibold transition focus-ring disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex items-center justify-center gap-2 font-semibold transition-all select-none focus-ring disabled:cursor-not-allowed disabled:opacity-60 shrink-0',
         fullWidth && 'w-full',
         variantMap[variant] || variantMap.primary,
         sizeMap[size] || sizeMap.md,
@@ -42,10 +44,10 @@ export default function Button({
       )}
       {...props}
     >
-      {loading && <Spinner size="sm" className="text-current" />}
-      {!loading && leftIcon}
-      <span>{children}</span>
-      {!loading && rightIcon}
+      {loading && <Spinner size="sm" className="text-current shrink-0" />}
+      {!loading && leftIcon && <span className="inline-flex items-center justify-center shrink-0">{leftIcon}</span>}
+      <span className="inline-flex items-center justify-center leading-none">{children}</span>
+      {!loading && rightIcon && <span className="inline-flex items-center justify-center shrink-0">{rightIcon}</span>}
     </button>
   )
 }

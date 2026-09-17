@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Clock3, MapPin, PhoneCall, BusFront, ExternalLink, Shield, Compass, CheckCircle2 } from 'lucide-react'
+import { Clock3, MapPin, PhoneCall, BusFront, ExternalLink, Shield, Compass, CheckCircle2, Radio, AlertTriangle, XCircle, Zap, Wrench, Star, X } from 'lucide-react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -23,7 +23,7 @@ import { createClient } from '@/lib/supabase/client'
 import Select from '@/components/ui/Select'
 
 const ACTIVE_DRIVER_REQUEST_STATUSES = ['accepted', 'en_route', 'arrived', 'in_progress']
-const CANCELLATION_ALLOWED_STATUSES = ['pending', 'accepted']
+const CANCELLATION_ALLOWED_STATUSES = ['pending', 'offered', 'accepted', 'en_route']
 
 // Internal mathematical helper to calculate true physical distance over earth curvature
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
@@ -85,13 +85,12 @@ export default function DriverRequestTrackingPage() {
         
         const cancelDueToOffline = async () => {
           try {
-            await fetch('/api/requests/status', {
-              method: 'PATCH',
+            await fetch('/api/requests/auto-cancel', {
+              method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 requestId: id,
-                newStatus: 'cancelled',
-                cancellationReason: "couldn't resolve"
+                reason: "mechanic went offline / inactivity timeout"
               })
             })
             toast.error("Dispatch automatically cancelled due to mechanic's inactivity.")
@@ -264,7 +263,6 @@ export default function DriverRequestTrackingPage() {
   const rawRating = profileData?.rating_avg
   const hasRating = typeof rawRating === 'number' && rawRating > 0
   const ratingText = hasRating ? rawRating.toFixed(1) : 'New Responder'
-  const stars = hasRating ? '★'.repeat(Math.round(rawRating)) + '☆'.repeat(5 - Math.round(rawRating)) : '☆☆☆☆☆'
 
   const workflowStages = [
     { key: 'pending', label: 'Finding Help', step: '1' },
@@ -288,8 +286,9 @@ export default function DriverRequestTrackingPage() {
   return (
     <PageWrapper title="Live tracking" description="Track the dispatcher, assigned mechanic, and current lifecycle state.">
       {graceTimeLeft !== null && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 animate-pulse">
-          ⚠️ Mechanic is offline. Grace period: {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s remaining to reconnect before auto-cancellation.
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-red-600 shrink-0" />
+          <span>Mechanic is offline. Grace period: {Math.floor(graceTimeLeft / 60)}m {graceTimeLeft % 60}s remaining to reconnect before auto-cancellation.</span>
         </div>
       )}
       
@@ -311,38 +310,49 @@ export default function DriverRequestTrackingPage() {
             <div>
               {request.status === 'pending' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary animate-pulse">📡 Broadcast Pipeline Active</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-1.5 animate-pulse">
+                    <Radio size={12} /> Broadcast Pipeline Active
+                  </p>
                   <h2 className="mt-1 text-xl font-black leading-tight text-[#EFE8D4]">Searching for nearest mechanics...</h2>
                   <p className="text-xs text-[#A29A84] mt-1">Signals matching across your local district window.</p>
                 </>
               ) : request.status === 'completed' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">✅ Service Resolved</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 size={12} /> Service Resolved
+                  </p>
                   <h2 className="mt-1 text-2xl font-black leading-none text-emerald-400">Completed</h2>
                   <p className="text-xs text-[#A29A84] mt-1">The rescue dispatch has been successfully completed.</p>
                 </>
               ) : request.status === 'cancelled' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-400">✕ Request Cancelled</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-400 flex items-center gap-1.5">
+                    <XCircle size={12} /> Request Cancelled
+                  </p>
                   <h2 className="mt-1 text-2xl font-black leading-none text-red-400">Cancelled</h2>
                   <p className="text-xs text-[#A29A84] mt-1">This rescue request was cancelled.</p>
                 </>
               ) : request.status === 'arrived' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">⚡ Touchdown</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
+                    <Zap size={12} /> Touchdown
+                  </p>
                   <h2 className="mt-1 text-xl font-black leading-tight text-[#EFE8D4]">Mechanic is on site</h2>
                   <p className="text-xs text-[#A29A84] mt-1">Verify credentials before field adjustments initiate.</p>
                 </>
               ) : request.status === 'in_progress' ? (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">🛠️ Maintenance Mode</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
+                    <Wrench size={12} /> Maintenance Mode
+                  </p>
                   <h2 className="mt-1 text-xl font-black leading-tight text-[#EFE8D4]">Recovery under execution</h2>
                   <p className="text-xs text-[#A29A84] mt-1">Your vehicle service log is actively updating.</p>
                 </>
               ) : (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-                    {isFixed ? '📍 Workshop Proximity' : '📍 Intercept Proximity'}
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
+                    <MapPin size={12} />
+                    {isFixed ? 'Workshop Proximity' : 'Intercept Proximity'}
                   </p>
                   <h2 className="mt-1 text-2xl font-black leading-none text-white font-mono">
                     {liveDistanceText ? liveDistanceText : 'Calculating...'}
@@ -438,7 +448,11 @@ export default function DriverRequestTrackingPage() {
                     <div key={rev.id} className="text-xs border-b border-slate-50 pb-1.5 last:border-0 last:pb-0">
                       <div className="flex items-center justify-between text-slate-500">
                         <span className="font-semibold text-slate-800">{rev.profiles?.full_name || 'Driver'}</span>
-                        <span className="text-amber-500 font-mono">{'★'.repeat(rev.rating)}</span>
+                        <div className="flex items-center gap-0.5 text-amber-500">
+                          {Array.from({ length: rev.rating || 5 }).map((_, i) => (
+                            <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
+                          ))}
+                        </div>
                       </div>
                       {rev.review && <p className="text-slate-600 italic mt-0.5 leading-relaxed">"{rev.review}"</p>}
                     </div>
@@ -500,9 +514,10 @@ export default function DriverRequestTrackingPage() {
                 type="button"
                 onClick={handleCancelRequest}
                 disabled={canceling}
-                className="flex h-10 w-full items-center justify-center rounded-xl bg-red-50 text-xs font-bold uppercase tracking-wider text-red-600 border border-red-200/60 hover:bg-red-100 transition-colors disabled:opacity-50"
+                className="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-red-50 text-xs font-bold uppercase tracking-wider text-red-600 border border-red-200/60 hover:bg-red-100 transition-colors disabled:opacity-50"
               >
-                {canceling ? 'Processing Cancellation...' : '❌ Cancel Rescue Request'}
+                <X size={14} className="shrink-0" />
+                {canceling ? 'Processing Cancellation...' : 'Cancel Rescue Request'}
               </button>
             )}
             <Link href="/dashboard/driver" className="flex h-10 w-full items-center justify-center rounded-xl bg-slate-100 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors">
@@ -534,7 +549,7 @@ export default function DriverRequestTrackingPage() {
                     <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
                       isCurrent ? 'bg-slate-900 text-primary' : isPast ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'
                     }`}>
-                      {isPast ? '✓' : stage.step}
+                      {isPast ? <CheckCircle2 size={12} /> : stage.step}
                     </div>
                     <span className={`text-xs font-bold ${isCurrent ? 'text-slate-900' : 'text-slate-500'}`}>{stage.label}</span>
                   </div>
@@ -582,7 +597,8 @@ export default function DriverRequestTrackingPage() {
             <p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400">Incident Details</p>
             <p className="text-xs font-medium text-slate-700 leading-relaxed">{request.problem_description}</p>
             <p className="mt-3 border-t border-slate-100 pt-2.5 text-[11px] text-slate-500 font-medium flex items-center gap-1">
-              📍 Address: <span className="text-slate-800 font-bold">{request.incident_address || 'Stored'}</span>
+              <MapPin size={12} className="text-primary shrink-0" />
+              <span>Address: <span className="text-slate-800 font-bold">{request.incident_address || 'Stored'}</span></span>
             </p>
             
             <div className="mt-4 space-y-2">
@@ -754,21 +770,21 @@ export default function DriverRequestTrackingPage() {
               <Avatar name={mechanic?.full_name || 'Mechanic'} src={mechanic?.avatar_url} size="xl" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">Rescue Successful! 🎉</h3>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Rescue Successful!</h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Please take a moment to rate your experience with <strong>{mechanic?.full_name || 'your mechanic'}</strong>.
               </p>
             </div>
 
-            <div className="flex justify-center gap-2 text-4xl text-amber-500">
+            <div className="flex justify-center gap-2 text-amber-500">
               {[1, 2, 3, 4, 5].map((value) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setRating(value)}
-                  className={`transition-transform hover:scale-110 active:scale-95 ${value <= rating ? 'text-amber-500' : 'text-slate-200'}`}
+                  className={`p-1 transition-transform hover:scale-110 active:scale-95`}
                 >
-                  ★
+                  <Star size={28} className={value <= rating ? 'fill-amber-400 text-amber-400' : 'text-slate-200'} />
                 </button>
               ))}
             </div>

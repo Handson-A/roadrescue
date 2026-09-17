@@ -121,6 +121,48 @@ export default function Page() {
 
 ---
 
+---
+
+## Full-Bleed Map Layout Architecture (`FullBleedMapShell`)
+
+Full-viewport map screens (`/dashboard/driver/explore` and `/dashboard/mechanic/navigation`) share the `@/components/map/FullBleedMapShell.jsx` layout container to ensure visual and functional parity.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Top Floating Overlay (Z: 20)                              │
+│  [Search Bar / Filter Pills] or [Duty Status Pill / Ping]   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│                                           [Recenter Compass]│
+│                  Full-Bleed Map Canvas    [Quick Action]    │
+│                  (Leaflet, 100% Viewport) (Z: 500)          │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  Bottom Floating Overlay (Z: 600)                           │
+│  [Selected Mechanic Drawer] or [Incident/Live Nav Details]  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- **Props**:
+  - `topOverlay`: ReactNode for top floating controls (search input, status pills).
+  - `controlOverlay`: ReactNode for bottom-right action button stack (re-center compass, skip).
+  - `children`: Leaflet `<MapContainer>` filling 100% height/width.
+  - `bottomOverlay`: ReactNode for bottom drawer or floating telemetry sheet.
+- **Scroll Handling**: Full-bleed pages pass `isFullHeightPage` in `web/src/app/dashboard/layout.jsx` to eliminate outer scrollbars and allow edge-to-edge touch gestures.
+
+---
+
+## Dashboard Card Grid & Mobile Density Standards
+
+### Stat / Counter Cards
+- **Mobile (< 768px)**: Render as a 2-column grid (`grid-cols-2`) with compact padding (`p-3.5 sm:p-4`), concise label subtitles, and scaled numbers (`text-2xl sm:text-3xl`).
+- **Desktop (≥ 768px)**: Expand to a 3-column grid (`md:grid-cols-3`) with standard padding (`p-5`) and full descriptive subtitles.
+
+### Reference-Only Cards
+- Cards containing self-identity reference information (e.g. "Operation Center / Terminal identity node") are hidden on mobile using `hidden md:block` (breakpoint 768px) to eliminate dead card slots and elevate action items (assigned jobs and live dispatches) into the initial viewport fold.
+
+---
+
 ## Testing Checklist
 
 - [ ] Mobile (< 768px): Bottom nav visible, top nav compact
@@ -132,6 +174,8 @@ export default function Page() {
 - [ ] Notifications bell works on both desktop and mobile
 - [ ] Footer hidden on mobile, visible on desktop
 - [ ] No scrolling with bottom nav overlapping content
+- [ ] Full-bleed maps occupy 100% space between header and bottom nav on mobile
+- [ ] Counter cards render side-by-side (2 columns) on mobile
 
 ---
 
@@ -157,3 +201,4 @@ export default function Page() {
 - [ ] Add swipe gestures for bottom nav (optional)
 - [ ] Add toast notifications on mobile (no modal overlap)
 - [ ] Implement offline indicator on mobile bottom nav
+

@@ -157,6 +157,7 @@ curl -H "Authorization: Bearer DRIVER_TOKEN" \
 | `lib/rbac.js` | RBAC protection functions |
 | `components/auth/RBACProtected.jsx` | Component protection wrappers |
 | `components/layout/BottomNav.jsx` | Mobile navigation (role-based tabs) |
+| `components/map/FullBleedMapShell.jsx` | Shared full-viewport map layout with layered overlays |
 | `ResponsiveWrappers.jsx` | MainContainer, MobileOnly, DesktopOnly |
 | `MobileOptimized.jsx` | Mobile-friendly components |
 | `RBAC-IMPLEMENTATION.md` | Full RBAC documentation |

@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import Textarea from '@/components/ui/Textarea'
 import Spinner from '@/components/ui/Spinner'
 import Avatar from '@/components/ui/Avatar'
+import { Star } from 'lucide-react'
 
 export default function DriverRatingPage() {
   const { id } = useParams()
@@ -87,10 +88,19 @@ export default function DriverRatingPage() {
           </Card>
 
           <Card className="p-4">
-            <p className="text-xs uppercase tracking-[0.22em] text-[#7C7767]">Rate Marcus</p>
-            <div className="mt-4 flex justify-center gap-2 text-4xl text-primary">
+            <p className="text-xs uppercase tracking-[0.22em] text-[#7C7767]">Rate Experience</p>
+            <div className="mt-4 flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((value) => (
-                <button key={value} onClick={() => setRating(value)} className={value <= rating ? 'text-primary' : 'text-[#7C7767]/40'}>★</button>
+                <button
+                  key={value}
+                  onClick={() => setRating(value)}
+                  className="p-1 transition-transform hover:scale-110 active:scale-95"
+                >
+                  <Star
+                    size={32}
+                    className={value <= rating ? 'fill-amber-400 text-amber-400' : 'text-[#7C7767]/30'}
+                  />
+                </button>
               ))}
             </div>
 

@@ -3,9 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { CarFront, Fuel, Wrench, Search, MapPin, Star } from 'lucide-react'
+import { CarFront, Fuel, Wrench, MapPin, Star, AlertTriangle } from 'lucide-react'
 
-import RequestForm from '@/components/request/RequestForm'
 import RequestStatusBadge from '@/components/request/RequestStatusBadge'
 import RescueMap from '@/components/map/RescueMap'
 import Card from '@/components/ui/Card'
@@ -100,26 +99,15 @@ export default function DriverDashboard() {
   const membershipId = profile?.vehicle_plate || profile?.id?.substring(0, 8) || '—'
   const quickTiles = [
     { label: 'Vehicle Info', value: vehicleLabel, href: '/dashboard/driver/account', icon: CarFront },
-    { label: 'Find Fuel/EV', value: 'Locate refueling grids', href: '/dashboard/driver/request/new', icon: Fuel },
+    { label: 'Explore & Fuel', value: 'Live mechanics & fuel map', href: '/dashboard/driver/explore', icon: Fuel },
   ]
 
   const recentItems = requests.slice(0, 2)
 
   return (
-    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-44 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
-      <div className="w-full max-w-2xl flex flex-col gap-5">
-        
-        {/* ==================================================================== */}
-        {/* APP INFRASTRUCTURE MODULES (Unified Content Column)                  */}
-        {/* ==================================================================== */}
-        
-        {/* Subtitle Directive Card Block */}
-        <div className="rounded-2xl border border-[#DCCDA9] bg-[#FFF9EF] p-4 shadow-sm">
-          <h2 className="text-xl font-black tracking-tight text-[#1F1B10]">Dashboard</h2>
-          <p className="mt-1 text-xs leading-relaxed text-[#7C6B44]">
-           Request emergency vehicle assistance and monitor your mechanic&#39;s arrival coordinates in real time.
-          </p>
-        </div>
+    <div className="w-full flex-grow bg-transparent text-[#1F1B10] px-1 sm:px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-6 md:pt-6 md:px-0 flex justify-center items-start lg:pb-8">
+      <div className="w-full max-w-2xl flex flex-col gap-4">
+
 
         {/* Active Membership Identifier Pill */}
         <div className="rounded-xl border border-[#DCCDA9] bg-white px-4 py-2.5 text-xs font-bold tracking-wider text-[#7C6B44] flex justify-between items-center shadow-sm">
@@ -137,13 +125,7 @@ export default function DriverDashboard() {
           </div>
           <h3 className="mt-1 text-2xl font-black tracking-tight">Need Help Now?</h3>
           <p className="mt-1 text-xs text-white/60">Get connected to nearby certified mechanics with live dispatch tracking.</p>
-          <Link
-            href="/dashboard/driver/request/new"
-            className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black uppercase tracking-wider text-[#1F1B10] shadow-md active:scale-98 transition"
-          >
-            REQUEST ROADSIDE RESCUE
-            <Search size={14} strokeWidth={2.5} />
-          </Link>
+         
         </div>
 
         {/* Quick Info Parameter Action Grid */}
@@ -174,7 +156,10 @@ export default function DriverDashboard() {
               <div className="mt-3 space-y-1">
                 <h4 className="font-mono text-base font-black text-amber-400">Emergency ID #{activeRequest.id?.substring(0,8)}</h4>
                 <p className="text-xs text-white/70 leading-relaxed">{activeRequest.problem_description}</p>
-                <p className="text-[11px] font-mono text-white/40 pt-1">📍 {activeRequest.incident_address || 'Location identified'}</p>
+                <p className="text-[11px] font-mono text-white/40 pt-1 flex items-center gap-1.5">
+                  <MapPin size={12} className="text-white/40 shrink-0" />
+                  <span>{activeRequest.incident_address || 'Location identified'}</span>
+                </p>
               </div>
             </div>
 
@@ -226,7 +211,7 @@ export default function DriverDashboard() {
         <div className="rounded-2xl border border-[#DCCDA9] bg-[#1F1B10] p-4 text-white shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <span className="text-[10px] font-mono font-black uppercase tracking-widest text-amber-400">Emergency Safety Protocol</span>
-            <span className="text-xs">⚠️</span>
+            <AlertTriangle size={15} className="text-amber-400" />
           </div>
           <div className="pt-3 text-center">
             <p className="text-xs text-white/80 font-medium">

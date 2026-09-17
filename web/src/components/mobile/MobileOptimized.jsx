@@ -7,6 +7,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { X } from 'lucide-react';
 
 /**
  * ResponsiveGrid Component
@@ -82,10 +83,10 @@ export function ResponsiveModal({ isOpen, onClose, title, children, className = 
           <h2 className="text-lg font-semibold">{title}</h2>
           <button
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 cursor-pointer"
             aria-label="Close"
           >
-            ✕
+            <X size={18} className="text-slate-600" />
           </button>
         </div>
 

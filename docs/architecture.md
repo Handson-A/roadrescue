@@ -118,11 +118,13 @@ Main endpoints:
 - Chat with assigned mechanic
 - Rate completed jobs
 
-### Mechanic Dashboard
+### Mechanic Dashboard & Navigation
 - Accept nearby requests through lifecycle API
 - Update status through the same lifecycle API
 - Cancel assigned requests through the lifecycle API
 - Manage availability and profile details
+- Dedicated full-bleed Navigation screen (`/dashboard/mechanic/navigation`) using shared `FullBleedMapShell` with floating status pills and coordinate readouts
+- Mobile-optimized Service Console with 2-column compact stat cards and prioritized incident feed
 
 ### Admin Dashboard
 - View platform statistics

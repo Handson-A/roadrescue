@@ -15,18 +15,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-// ============================================================================
+
 // MECHANIC SIDE: Broadcast current GPS position
-// ============================================================================
+
 // Usage: const { broadcastError, isLocationAvailable } = useBroadcastLocation(requestId, mechanicId)
 // Call in mechanic active job view; broadcasts every 15 seconds, persists every 60s
-export function useBroadcastLocation(requestId, mechanicId, status) {
+export function useBroadcastLocation(requestId, mechanicId, status, isOnline = true) {
   const intervalRef = useRef(null)
   const dbSyncCountRef = useRef(0)
   const [broadcastError, setBroadcastError] = useState(null)
   const [isLocationAvailable, setIsLocationAvailable] = useState(true)
 
-  const isInactive = !status || ['completed', 'cancelled'].includes(status)
+  const isInactive = !isOnline || !status || ['completed', 'cancelled'].includes(status)
 
   useEffect(() => {
     if (!requestId || !mechanicId || isInactive) return
@@ -131,9 +131,9 @@ export function useBroadcastLocation(requestId, mechanicId, status) {
   return { broadcastError, isLocationAvailable }
 }
 
-// ============================================================================
+
 // DRIVER SIDE: Watch for mechanic location updates
-// ============================================================================
+
 // Usage: const { mechanicLocation, watchError, isConnected } = useWatchMechanicLocation(requestId)
 // Call in driver active request tracking view; receives real-time location updates
 export function useWatchMechanicLocation(requestId, status) {
