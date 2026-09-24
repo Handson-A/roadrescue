@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ArrowLeft, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen'
 
 export default function RescueChatPanel({
   requestId,
@@ -20,6 +21,7 @@ export default function RescueChatPanel({
   const messagesEndRef = useRef(null)
   const supabase = createClient()
   const pathname = usePathname()
+  const isKeyboardOpen = useKeyboardOpen()
 
   useEffect(() => {
     if (!requestId) {
@@ -90,7 +92,7 @@ export default function RescueChatPanel({
   const hasMobileNav = !pathname?.startsWith('/dashboard/admin')
 
   return (
-    <div className={`flex flex-1 w-full flex-col overflow-hidden bg-transparent ${hasMobileNav ? 'has-mobile-nav' : ''}`}>
+    <div className={`flex flex-1 w-full flex-col overflow-hidden bg-transparent ${hasMobileNav && !isKeyboardOpen ? 'has-mobile-nav' : ''}`}>
       <div className="flex items-center gap-3 border-b border-[#D7CCAD] bg-[#FFFBF4]/80 backdrop-blur-md px-4 py-4 shrink-0">
         <Link href=".." className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-950 shadow-sm ring-1 ring-slate-200">
           <ArrowLeft size={18} />

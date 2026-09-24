@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, useCallback } from '
 import { Send, Zap, ChevronDown, Wrench } from 'lucide-react'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import { useAuth } from '@/hooks/useAuth'
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen'
 
 const quickPrompts = ["Car won't start", 'Grinding when braking', 'Engine overheating', 'Check engine light']
 
@@ -14,6 +15,7 @@ function subscribeToStorage(callback) {
 
 export default function DiagnosticChat({ onDiagnosisComplete }) {
   const { user } = useAuth()
+  const isKeyboardOpen = useKeyboardOpen()
   const storageKey = user?.id ? `roadrescue_ai_history_${user.id}` : null
 
   const getSnapshot = useCallback(() => {
@@ -78,16 +80,172 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
     }
   }, [])
 
-  function buildFallbackDiagnosis(currentInput) {
+  function buildFallbackDiagnosis(currentInput, reason = 'Full AI model temporarily unavailable. Showing standard preliminary checks.') {
+    const text = (currentInput || '').toLowerCase().trim()
+
+    if (/\b(brake|braking|grind|squeal|squeak|rotors?|pads?|pedal)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Brake system wear or hydraulic pressure alert ("${currentInput}").`,
+        severity: 'high',
+        recommendations: [
+          'Test braking responsiveness at low speeds in a safe area.',
+          'Check the brake fluid reservoir under the bonnet for proper level.',
+          'Do not drive if the brake pedal feels spongy or sinks to the floor.',
+          'Dispatch a RoadRescue technician or tow service for a safety inspection.',
+        ],
+        estimated_causes: [
+          'Worn brake pads or worn brake shoes',
+          'Grooved or warped brake rotor/drum',
+          'Low brake fluid or air in hydraulic lines',
+          'Stuck or leaking brake caliper',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
+    if (/\b(overheat|smoke|steam|coolant|radiator|temp|hot|boil|antifreeze)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Engine overheating or thermal management alert ("${currentInput}").`,
+        severity: 'critical',
+        recommendations: [
+          'Pull over safely and turn off the engine immediately.',
+          'CAUTION: NEVER open the radiator cap while the engine is hot.',
+          'Allow the engine to cool for at least 20-30 minutes before checking fluid levels.',
+          'Dispatch roadside assistance to prevent severe engine damage.',
+        ],
+        estimated_causes: [
+          'Low coolant level or radiator hose leak',
+          'Failing radiator fan or stuck thermostat',
+          'Worn water pump',
+          'Blown head gasket',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
+    if (/\b(start|crank|click|battery|dead|ignition|alternator|power)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Electrical power or starter/ignition fault ("${currentInput}").`,
+        severity: 'medium',
+        recommendations: [
+          'Check if dashboard lights and headlights turn on with normal brightness.',
+          'Inspect battery terminals for loose clamps or white corrosion.',
+          'Attempt a jump-start using booster cables or a jump starter pack.',
+          'If clicking continues despite a full battery, the starter motor may need replacement.',
+        ],
+        estimated_causes: [
+          'Depleted or dead 12V battery',
+          'Corroded or loose battery cable terminals',
+          'Faulty starter motor or starter solenoid',
+          'Failing alternator or charging circuit',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
+    if (/\b(tire|tyre|flat|puncture|blowout|wheel|wobble|vibrat|pulling|psi)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Tire pressure, puncture, or wheel balance alert ("${currentInput}").`,
+        severity: 'high',
+        recommendations: [
+          'Safely pull over to a level, solid surface away from moving traffic.',
+          'Inspect tires for punctures, embedded nails, or sidewall bulges.',
+          'Verify tire pressure against the PSI specification on the driver door jamb.',
+          'Fit the spare tire or request RoadRescue roadside tire assistance.',
+        ],
+        estimated_causes: [
+          'Punctured tire or leaking valve stem',
+          'Low tire pressure (under-inflation)',
+          'Wheel misalignment or unbalanced wheel',
+          'Worn wheel bearing or suspension joint',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
+    if (/\b(engine|check engine|stall|misfir|jerk|rough|idle|hesitat|sputter|cel)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Powertrain or engine management alert ("${currentInput}").`,
+        severity: 'medium',
+        recommendations: [
+          'Check if the Check Engine light is solid or flashing (flashing indicates active misfire).',
+          'Inspect the engine oil level with the dipstick when the engine is off and cool.',
+          'Avoid heavy acceleration or high-speed driving while the engine runs rough.',
+          'Have the vehicle scanned for OBD-II error trouble codes.',
+        ],
+        estimated_causes: [
+          'Worn spark plugs or failing ignition coils',
+          'Clogged fuel injector, fuel filter, or weak fuel pump',
+          'Dirty Mass Air Flow (MAF) or throttle body sensor',
+          'Vacuum leak or intake sensor anomaly',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
+    if (/\b(gear|transmiss|clutch|shift|slip|reverse|drive)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Transmission or clutch engagement anomaly ("${currentInput}").`,
+        severity: 'high',
+        recommendations: [
+          'Check transmission fluid level and condition if accessible.',
+          'Avoid forcing gear shift levers if resistance is felt.',
+          'Note whether the engine revs up without normal vehicle acceleration.',
+          'Dispatch a transmission specialist before driving further distances.',
+        ],
+        estimated_causes: [
+          'Low or degraded transmission fluid',
+          'Worn clutch friction plate or pressure plate',
+          'Transmission shift solenoid or linkage fault',
+          'Torque converter wear',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
+    if (/\b(fuel|petrol|gas|diesel|smell|leak|odor|fumes)\b/.test(text)) {
+      return {
+        problem: `Preliminary Check: Fluid leak or combustible fuel odor warning ("${currentInput}").`,
+        severity: 'critical',
+        recommendations: [
+          'Park safely, shut off the engine, and exit the vehicle if fuel odor is strong.',
+          'Do NOT light matches, smoke, or use open flames near the vehicle.',
+          'Look beneath the vehicle for active dripping or puddles.',
+          'Request immediate roadside technician inspection.',
+        ],
+        estimated_causes: [
+          'Fuel line leak or loose fuel vapor cap',
+          'Oil leaking onto hot exhaust components',
+          'Exhaust manifold leak entering the ventilation system',
+          'Coolant heater core leak',
+        ],
+        isFallback: true,
+        fallbackReason: reason,
+      }
+    }
+
     return {
-      problem: `Based on "${currentInput}", checks point to ignition, fluid, or dashboard warning issues. Verify the vehicle before driving further.`,
+      problem: `Preliminary Assessment: "${currentInput || 'Reported vehicle issue'}"`,
       severity: 'medium',
       recommendations: [
-        'Check battery terminals and dashboard warning lights.',
-        'Verify fuel level and fluid leaks before moving the vehicle.',
-        'Use RoadRescue dispatch if the vehicle feels unsafe to drive.',
+        'Inspect dashboard cluster warning lights for active indicators.',
+        'Check engine oil, coolant, and brake fluid levels before continuing.',
+        'Verify battery terminal tightness and clean connections.',
+        'Request RoadRescue dispatch if the vehicle exhibits unsafe driving symptoms.',
       ],
-      estimated_causes: ['Battery or ignition fault', 'Low fluid level', 'Sensor warning'],
+      estimated_causes: [
+        'Electrical or battery power fault',
+        'Mechanical fluid loss or pressure variation',
+        'Sensor warning or mechanical component wear',
+      ],
+      isFallback: true,
+      fallbackReason: reason,
     }
   }
 
@@ -107,14 +265,20 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
         body: JSON.stringify({ symptoms: currentInput }),
       })
       const data = await response.json()
-      if (!response.ok || !data.success) throw new Error(data.error || 'Failed to process diagnosis')
+      if (!response.ok || !data.success) {
+        const fallbackDiagnosis = data?.diagnosis || buildFallbackDiagnosis(currentInput, data?.error || 'Diagnostic service error. Showing standard checks.')
+        messageIdRef.current += 1
+        setMessages((prev) => [...prev, { id: messageIdRef.current, sender: 'ai', diagnosisData: fallbackDiagnosis }])
+        if (onDiagnosisComplete) onDiagnosisComplete(fallbackDiagnosis)
+        return
+      }
 
       const diagnosis = data.diagnosis || buildFallbackDiagnosis(currentInput)
       messageIdRef.current += 1
       setMessages((prev) => [...prev, { id: messageIdRef.current, sender: 'ai', diagnosisData: diagnosis }])
       if (onDiagnosisComplete) onDiagnosisComplete(diagnosis)
     } catch {
-      const fallback = buildFallbackDiagnosis(currentInput)
+      const fallback = buildFallbackDiagnosis(currentInput, 'Network connection interrupted. Showing standard preliminary checks.')
       messageIdRef.current += 1
       setMessages((prev) => [...prev, { id: messageIdRef.current, sender: 'ai', diagnosisData: fallback }])
       if (onDiagnosisComplete) onDiagnosisComplete(fallback)
@@ -191,7 +355,9 @@ export default function DiagnosticChat({ onDiagnosisComplete }) {
       </div>
 
       {/* ── INPUT FOOTER (BOTTOM): Fixed group containing divider, suggestion chips, input bar ── */}
-      <div className="shrink-0 z-40 bg-[#F6F2E7]/95 backdrop-blur-md border-t border-[#E0D5B7] shadow-[0_-4px_10px_rgba(0,0,0,0.04)] px-4 pt-3 pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-4">
+      <div className={`chat-has-bottom-nav shrink-0 z-40 bg-[#F6F2E7]/95 backdrop-blur-md border-t border-[#E0D5B7] shadow-[0_-4px_10px_rgba(0,0,0,0.04)] px-4 pt-3 transition-all duration-200 ${
+        isKeyboardOpen ? 'pb-3 md:pb-4' : 'pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-4'
+      }`}>
 
         {/* Suggestion Chips Row */}
         {promptsVisible && (

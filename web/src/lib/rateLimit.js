@@ -34,11 +34,11 @@ export function rateLimit({ windowMs = 60000, max = 10 } = {}) {
 }
 
 // pre-configured limiters for different route types
-// diagnose is expensive (uses Gemini model calls) so limit it hard
-export const diagnoseLimiter = rateLimit({ windowMs: 60000, max: 5 })
+// diagnose uses Gemini model calls — set to 20 requests/minute per authenticated user/IP
+export const diagnoseLimiter = rateLimit({ windowMs: 60000, max: 20 })
 
 // request creation — a driver shouldn't spam requests
-export const requestLimiter = rateLimit({ windowMs: 60000, max: 3 })
+export const requestLimiter = rateLimit({ windowMs: 60000, max: 10 })
 
 // general API calls
-export const generalLimiter = rateLimit({ windowMs: 60000, max: 30 })
+export const generalLimiter = rateLimit({ windowMs: 60000, max: 60 })

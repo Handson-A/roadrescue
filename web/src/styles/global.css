@@ -269,6 +269,37 @@ body.keyboard-open main {
   padding-bottom: 0 !important;
 }
 
+/* Instant CSS-level bottom nav removal when any text field is focused or keyboard is open */
+body.keyboard-open .bottom-nav-container,
+body:has(input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):focus) .bottom-nav-container,
+body:has(textarea:focus) .bottom-nav-container,
+body:has([contenteditable="true"]:focus) .bottom-nav-container {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(100%) !important;
+}
+
+/* Immediately collapse extra bottom spacing on chat dock when input is focused */
+body.keyboard-open .chat-has-bottom-nav,
+body:has(textarea:focus) .chat-has-bottom-nav,
+body:has(input:not([type="checkbox"]):not([type="radio"]):focus) .chat-has-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0.75rem) !important;
+}
+
+/* Lock header in place at top of screen on mobile when keyboard opens */
+body.keyboard-open header,
+body:has(input:not([type="checkbox"]):not([type="radio"]):focus) header,
+body:has(textarea:focus) header {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  transform: translateY(0) !important;
+  z-index: 9999 !important;
+}
+
 @keyframes pulse-ring {
   0% {
     transform: scale(1);

@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Home, Wrench, Brain, ArrowUpDown, User, ClipboardList, History, MapPin, Briefcase } from 'lucide-react'
 
 import { useAuth } from '@/hooks/useAuth'
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen'
 
 const driverNav = [
   { href: '/dashboard/driver', label: 'Home', icon: Home, isActive: (p) => p === '/dashboard/driver' || p === '/dashboard/driver/' },
@@ -22,86 +23,18 @@ const mechanicNav = [
   { href: '/dashboard/mechanic/account', label: 'Profile', icon: User, isActive: (p) => p.startsWith('/dashboard/mechanic/account') },
 ]
 
-// Detect soft keyboard open by comparing window.innerHeight to visualViewport.height.
-// When the keyboard slides up, visualViewport shrinks but window.innerHeight stays the same.
-// A difference of more than 150px is a reliable signal that the keyboard is open.
-function useKeyboardOpen() {
-  const [keyboardOpen, setKeyboardOpen] = useState(false)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    function check() {
-      // Check if any text-based input or editable context currently holds focus
-      const activeEl = document.activeElement
-      if (activeEl) {
-        const tagName = activeEl.tagName.toLowerCase()
-        const isInput = tagName === 'input' && ['text', 'email', 'tel', 'password', 'search', 'number', 'url'].includes(activeEl.type)
-        const isTextarea = tagName === 'textarea'
-        const isEditable = activeEl.hasAttribute('contenteditable') && activeEl.getAttribute('contenteditable') !== 'false'
-        if (isInput || isTextarea || isEditable) {
-          setKeyboardOpen(true)
-          return
-        }
-      }
-
-      // Check visualViewport changes as fallback
-      if (window.visualViewport) {
-        const heightDiff = window.innerHeight - window.visualViewport.height
-        setKeyboardOpen(heightDiff > 150)
-      } else {
-        setKeyboardOpen(false)
-      }
-    }
-
-    // Monitor focus events globally on the document level
-    document.addEventListener('focusin', check)
-    document.addEventListener('focusout', check)
-    
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', check)
-      window.visualViewport.addEventListener('scroll', check)
-    }
-    
-    check()
-
-    return () => {
-      document.removeEventListener('focusin', check)
-      document.removeEventListener('focusout', check)
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', check)
-        window.visualViewport.removeEventListener('scroll', check)
-      }
-    }
-  }, [])
-
-  return keyboardOpen
-}
-
 export default function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { profile } = useAuth()
   const role = profile?.role || 'driver'
-  const keyboardOpen = useKeyboardOpen()
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    if (keyboardOpen) {
-      document.body.classList.add('keyboard-open')
-    } else {
-      document.body.classList.remove('keyboard-open')
-    }
-    return () => {
-      document.body.classList.remove('keyboard-open')
-    }
-  }, [keyboardOpen])
+  const isKeyboardOpen = useKeyboardOpen()
 
   if (role === 'admin') return null
 
   // Hide the entire nav when the keyboard is open — avoids it
   // floating over the input dock and wasting visible screen space.
-  if (keyboardOpen) return null
+  if (isKeyboardOpen) return null
 
   const handleEmergency = () => router.push('/dashboard/driver/explore')
 
@@ -133,7 +66,7 @@ export default function BottomNav() {
   // ── MECHANIC: flat 5-tab bar 
   if (role === 'mechanic') {
     return (
-      <div className="fixed left-0 right-0 bottom-0 z-50 md:hidden bg-[#1E1B15] border-t border-white/[0.08] pt-1.5 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_35px_rgba(0,0,0,0.55)]">
+      <div className="bottom-nav-container fixed left-0 right-0 bottom-0 z-50 md:hidden bg-[#1E1B15] border-t border-white/[0.08] pt-1.5 px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-10px_35px_rgba(0,0,0,0.55)] transition-all duration-150">
         <nav className="mx-auto flex w-full items-center justify-between max-w-md h-20">
           {mechanicNav.map(renderNavItem)}
         </nav>
@@ -147,7 +80,7 @@ export default function BottomNav() {
   const rightItems = driverNav.slice(halfLength)
 
   return (
-    <div className="fixed left-0 right-0 bottom-0 z-50 md:hidden pointer-events-none pb-[calc(env(safe-area-inset-bottom)+0.25rem)]">
+    <div className="bottom-nav-container fixed left-0 right-0 bottom-0 z-50 md:hidden pointer-events-none pb-[calc(env(safe-area-inset-bottom)+0.25rem)] transition-all duration-150">
 
       {/* Floating SOS button with soft elevation and pulse animation */}
       <div className="absolute left-1/2 -top-8 -translate-x-1/2 z-50">

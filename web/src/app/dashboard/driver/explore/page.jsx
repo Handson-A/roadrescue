@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeGeoPoint, formatDistance } from '@/lib/utils'
+import toast from 'react-hot-toast'
 import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -24,6 +25,39 @@ const MapContainer = dynamic(
 )
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false })
 const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false })
+
+function MapLifecycleHandler({ containerRef, onMapReady }) {
+  const { useMap } = require('react-leaflet')
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map) return
+
+    if (onMapReady) {
+      onMapReady(map)
+    }
+
+    map.whenReady(() => {
+      map.invalidateSize()
+    })
+    map.invalidateSize()
+
+    const container = containerRef?.current || (typeof map.getContainer === 'function' ? map.getContainer() : null)
+    if (!container || typeof ResizeObserver === 'undefined') return
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize()
+    })
+
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [map, containerRef, onMapReady])
+
+  return null
+}
 
 function MapController({ center, zoom, onViewportChange }) {
   const { useMap } = require('react-leaflet')
@@ -91,9 +125,12 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 
 export default function DriverExploreMap() {
   const router = useRouter()
+  const mapContainerRef = useRef(null)
+  const mapInstanceRef = useRef(null)
   const [mechanics, setMechanics] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isRecentering, setIsRecentering] = useState(false)
   
   // Filter controls
   const [searchQuery, setSearchQuery] = useState('')
@@ -156,8 +193,12 @@ export default function DriverExploreMap() {
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setUserLocation([pos.coords.latitude, pos.coords.longitude])
+          const coords = [pos.coords.latitude, pos.coords.longitude]
+          setUserLocation(coords)
           setHasUserLocation(true)
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setView(coords, 13)
+          }
         },
         (err) => {
           console.warn('[EXPLORE] User geolocation fallback to Accra:', err.message)
@@ -165,6 +206,36 @@ export default function DriverExploreMap() {
         { enableHighAccuracy: true, timeout: 10000 }
       )
     }
+  }, [])
+
+  // Recenter on user's current GPS location with error handling and live map flyTo
+  const handleRecenter = useCallback(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      toast.error('Location unavailable — enable location access')
+      return
+    }
+
+    setIsRecentering(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsRecentering(false)
+        const coords = [pos.coords.latitude, pos.coords.longitude]
+        setUserLocation(coords)
+        setHasUserLocation(true)
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo(coords, 15, {
+            animate: true,
+            duration: 1.2,
+          })
+        }
+      },
+      (err) => {
+        setIsRecentering(false)
+        console.warn('[EXPLORE RECENTER ERROR]:', err)
+        toast.error('Location unavailable — enable location access')
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    )
   }, [])
 
   // State for zoom out limit warning (e.g. > 30km radius)
@@ -415,31 +486,25 @@ export default function DriverExploreMap() {
     <>
       {/* Recenter button */}
       <button
-        onClick={() => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-              setUserLocation([pos.coords.latitude, pos.coords.longitude])
-              setHasUserLocation(true)
-            })
-          }
-        }}
-        className="h-11 w-11 bg-white/95 text-slate-700 rounded-2xl border border-[#DCCDA9] shadow-lg flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+        onClick={handleRecenter}
+        disabled={isRecentering}
+        className="h-11 w-11 bg-white/95 text-slate-700 rounded-2xl border border-[#DCCDA9] shadow-lg flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all cursor-pointer disabled:opacity-60"
         title="Re-center on my location"
         aria-label="Re-center on my location"
       >
-        <Compass size={22} className="text-[#7C6B44]" />
+        <Compass size={22} className={`text-[#7C6B44] ${isRecentering ? 'animate-spin' : ''}`} />
       </button>
 
       {/* Skip to Request Button (Pill Action) */}
-      <Button
+      <button
+        type="button"
         onClick={() => router.push('/dashboard/driver/request')}
-        variant="dark"
-        size="md"
-        className="h-11 px-4 rounded-full shadow-xl border border-slate-700/80 text-xs font-bold uppercase tracking-wider transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+        className="h-11 px-4 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-bold uppercase tracking-wider shadow-xl flex items-center justify-center gap-1.5 hover:bg-black/75 hover:border-white/30 active:scale-95 transition-all cursor-pointer"
+        aria-label="Skip to request assistance"
       >
         <span>Skip</span>
-        <ChevronRight size={16} className="text-amber-400" />
-      </Button>
+        <ChevronRight size={16} className="text-white/80" />
+      </button>
     </>
   )
 
@@ -574,21 +639,26 @@ export default function DriverExploreMap() {
       controlOverlay={actionControls}
       bottomOverlay={bottomDrawer}
     >
-      <MapContainer
-        center={userLocation}
-        zoom={13}
-        minZoom={3}
-        maxZoom={19}
-        style={{ height: '100%', width: '100%', minHeight: '100%' }}
-        zoomControl={false}
-        className="h-full w-full"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
+      <div ref={mapContainerRef} className="h-full w-full">
+        <MapContainer
+          center={userLocation}
+          zoom={13}
           minZoom={3}
-        />
+          maxZoom={19}
+          style={{ height: '100%', width: '100%', minHeight: '100%' }}
+          zoomControl={false}
+          className="h-full w-full"
+        >
+          <MapLifecycleHandler 
+            containerRef={mapContainerRef} 
+            onMapReady={(map) => { mapInstanceRef.current = map }}
+          />
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
+            minZoom={3}
+          />
 
         <MapController 
           center={userLocation} 
@@ -613,6 +683,7 @@ export default function DriverExploreMap() {
         {/* Clustered Overpass Live Fuel/EV Layer */}
         <OverpassFuelLayer isActive={showFuelStations} />
       </MapContainer>
+      </div>
     </FullBleedMapShell>
   )
 }
