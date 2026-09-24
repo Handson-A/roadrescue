@@ -66,8 +66,10 @@ pending, accepted, en_route, arrived, in_progress
 All status changes go through `PATCH /api/requests/status`. Mechanics cannot update `rescue_requests` directly from the browser.
 
 ### Mechanic Matching
-- PostGIS distance search through `get_nearby_verified_mechanics` RPC function
-- Only verified (`verification_status = 'approved'`) and available mechanics are returned
+- PostGIS distance search through `get_nearby_verified_mechanics(lat double precision, lng double precision, radius_km double precision DEFAULT 10)` RPC function
+- Returns `(user_id, business_name, rating_avg, distance_km, service_mode, location_label)`
+- Only verified (`verification_status = 'approved'`) mechanics who are online/available are returned
+- **Location & Service Mode Fallback:** Evaluates mechanic `service_mode` (`mobile`, `fixed_location`, `hybrid`). For mobile operations, matching measures distance against dynamic `current_location`. For hybrid or fixed workshops where dynamic GPS is inactive or consent is granted (`show_base_location_offline = true`), the query leverages `COALESCE(current_location, base_location)` to match against the mechanic's permanent base location
 - Drivers are notified when nearby mechanics are found
 
 ### AI Diagnostics

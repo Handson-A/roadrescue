@@ -58,8 +58,9 @@ RoadRescue operates via four specialized external service integrations:
 
 ### B. Google Gemini 2.5 Flash (AI Diagnostic Engine)
 *   **System Fault Translation:** Converts natural language breakdown descriptions (e.g., *"white smoke from hood, hiss sound"*) into structured JSON objects.
-*   **Data Validation:** Employs a strict JSON response schema mapping the issue category, severity level (low, moderate, critical), estimated cause, and safety instructions.
-*   **Backend Resilience:** Wrapped in an API route with in-memory rate limiting and exponential backoff retry logic to handle transient LLM hiccups.
+*   **Data Validation:** Employs a strict JSON response schema mapping the issue category, severity level (`low`, `medium`, `high`, `critical`), estimated causes, and safety recommendations.
+*   **Backend Resilience & Fallback Labeling:** Wrapped in an API route with per-user sliding-window rate limiting (20 requests/min keyed by authenticated `user:${id}` with IP fallback) and exponential backoff retry logic. When degraded or offline, deterministic keyword-matching fallback rules classify symptoms across 7 automotive domains and explicitly label the output in the UI as basic offline guidance.
+*   **Mobile Network Context (CGNAT Limitation):** In the Ghanaian telecommunications landscape (e.g., MTN, Telecel, AT), mobile carriers deploy Carrier-Grade NAT (CGNAT) where thousands of mobile subscribers share a single public IP. Keying rate limits by IP address results in severe false-positive throttling collisions across unrelated users. RoadRescue resolves this by authenticating sessions and isolating quotas strictly per user ID.
 
 ### C. Resend (Email Infrastructure)
 *   **Transactional Notifications:** Sends automated emails to drivers and mechanics when requests are created, accepted, or cancelled.
@@ -262,11 +263,12 @@ Use these questions and answers to prepare for your final project defense:
         ```
     This isolates transient errors and protects the user experience.
 
-### Question 5: When a driver cancels an active request, how does the system prevent them from doing so after the mechanic is already at the scene?
-*   **Articulate Answer:** The cancellation check is enforced at both the API and database levels:
-    *   When a client updates a request status to `cancelled`, `/api/requests/[id]/status` queries the current state from the database.
-    *   If the current status is `en_route`, `arrived`, or `in_progress`, the API returns a `403 Forbidden` response.
-    *   To prevent bypasses of the API endpoint, this logic is also embedded in the core library function `updateRequestStatus`. If the request status in the database is not `pending` or `accepted`, the function throws an error, aborting the transaction.
+### Question 5: How does the system handle cancellation policies across different roles, and how are unauthorized cancellations prevented?
+*   **Articulate Answer:** The cancellation system decouples **user identity authorization** from **state machine transition validation** and enforces role-differentiated rules across three distinct execution paths:
+    1.  **Driver Cancellation Path:** Drivers can cancel active rescue requests (`pending`, `accepted`, `en_route`, `arrived`, `in_progress`). The API verifies `auth.uid() === request.driver_id`, records `cancelled_by`, logs mandatory cancellation reasons, and notes applicable cancellation fees if cancelled after mechanic dispatch.
+    2.  **Mechanic Unassignment Path:** Mechanics can cancel or reject an assigned ticket before service completion (`accepted`, `en_route`). This unassigns the mechanic and resets the ticket to `pending`, allowing surrounding mechanics to claim it without terminating the driver's distress call.
+    3.  **Automated System-Timeout Path (`/api/requests/auto-cancel`):** A dedicated background endpoint checks for expired `pending` requests with no mechanic acceptance within the timeout window, cleanly transitioning them to `cancelled` with system-generated cancellation metadata without requiring active client intervention.
+    All transitions are validated server-side in `updateRequestStatus` and `/api/requests/status` to prevent illegitimate state mutations.
 
 ### Question 6: Supabase Realtime uses WebSockets. What is the fallback behavior if a client loses network connectivity, and how are offline states tracked?
 *   **Articulate Answer:**

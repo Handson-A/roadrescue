@@ -1,11 +1,39 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useMap } from 'react-leaflet' 
 import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
 import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
 import { Fuel, AlertTriangle } from 'lucide-react'
+
+function MapLifecycleHandler({ containerRef }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map) return
+
+    map.whenReady(() => {
+      map.invalidateSize()
+    })
+    map.invalidateSize()
+
+    const container = containerRef?.current || (typeof map.getContainer === 'function' ? map.getContainer() : null)
+    if (!container || typeof ResizeObserver === 'undefined') return
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize()
+    })
+
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [map, containerRef])
+
+  return null
+}
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -214,8 +242,10 @@ export default function RescueMap({
     return [[driver.lat, driver.lng], [mechanic.lat, mechanic.lng]]
   }, [showPolyline, driver, mechanic])
 
+  const containerRef = useRef(null)
+
   return (
-    <div className={`w-full h-full relative flex flex-col justify-between ${className}`} style={{ minHeight: showFooter ? height : '100%' }}>
+    <div ref={containerRef} className={`w-full h-full relative flex flex-col justify-between ${className}`} style={{ minHeight: showFooter ? height : '100%' }}>
       <MapContainer
         center={mapCenter}
         zoom={14}
@@ -224,6 +254,7 @@ export default function RescueMap({
         style={{ height: '100%', width: '100%', flex: '1 1 auto' }}
         className="relative z-0 h-full w-full"
       >
+        <MapLifecycleHandler containerRef={containerRef} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

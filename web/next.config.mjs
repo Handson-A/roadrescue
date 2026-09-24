@@ -11,6 +11,11 @@ const nextConfig = {
       },
     ],
   },
+  // next.config.js
+
+  //allowedDevOrigins: ['172.20.10.2'],
+
+
   reactCompiler: true,
 };
 
