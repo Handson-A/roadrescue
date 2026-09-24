@@ -33,19 +33,23 @@ mechanic_profiles {
   specializations: text[]
   years_experience: integer
   business_name: text
-  verification_status: text -- pending, verified, rejected
+  verification_status: text -- pending, approved, rejected
   verified_at: timestamptz
   verified_by: uuid references profiles(id)
   credential_document_url: text
   rating_avg: numeric
   total_jobs: integer
   is_available: boolean
+  service_mode: text -- mobile, fixed_location, hybrid
   hourly_rate: numeric
   service_radius: integer
   license_number: text
   license_expiry: date
   current_location: geography(Point, 4326)
   location_label: text
+  base_location: geography(Point, 4326)
+  base_location_label: text
+  show_base_location_offline: boolean
   location_updated_at: timestamptz
   created_at: timestamptz
   updated_at: timestamptz
@@ -165,6 +169,25 @@ profile_change_requests {
 }
 ```
 
+### mechanic_verifications
+Audit log of mechanic verification reviews submitted by platform administrators.
+- `status`: Verification status enum (`pending`, `approved`, `rejected`).
+- **Verification Status Decision:** The enum stays strictly at `pending`, `approved`, `rejected`. When an administrator requests more information from a mechanic, the status remains `pending` (avoiding schema/enum churn) while the request explanation is stored in `rejection_reason`.
+- `rejection_reason`: Text detailing the reason for application rejection or the specific documentation/clarification requested when additional information is needed.
+
+```sql
+mechanic_verifications {
+  id: uuid primary key
+  mechanic_id: uuid references profiles(id)
+  status: text -- pending, approved, rejected
+  reviewed_by: uuid references profiles(id)
+  reviewed_at: timestamptz
+  rejection_reason: text
+  created_at: timestamptz
+  updated_at: timestamptz
+}
+```
+
 ### blocked_emails
 Email addresses permanently blocked from registration (e.g., rejected mechanics).
 
@@ -200,6 +223,8 @@ profiles
   ├─ driver_profiles.user_id
   ├─ rescue_requests.driver_id
   ├─ rescue_requests.mechanic_id
+  ├─ mechanic_verifications.mechanic_id
+  ├─ mechanic_verifications.reviewed_by
   ├─ notifications.user_id
   ├─ messages.sender_id
   ├─ profile_preferences.user_id
@@ -215,4 +240,4 @@ rescue_requests
 
 ## Geospatial Queries
 
-Mechanic matching uses `mechanic_profiles.current_location` with PostGIS via `get_nearby_verified_mechanics` RPC function.
+Mechanic matching uses PostGIS via `get_nearby_verified_mechanics(lat double precision, lng double precision, radius_km double precision DEFAULT 10)`. The query evaluates spatial distances over dynamic `current_location` and falls back to `base_location` based on `service_mode` and `show_base_location_offline` consent, supported by GiST indexes (`idx_mechanic_geo` and `idx_mechanic_profiles_base_geo_gist`).
