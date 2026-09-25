@@ -10,6 +10,7 @@ import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import { useAuth } from '@/hooks/useAuth'
 import { useNotifications } from '@/hooks/useNotifications'
+import { useFuelLayer } from '@/hooks/useFuelLayer'
 import { signOut } from '@/lib/auth'
 import { timeAgo, truncate } from '@/lib/utils'
 
@@ -19,6 +20,7 @@ export default function Navbar() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const notificationRef = useRef(null)
+  const mobileNotificationRef = useRef(null)
 
   const pathname = usePathname()
   const { user, profile } = useAuth()
@@ -36,7 +38,7 @@ export default function Navbar() {
     setGreeting(hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening')
   }, [])
   
-  const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
+  const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id || user?.id)
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -55,7 +57,10 @@ export default function Navbar() {
 
   useEffect(() => {
     function handlePointerDown(event) {
-      if (!notificationRef.current?.contains(event.target)) {
+      if (
+        !notificationRef.current?.contains(event.target) &&
+        !mobileNotificationRef.current?.contains(event.target)
+      ) {
         setOpen(false)
       }
     }
@@ -77,21 +82,10 @@ export default function Navbar() {
   
   const fullName = profile?.full_name || 'member'
 
-  const activeRescueCount = notifications.filter((n) => !n.is_read).length
-
-  const [showFuel, setShowFuel] = useState(false)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setShowFuel(localStorage.getItem('show_fuel_stations') === 'true')
-    }
-  }, [])
+  const [showFuel, toggleFuel, , isHydrated] = useFuelLayer()
 
   const handleToggleFuel = () => {
-    const nextVal = !showFuel
-    setShowFuel(nextVal)
-    localStorage.setItem('show_fuel_stations', nextVal ? 'true' : 'false')
-    window.dispatchEvent(new CustomEvent('toggle-fuel-stations', { detail: nextVal }))
+    toggleFuel()
   }
 
   const isTrackingPage = pathname?.includes('/request/') && role === 'driver'
@@ -154,7 +148,7 @@ export default function Navbar() {
     
       {/*  MOBILE HEADER DISPLAY GRID  */}
 
-      <div className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-2xl transition-all duration-300 border-b border-white/[0.08] relative">
+      <div ref={mobileNotificationRef} className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-2xl transition-all duration-300 border-b border-white/[0.08] relative">
         {isDashboardRoot ? (
           <div className="px-5 pb-5 pt-4">
             {/* Top row: Greeting & Profile/Notification Toggles */}
@@ -209,7 +203,7 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-3">
-              {isTrackingPage && (
+              {isTrackingPage && isHydrated && (
                 <button
                   type="button"
                   onClick={handleToggleFuel}
@@ -276,7 +270,7 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
               <span className="text-xs font-bold text-[#A29A84]">Active Updates ({unreadCount})</span>
               {unreadCount > 0 && (
-                <button onClick={markAllAsRead} className="text-[11px] font-bold text-primary hover:underline">
+                <button type="button" onClick={markAllAsRead} className="text-[11px] font-bold text-primary hover:underline cursor-pointer">
                   Mark all read
                 </button>
               )}

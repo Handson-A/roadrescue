@@ -1,44 +1,37 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState, useMemo } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { useMap } from 'react-leaflet'
 import { Wrench, Phone, AlertTriangle, User, ShieldCheck } from 'lucide-react'
-import L from 'leaflet'
 
 import 'leaflet/dist/leaflet.css'
 import Badge from '@/components/ui/Badge'
 
-// ============================================================================
-// HIGH-VISIBILITY COLOR MAP MARKER DESIGNS
-// ============================================================================
-const baseLayout = {
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-}
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false, loading: () => <div style={{ height: '30rem' }} className="animate-pulse bg-slate-100 rounded-xl" /> }
+)
 
-// RED: Distressed drivers stranded in the field
-const strandedDriverIcon = new L.Icon({
-  ...baseLayout,
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-})
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+)
 
-// YELLOW: Standby active units waiting for assignments
-const yellowMechanicIcon = new L.Icon({
-  ...baseLayout,
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
-  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
-})
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+)
 
-// GREEN: En-route field assets dispatched to an incident scene
-const dispatchedMechanicIcon = new L.Icon({
-  ...baseLayout,
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-})
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+)
+
+const Polyline = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Polyline),
+  { ssr: false }
+)
 
 // Map Bounds Auto-Fit Component
 function FitBounds({ positions }) {
@@ -53,12 +46,81 @@ function FitBounds({ positions }) {
   return null
 }
 
+function isValidCoordinate(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false
+  if (isNaN(lat) || isNaN(lng)) return false
+  if (lat === 0 && lng === 0) return false
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false
+  return true
+}
+
+// Robust parsing utility targeting multiple relational database string patterns
+function extractCoords(obj) {
+  if (!obj) return null
+  
+  // If it's a coordinate array directly [lng, lat]
+  if (obj.coordinates && Array.isArray(obj.coordinates) && obj.coordinates.length === 2) {
+    const lat = Number(obj.coordinates[1])
+    const lng = Number(obj.coordinates[0])
+    if (isValidCoordinate(lat, lng)) return { lat, lng }
+  }
+  
+  // Otherwise check properties of the object itself
+  const lat = Number(obj.latitude || obj.lat || obj.incident_lat || obj.current_location?.coordinates?.[1] || obj.current_location?.lat || obj.incident_location?.coordinates?.[1] || obj.incident_location?.lat)
+  const lng = Number(obj.longitude || obj.lng || obj.incident_lng || obj.current_location?.coordinates?.[0] || obj.current_location?.lng || obj.incident_location?.coordinates?.[0] || obj.incident_location?.lng)
+
+  if (isValidCoordinate(lat, lng)) {
+    return { lat, lng }
+  }
+  return null
+}
+
 export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }) {
   const defaultPosition = [5.6037, -0.1870] // Accra Operations Baseline Hub Center Coordinates
   const [liveLocations, setLiveLocations] = useState({})
   const [liveIncidents, setLiveIncidents] = useState(activeIncidents)
   const [onlineMechanics, setOnlineMechanics] = useState({})
   const [liveMechanics, setLiveMechanics] = useState(mechanics)
+  const [strandedDriverIcon, setStrandedDriverIcon] = useState(null)
+  const [yellowMechanicIcon, setYellowMechanicIcon] = useState(null)
+  const [dispatchedMechanicIcon, setDispatchedMechanicIcon] = useState(null)
+
+  useEffect(() => {
+    const L = require('leaflet')
+    delete L.Icon.Default.prototype._getIconUrl
+
+    const baseLayout = {
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    }
+
+    const stranded = new L.Icon({
+      ...baseLayout,
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    })
+
+    const yellow = new L.Icon({
+      ...baseLayout,
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+      iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png',
+    })
+
+    const dispatched = new L.Icon({
+      ...baseLayout,
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+    })
+
+    Promise.resolve().then(() => {
+      setStrandedDriverIcon(stranded)
+      setYellowMechanicIcon(yellow)
+      setDispatchedMechanicIcon(dispatched)
+    })
+  }, [])
 
   const allPositions = useMemo(() => {
     const pos = []
@@ -283,35 +345,6 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
     }
   }, [liveIncidents])
 
-  const isValidCoordinate = (lat, lng) => {
-    if (typeof lat !== 'number' || typeof lng !== 'number') return false
-    if (isNaN(lat) || isNaN(lng)) return false
-    if (lat === 0 && lng === 0) return false
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false
-    return true
-  }
-
-  // Robust parsing utility targeting multiple relational database string patterns
-  const extractCoords = (obj) => {
-    if (!obj) return null
-    
-    // If it's a coordinate array directly [lng, lat]
-    if (obj.coordinates && Array.isArray(obj.coordinates) && obj.coordinates.length === 2) {
-      const lat = Number(obj.coordinates[1])
-      const lng = Number(obj.coordinates[0])
-      if (isValidCoordinate(lat, lng)) return { lat, lng }
-    }
-    
-    // Otherwise check properties of the object itself
-    const lat = Number(obj.latitude || obj.lat || obj.incident_lat || obj.current_location?.coordinates?.[1] || obj.current_location?.lat || obj.incident_location?.coordinates?.[1] || obj.incident_location?.lat)
-    const lng = Number(obj.longitude || obj.lng || obj.incident_lng || obj.current_location?.coordinates?.[0] || obj.current_location?.lng || obj.incident_location?.coordinates?.[0] || obj.incident_location?.lng)
-
-    if (isValidCoordinate(lat, lng)) {
-      return { lat, lng }
-    }
-    return null
-  }
-
   return (
     <div className="w-full h-full min-h-[30rem] rounded-xl overflow-hidden bg-slate-100 border border-slate-200 z-10 relative">
       <MapContainer 
@@ -333,7 +366,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
           const driverCoords = extractCoords(incident.incident_location) || 
                                (incident.incident_lat && incident.incident_lng ? { lat: Number(incident.incident_lat), lng: Number(incident.incident_lng) } : null)
           
-          if (!driverCoords) return null
+          if (!driverCoords || !strandedDriverIcon) return null
 
           return (
             <Marker 
@@ -377,7 +410,7 @@ export default function LiveHotspotsMap({ mechanics = [], activeIncidents = [] }
 
           const liveLoc = liveLocations[m.user_id]
           const mechCoords = liveLoc || extractCoords(m.current_location)
-          if (!mechCoords) return null
+          if (!mechCoords || !dispatchedMechanicIcon || !yellowMechanicIcon) return null
 
           return (
             <Marker 

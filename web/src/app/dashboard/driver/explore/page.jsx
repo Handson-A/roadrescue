@@ -15,6 +15,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
 import MechanicClusterLayer from '@/components/map/MechanicClusterLayer'
+import { useFuelLayer } from '@/hooks/useFuelLayer'
 
 import FullBleedMapShell from '@/components/map/FullBleedMapShell'
 
@@ -135,7 +136,7 @@ export default function DriverExploreMap() {
   // Filter controls
   const [searchQuery, setSearchQuery] = useState('')
   const [showMechanics, setShowMechanics] = useState(true)
-  const [showFuelStations, setShowFuelStations] = useState(true)
+  const [showFuelStations, toggleFuelStations, , isHydrated] = useFuelLayer()
   const [availabilityFilter, setAvailabilityFilter] = useState('all') // 'all', 'online', 'offline'
 
   // User location
@@ -429,17 +430,19 @@ export default function DriverExploreMap() {
           </span>
         </button>
 
-        <button
-          onClick={() => setShowFuelStations(!showFuelStations)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wide border transition-all cursor-pointer shadow-sm shrink-0 ${
-            showFuelStations
-              ? 'bg-amber-600 text-white border-amber-600'
-              : 'bg-white/90 text-slate-600 border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          <Fuel size={13} className={showFuelStations ? 'text-amber-200' : 'text-amber-600'} />
-          <span>Fuel Stations</span>
-        </button>
+        {isHydrated && (
+          <button
+            onClick={() => toggleFuelStations()}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wide border transition-all cursor-pointer shadow-sm shrink-0 ${
+              showFuelStations
+                ? 'bg-amber-600 text-white border-amber-600'
+                : 'bg-white/90 text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Fuel size={13} className={showFuelStations ? 'text-amber-200' : 'text-amber-600'} />
+            <span>Fuel Stations</span>
+          </button>
+        )}
 
         {showMechanics && (
           <div className="flex items-center bg-white/90 border border-slate-200 rounded-full p-0.5 shadow-sm shrink-0">
@@ -681,7 +684,7 @@ export default function DriverExploreMap() {
         )}
 
         {/* Clustered Overpass Live Fuel/EV Layer */}
-        <OverpassFuelLayer isActive={showFuelStations} />
+        <OverpassFuelLayer isActive={isHydrated && showFuelStations} />
       </MapContainer>
       </div>
     </FullBleedMapShell>

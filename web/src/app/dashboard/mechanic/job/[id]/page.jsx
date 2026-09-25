@@ -9,6 +9,8 @@ import ReportModal from '@/components/report/ReportModal'
 import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
 import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -618,65 +620,77 @@ export default function MechanicJobDetailsPage() {
         reporterId={user?.id}
       />
 
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Cancel Job Assignment?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Please select a reason for cancelling this job. Cancellation may impact your dispatch metrics.
-            </p>
-            <Select
-              label="Select Cancellation Reason"
-              id="cancel-reason-category"
-              value={cancelReasonCategory}
-              onChange={(e) => {
-                const val = e.target.value
-                setCancelReasonCategory(val)
-                if (val !== 'other') {
-                  const opt = CANCEL_REASON_OPTIONS.find(o => o.value === val)
-                  setCancelReason(opt ? opt.label : '')
-                } else {
-                  setCancelReason('')
-                }
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false)
+          setCancelReasonCategory('')
+          setCancelReason('')
+        }}
+        title="Cancel Job Assignment?"
+        size="sm"
+        actions={
+          <>
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowCancelModal(false)
+                setCancelReasonCategory('')
+                setCancelReason('')
               }}
-              options={[{ value: '', label: 'Select a cancellation reason...' }, ...CANCEL_REASON_OPTIONS]}
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 cursor-pointer"
+            >
+              Keep Job
+            </Button>
+            <Button 
+              variant="danger"
+              size="sm"
+              onClick={confirmCancelJob}
+              disabled={updating || !cancelReasonCategory}
+              loading={updating}
+              className="text-xs font-bold uppercase tracking-wider px-4"
+            >
+              Confirm Cancel
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-3 text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            Please select a reason for cancellation. This will release the job back to available nearby units.
+          </div>
+
+          <Select
+            label="Cancellation Reason"
+            id="cancel-reason-category"
+            value={cancelReasonCategory}
+            onChange={(e) => {
+              const val = e.target.value
+              setCancelReasonCategory(val)
+              if (val !== 'other') {
+                const opt = CANCEL_REASON_OPTIONS.find(o => o.value === val)
+                setCancelReason(opt ? opt.label : '')
+              } else {
+                setCancelReason('')
+              }
+            }}
+            options={[{ value: '', label: 'Select a cancellation reason...' }, ...CANCEL_REASON_OPTIONS]}
+          />
+          
+          {(cancelReasonCategory === 'other' || cancelReasonCategory === '') && (
+            <Textarea
+              label="Custom Reason / Explanation"
+              id="cancel-reason"
+              rows={3}
+              placeholder="Please describe why you are cancelling..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
             />
-            
-            {(cancelReasonCategory === 'other' || cancelReasonCategory === '') && (
-              <Textarea
-                label="Custom Reason / Explanation"
-                id="cancel-reason"
-                rows={2}
-                placeholder="Please describe why you are cancelling..."
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
-              />
-            )}
-            <div className="flex gap-2.5 justify-end">
-              <ActionButton 
-                variant="ghost"
-                onClick={() => {
-                  setShowCancelModal(false)
-                  setCancelReasonCategory('')
-                  setCancelReason('')
-                }}
-                className="h-10 text-xs px-4"
-              >
-                Keep Job
-              </ActionButton>
-              <ActionButton 
-                variant="danger"
-                onClick={confirmCancelJob}
-                disabled={updating || !cancelReasonCategory}
-                className="h-10 text-xs px-4"
-              >
-                {updating ? 'Cancelling...' : 'Confirm Cancel'}
-              </ActionButton>
-            </div>
-          </Card>
+          )}
         </div>
-      )}
+      </Modal>
     </PageWrapper>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
@@ -13,16 +13,19 @@ import { AlertTriangle, Info } from 'lucide-react'
 
 export default function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [consentAccepted, setConsentAccepted] = useState(false)
   const [showOptionalDetails, setShowOptionalDetails] = useState(false)
+
+  const roleParam = searchParams.get('role')?.toLowerCase()
   
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
     email: '',
     password: '',
-    role: USER_ROLE.DRIVER,
+    role: roleParam === USER_ROLE.MECHANIC ? USER_ROLE.MECHANIC : USER_ROLE.DRIVER,
     businessName: '',
     yearsExperience: '',
     serviceArea: '',
@@ -35,6 +38,12 @@ export default function RegisterForm() {
     emergencyContactName: '',
     emergencyContactPhone: '',
   })
+
+  useEffect(() => {
+    if (roleParam === USER_ROLE.MECHANIC || roleParam === USER_ROLE.DRIVER) {
+      setFormData((prev) => (prev.role === roleParam ? prev : { ...prev, role: roleParam }))
+    }
+  }, [roleParam])
 
   const isMechanic = formData.role === USER_ROLE.MECHANIC
   const isDriver = formData.role === USER_ROLE.DRIVER

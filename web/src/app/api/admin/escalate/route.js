@@ -46,7 +46,22 @@ export async function POST(request) {
       .eq('id', targetUser.id)
 
     if (updateError) {
-      return NextResponse.json({ error: 'Failed to update user role' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to update user role in profiles table' }, { status: 500 })
+    }
+
+    // Sync auth.users user_metadata so fallback profile reads and JWT claims stay in lockstep
+    const { error: authMetaError } = await serviceSupabase.auth.admin.updateUserById(
+      targetUser.id,
+      {
+        user_metadata: {
+          ...(targetUser.user_metadata || {}),
+          role: 'admin'
+        }
+      }
+    )
+
+    if (authMetaError) {
+      console.warn(`[ESCALATE] Failed to sync auth user_metadata for ${targetUser.id}:`, authMetaError.message)
     }
 
     return NextResponse.json({

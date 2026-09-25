@@ -73,6 +73,13 @@ export async function PATCH(req) {
       )
     }
 
+    if (newStatus === 'rejected' && (!reason || !reason.trim())) {
+      return NextResponse.json(
+        { error: 'A justification reason is required when rejecting a mechanic application' },
+        { status: 400 }
+      )
+    }
+
     // 1. Commit review parameters log straight to the mechanic_verifications ledger
     const updated = await updateMechanicVerification(
       serviceSupabase,

@@ -8,6 +8,7 @@ import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 import Spinner from '@/components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -428,45 +429,38 @@ const { data: active, error: activeErr } = await supabase
         </div>
       </div>
 
-      {showOfflineModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
-            <button 
-              onClick={() => setShowOfflineModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+      <Modal
+        isOpen={showOfflineModal}
+        onClose={() => setShowOfflineModal(false)}
+        title="Disconnect from Dispatch?"
+        size="sm"
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => executeStatusUpdate(false)}
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-red-600 hover:bg-red-50/50 cursor-pointer"
             >
-              <X size={18} />
-            </button>
-            
-            <div className="flex gap-3.5 items-start">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Going offline removes your workshop profile from the active emergency network system. You will need to be online to track broadcast breakdown signals to your terminal.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5 justify-end pt-2">
-              <button 
-                onClick={() => setShowOfflineModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Stay Online
-              </button>
-              <button 
-                onClick={() => { executeStatusUpdate(false) }}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-slate-800 transition-colors shadow-sm"
-              >
-                Confirm Offline
-              </button>
-            </div>
-          </Card>
+              Confirm Offline
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowOfflineModal(false)}
+              className="text-xs font-bold uppercase tracking-wider text-slate-900 bg-primary hover:bg-primary/90 shadow-sm cursor-pointer"
+            >
+              Stay Online
+            </Button>
+          </>
+        }
+      >
+        <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-4">
+          <p className="text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            Going offline removes your workshop profile from the active emergency network. You will not receive nearby breakdown alerts until you reconnect.
+          </p>
         </div>
-      )}
+      </Modal>
 
       {hasSearched && (
         <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">

@@ -12,7 +12,9 @@ import {
 } from 'lucide-react'
 
 import Avatar from '@/components/ui/Avatar'
-import Card from '@/components/ui/Card' // Ensure this path correctly targets your custom Card component
+import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { signOut } from '@/lib/auth'
 import toast from 'react-hot-toast'
@@ -48,10 +50,10 @@ const navByRole = {
 export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const { profile, user } = useAuth()
+  const { profile, user, loading } = useAuth()
 
-  const role = profile?.role || 'driver'
-  const links = navByRole[role] || []
+  const role = profile?.role || null
+  const links = role ? navByRole[role] || [] : []
   
   const isAdmin = role === 'admin'
   const isMechanic = role === 'mechanic'
@@ -101,6 +103,40 @@ export default function Sidebar() {
   const idleClass = isAdmin
     ? 'text-[#E2D9C2] hover:bg-[#383223] hover:text-[#F5EED9]'
     : 'text-[#433C2B] hover:bg-[#E8DFC6] hover:text-[#2A261C]'
+
+  // Render a neutral loading skeleton while auth/profile is resolving to avoid flashing the wrong role
+  if (loading || !role) {
+    return (
+      <aside className="hidden md:fixed md:left-0 md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col bg-[#F1EAD6] border-r border-[#D8CCAE] animate-pulse">
+        {/* Branding placeholder */}
+        <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-4">
+          <div className="h-10 w-10 mx-auto rounded-full bg-[#D8CCAE]/50 mb-2" />
+          <div className="h-3 w-24 mx-auto rounded bg-[#D8CCAE]/50" />
+        </div>
+
+        {/* Navigation placeholder items */}
+        <div className="flex-1 space-y-2 px-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-11 rounded-xl bg-[#D8CCAE]/40" />
+          ))}
+        </div>
+
+        {/* Footer placeholder */}
+        <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5">
+          <div className="h-11 rounded-xl bg-[#D8CCAE]/50" />
+          <div className="rounded-xl border border-[#D8CCAE]/60 bg-[#EAE0C7]/50 p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-[#D8CCAE]/60" />
+              <div className="space-y-1.5 flex-1">
+                <div className="h-3 w-20 rounded bg-[#D8CCAE]/60" />
+                <div className="h-2.5 w-12 rounded bg-[#D8CCAE]/40" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    )
+  }
 
   return (
     <>
@@ -200,46 +236,39 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ================= CONFIRMATION OFFLINE MODAL VECTOR ================= */}
-      {showOfflineModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
-            <button 
-              onClick={() => setShowOfflineModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+      {/* ================= CONFIRMATION OFFLINE MODAL ================= */}
+      <Modal
+        isOpen={showOfflineModal}
+        onClose={() => setShowOfflineModal(false)}
+        title="Disconnect from Dispatch?"
+        size="sm"
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => executeStatusUpdate(false)}
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-red-600 hover:bg-red-50/50 cursor-pointer"
             >
-              <X size={18} />
-            </button>
-            
-            <div className="flex gap-3.5 items-start">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Going offline removes your workshop profile from the active emergency network system. You will need to be online to track broadcast breakdown signals to your terminal.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5 justify-end pt-2">
-              <button 
-                onClick={() => setShowOfflineModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Stay Online
-              </button>
-              <button 
-                onClick={() => executeStatusUpdate(false)}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-slate-800 transition-colors shadow-sm"
-              >
-                Confirm Offline
-              </button>
-            </div>
-          </Card>
+              Confirm Offline
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowOfflineModal(false)}
+              className="text-xs font-bold uppercase tracking-wider text-slate-900 bg-primary hover:bg-primary/90 shadow-sm cursor-pointer"
+            >
+              Stay Online
+            </Button>
+          </>
+        }
+      >
+        <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-4">
+          <p className="text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            Going offline removes your workshop profile from the active emergency network. You will not receive nearby breakdown alerts until you reconnect.
+          </p>
         </div>
-      )}
+      </Modal>
     </>
   )
 }

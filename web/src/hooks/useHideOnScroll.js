@@ -5,20 +5,48 @@ export default function useHideOnScroll({ threshold = 10, initialVisible = true 
   const lastY = useRef(0)
 
   useEffect(() => {
-    if (typeof document === 'undefined') return
-    
+    if (typeof window === 'undefined') return
+
+    function getScrollTop(target) {
+      if (!target) return 0
+      if (target === window || target === document || target === document.documentElement) {
+        return window.scrollY || document.documentElement.scrollTop || 0
+      }
+      if (target instanceof HTMLElement) {
+        return target.scrollTop || 0
+      }
+      return 0
+    }
+
+    function isMainScrollContainer(target) {
+      if (!target) return false
+      if (target === window || target === document || target === document.documentElement || target === document.body) {
+        return true
+      }
+      if (target instanceof HTMLElement && target.tagName === 'MAIN') {
+        return true
+      }
+      return false
+    }
+
     function onScroll(e) {
       const target = e.target
-      if (!target || !(target instanceof HTMLElement)) return
-      
-      const y = target.scrollTop || 0
-      
-      // Ignore bounces on mobile Safari/Chrome
+      if (!isMainScrollContainer(target)) return
+
+      const y = getScrollTop(target)
+
+      // Ignore negative bounces on mobile Safari/Chrome
       if (y < 0) return
 
+      // Always show header at the top of the page
+      if (y <= 60) {
+        setVisible(true)
+        lastY.current = y
+        return
+      }
+
       if (Math.abs(y - lastY.current) < threshold) return
-      
-      // Only hide if scrolled down past 60px to keep header visible at the top
+
       if (y > lastY.current && y > 60) {
         setVisible(false)
       } else {
@@ -27,10 +55,15 @@ export default function useHideOnScroll({ threshold = 10, initialVisible = true 
       lastY.current = y
     }
 
-    // Capture scrolls on inner containers (like <main>)
     document.addEventListener('scroll', onScroll, { capture: true, passive: true })
-    return () => document.removeEventListener('scroll', onScroll, { capture: true })
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      document.removeEventListener('scroll', onScroll, { capture: true })
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [threshold])
 
   return visible
 }
+

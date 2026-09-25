@@ -25,6 +25,43 @@ export default function MechanicDetailModal({
       onClose={onClose}
       title="Review Application"
       size="md"
+      actions={
+        <>
+          <button
+            disabled={actionLoading}
+            onClick={onClose}
+            className="w-full sm:w-auto inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-xs font-black uppercase tracking-wider text-slate-800 shadow-xs hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
+          >
+            Cancel
+          </button>
+
+          <button
+            disabled={actionLoading}
+            onClick={() => onRequestMoreInfo(mechanic.user_id)}
+            className="w-full sm:w-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#E5D0A0] bg-[#FBF6E8] px-5 text-xs font-black uppercase tracking-wider text-[#8A6B08] hover:bg-[#F5EDD0] disabled:opacity-40 cursor-pointer"
+          >
+            {actionLoading ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#8A6B08]/30 border-t-[#8A6B08]" />
+            ) : (
+              <HelpCircle size={13} />
+            )}
+            Request More Info
+          </button>
+
+          <button
+            disabled={actionLoading}
+            onClick={() => onAuthorize(mechanic.user_id)}
+            className="w-full sm:w-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#1A1609] px-5 text-xs font-black uppercase tracking-wider text-white hover:bg-[#2C2410] disabled:opacity-40 cursor-pointer"
+          >
+            {actionLoading ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : (
+              <CheckCircle />
+            )}
+            Authorize
+          </button>
+        </>
+      }
     >
       <div className="space-y-6">
         
@@ -152,43 +189,6 @@ export default function MechanicDetailModal({
               <p className="text-xs text-[#8A7A50] font-semibold">No clearance documents uploaded yet</p>
             </div>
           )}
-        </div>
-
-        {/* Modal Actions */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 border-t border-[#F0E8D0] pt-4">
-          <button
-            disabled={actionLoading}
-            onClick={onClose}
-            className="w-full sm:w-auto inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-xs font-black uppercase tracking-wider text-slate-800 shadow-xs hover:bg-slate-50 disabled:opacity-40"
-          >
-            Cancel
-          </button>
-
-          <button
-            disabled={actionLoading}
-            onClick={() => onRequestMoreInfo(mechanic.user_id)}
-            className="w-full sm:w-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-[#E5D0A0] bg-[#FBF6E8] px-5 text-xs font-black uppercase tracking-wider text-[#8A6B08] hover:bg-[#F5EDD0] disabled:opacity-40"
-          >
-            {actionLoading ? (
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#8A6B08]/30 border-t-[#8A6B08]" />
-            ) : (
-              <HelpCircle size={13} />
-            )}
-            Request More Info
-          </button>
-
-          <button
-            disabled={actionLoading}
-            onClick={() => onAuthorize(mechanic.user_id)}
-            className="w-full sm:w-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#1A1609] px-5 text-xs font-black uppercase tracking-wider text-white hover:bg-[#2C2410] disabled:opacity-40"
-          >
-            {actionLoading ? (
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : (
-              <CheckCircle />
-            )}
-            Authorize
-          </button>
         </div>
 
       </div>

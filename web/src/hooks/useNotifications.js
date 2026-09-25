@@ -77,26 +77,41 @@ export function useNotifications(userId) {
 
     fetchNotifications()
 
-    // subscribe to new notifications for this user only
+    // subscribe to notification changes for this user only
     const channel = supabase
       .channel(`notifications-${userId}`)
       .on(
-         'postgres_changes',
+        'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'notifications',
-          // New schema: notifications uses profile_id (not user_id)
           filter: `profile_id=eq.${userId}`,
         },
         (payload) => {
-          const newNotification = payload.new
-          const mapped = {
-            ...newNotification,
-            message: cleanNotificationMessage(newNotification.body)
+          if (payload.eventType === 'INSERT') {
+            const newNotification = payload.new
+            const mapped = {
+              ...newNotification,
+              message: cleanNotificationMessage(newNotification.body)
+            }
+            setNotifications(prev => {
+              const updated = [mapped, ...prev.filter(n => n.id !== mapped.id)]
+              setUnreadCount(updated.filter(n => !n.is_read).length)
+              return updated
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new
+            const mapped = {
+              ...updated,
+              message: cleanNotificationMessage(updated.body)
+            }
+            setNotifications(prev => {
+              const updatedList = prev.map(n => n.id === mapped.id ? mapped : n)
+              setUnreadCount(updatedList.filter(n => !n.is_read).length)
+              return updatedList
+            })
           }
-          setNotifications(prev => [mapped, ...prev])
-          setUnreadCount(prev => prev + 1)
         }
       )
       .subscribe()
