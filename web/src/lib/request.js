@@ -214,12 +214,12 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       : null
 
     return formatRequestRow(request, {
-      driver: driver?.data
+      driver: driver
         ? {
-            id: driver.data.id,
-            full_name: driver.data.full_name,
-            phone: driver.data.phone,
-            avatar_url: driver.data.avatar_url,
+            id: driver.id,
+            full_name: driver.full_name,
+            phone: driver.phone,
+            avatar_url: driver.avatar_url,
           }
         : null,
       assignedMechanic,

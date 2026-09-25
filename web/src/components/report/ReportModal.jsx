@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { X, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/hooks/useAuth'
 import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 
 const REASON_OPTIONS = [
   { value: 'inappropriate_behavior', label: 'Inappropriate behavior' },
@@ -31,7 +32,7 @@ export default function ReportModal({ isOpen, onClose, requestId, reporterId }) 
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e?.preventDefault?.()
     if (!reason || !comment.trim()) return
 
     setSubmitting(true)
@@ -61,102 +62,82 @@ export default function ReportModal({ isOpen, onClose, requestId, reporterId }) 
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
-        onClick={handleClose}
-      />
-
-      {/* Modal shell */}
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4 animate-in zoom-in-95 duration-200">
-        <div className="overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-xl">
-          {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-              <AlertTriangle size={18} className="text-red-500" />
-              Report Incident
-            </h3>
-            <button
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Report Incident"
+      size="sm"
+      actions={
+        submitted ? (
+          <Button onClick={handleClose} className="w-full">
+            Dismiss
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleClose}
               disabled={submitting}
-              className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-30"
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 cursor-pointer"
             >
-              <X size={18} />
-            </button>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleSubmit}
+              disabled={!reason || !comment.trim()}
+              loading={submitting}
+              className="text-xs font-bold uppercase tracking-wider px-4"
+            >
+              Submit Report
+            </Button>
+          </>
+        )
+      }
+    >
+      {submitted ? (
+        <div className="py-4 text-center space-y-3">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200/60">
+            <CheckCircle2 size={24} />
+          </div>
+          <h4 className="text-sm font-bold text-gray-900">Incident Reported Successfully</h4>
+          <p className="text-xs text-gray-500 max-w-xs mx-auto leading-relaxed">
+            Thank you for your report. Our dispatch team will review the details and take corrective measures.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-3 text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            Submit incident reports for delayed dispatch, incorrect charges, or misconduct.
           </div>
 
-          {submitted ? (
-            /* Success State */
-            <div className="py-8 text-center space-y-3">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-                <CheckCircle2 size={24} />
-              </div>
-              <h4 className="text-sm font-bold text-gray-900">Incident Reported Successfully</h4>
-              <p className="text-xs text-gray-500 max-w-xs mx-auto leading-relaxed">
-                Thank you for your report. Our admin team will investigate the details provided and take immediate corrective measures.
-              </p>
-              <div className="pt-2">
-                <Button onClick={handleClose} className="w-full">
-                  Dismiss
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* Form State */
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              {/* Reason Select */}
-              <Select
-                label="Reason"
-                id="report-reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                options={[{ value: '', label: 'Select a reason…' }, ...REASON_OPTIONS]}
-              />
+          <Select
+            label="Reason"
+            id="report-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            options={[{ value: '', label: 'Select a reason…' }, ...REASON_OPTIONS]}
+          />
 
-              {/* Comment Textarea */}
-              <div>
-                <Textarea
-                  label="Details"
-                  id="report-comment"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Describe what happened in as much detail as possible…"
-                  rows={4}
-                  maxLength={500}
-                />
-                <p className="text-[11px] text-gray-400 text-right mt-1">
-                  {comment.length} / 500 chars
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2.5 pt-1">
-                <Button
-                  variant="outline"
-                  onClick={handleClose}
-                  disabled={submitting}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="danger"
-                  disabled={!reason || !comment.trim()}
-                  loading={submitting}
-                  className="flex-[2]"
-                >
-                  Submit report
-                </Button>
-              </div>
-            </form>
-          )}
+          <div>
+            <Textarea
+              label="Details"
+              id="report-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Describe what happened in as much detail as possible…"
+              rows={4}
+              maxLength={500}
+            />
+            <p className="text-[11px] text-gray-400 text-right mt-1">
+              {comment.length} / 500 chars
+            </p>
+          </div>
         </div>
-      </div>
-    </>
+      )}
+    </Modal>
   )
 }

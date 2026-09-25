@@ -12,10 +12,11 @@ export default function DashboardShell({ children }) {
     pathname?.includes('/ai') ||
     pathname?.includes('/chat') ||
     pathname?.includes('/explore') ||
-    pathname?.includes('/navigation')
+    pathname?.includes('/navigation') ||
+    /^\/dashboard\/driver\/request\/[^/]+$/.test(pathname || '')
 
   const mainClass = isFullHeightPage
-    ? 'flex-1 flex flex-col h-full min-h-0 overflow-hidden pt-[60px] md:pt-[65px]'
+    ? 'flex-1 flex flex-col h-full min-h-0 overflow-hidden pt-[68px] md:pt-[74px]'
     : 'flex-1 flex flex-col overflow-y-auto px-4 pb-5 md:px-6 md:pb-8 pt-[74px] md:pt-[96px]'
 
   return (

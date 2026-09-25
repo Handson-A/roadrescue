@@ -7,6 +7,7 @@ import toast from 'react-hot-toast' // Added hot-toast import
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
+import { useFuelLayer } from '@/hooks/useFuelLayer'
 
 const ACCRA_LAT = 5.6037
 const ACCRA_LNG = -0.1870
@@ -61,7 +62,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
   const [address, setAddress] = useState('')
   const [mapCenter, setMapCenter] = useState([ACCRA_LAT, ACCRA_LNG])
   const [customIcon, setCustomIcon] = useState(null)
-  const [showStations, setShowStations] = useState(false)
+  const [showStations, toggleShowStations, , isHydrated] = useFuelLayer()
   const callbackRef = useRef(null)
 
   useEffect(() => {
@@ -193,7 +194,7 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
             <Marker position={[Number(lat), Number(lng)]} icon={customIcon} />
           )}
           <OverpassFuelLayer
-            isActive={showStations}
+            isActive={isHydrated && showStations}
             onSelectPickup={(lat, lng) => placeMarkerValue(lat, lng, true)}
           />
           <MapClickHandler onClick={(latitude, longitude) => placeMarkerValue(latitude, longitude, true)} />
@@ -206,18 +207,20 @@ export default function LocationPicker({ onSelect, onLocationSelect }) {
           <Compass size={14} />
           <span>Detect Location</span>
         </Button>
-        <button
-          type="button"
-          onClick={() => setShowStations(!showStations)}
-          className={`h-11 px-4 rounded-xl text-xs font-bold uppercase tracking-wider border flex items-center justify-center gap-1.5 transition-all ${
-            showStations
-              ? 'border-amber-500 bg-amber-50 text-amber-600 ring-1 ring-amber-500/20'
-              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          <Fuel size={14} />
-          {showStations ? 'Hide Fuel/EV Stations' : 'Show Fuel/EV Stations'}
-        </button>
+        {isHydrated && (
+          <button
+            type="button"
+            onClick={() => toggleShowStations()}
+            className={`h-11 px-4 rounded-xl text-xs font-bold uppercase tracking-wider border flex items-center justify-center gap-1.5 transition-all ${
+              showStations
+                ? 'border-amber-500 bg-amber-50 text-amber-600 ring-1 ring-amber-500/20'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <Fuel size={14} />
+            {showStations ? 'Hide Fuel/EV Stations' : 'Show Fuel/EV Stations'}
+          </button>
+        )}
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">

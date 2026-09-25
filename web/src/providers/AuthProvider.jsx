@@ -167,6 +167,9 @@ if (profile?.role === 'driver') {
           continue
         }
 
+        console.warn(
+          `[AUTH_PROVIDER] Exhausted retries for user ${userId}. Falling back to signup metadata role: '${fallbackProfile.role}'. If this user was promoted via the database, their promoted permissions will not be reflected until the profiles table is accessible.`
+        )
         return fallbackProfile
       }
     }

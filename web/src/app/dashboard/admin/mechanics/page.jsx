@@ -75,7 +75,10 @@ export default function MechanicsVerificationPage() {
     return () => { mounted = false }
   }, [])
 
-  const handleAction = async (mechanicUserId, action) => {
+  const [rejectingMechanic, setRejectingMechanic] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const handleAction = async (mechanicUserId, action, reason = null) => {
     setActionLoading(mechanicUserId)
     let newStatus
     switch (action) {
@@ -84,16 +87,26 @@ export default function MechanicsVerificationPage() {
       case 'more_info': newStatus = 'more_info'; break
       default: return
     }
+
+    if (action === 'reject' && (!reason || !reason.trim())) {
+      toast.error('A rejection reason is required')
+      setActionLoading(null)
+      return
+    }
+
     try {
       const response = await fetch('/api/admin/mechanics', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mechanicUserId, newStatus }),
+        body: JSON.stringify({ mechanicUserId, newStatus, reason: reason?.trim() || null }),
       })
-      if (!response.ok) throw new Error('Failed to update credentials')
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to update credentials')
       const actionLabels = { approve: 'verified', reject: 'rejected', more_info: 'flagged for more info' }
       toast.success(`Provider ${actionLabels[action]}`)
       setMechanics((current) => current.filter((m) => m.user_id !== mechanicUserId))
+      setRejectingMechanic(null)
+      setRejectReason('')
     } catch (error) {
       toast.error(error.message)
     } finally {
@@ -254,8 +267,11 @@ export default function MechanicsVerificationPage() {
                     {/* Deny — ghost destructive */}
                     <button
                       disabled={isBusy}
-                      onClick={() => handleAction(mech.user_id, 'reject')}
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDCDC] bg-white text-[#C07070] transition hover:bg-[#FFF0F0] hover:border-[#DDAAAA] hover:text-[#A04040] disabled:opacity-40 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        setRejectingMechanic(mech)
+                        setRejectReason('')
+                      }}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EEDCDC] bg-white text-[#C07070] transition hover:bg-[#FFF0F0] hover:border-[#DDAAAA] hover:text-[#A04040] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                       title="Deny application"
                     >
                       <X size={14} strokeWidth={2.5} />
@@ -268,6 +284,59 @@ export default function MechanicsVerificationPage() {
           })
         )}
       </div>
+
+      {/* Reject Justification Modal */}
+      {rejectingMechanic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#E0D5B7] space-y-4">
+            <div>
+              <h3 className="text-lg font-black text-[#1F1B10]">Reject Mechanic Application</h3>
+              <p className="text-xs text-[#8A7A50] mt-1">
+                Provide a recorded justification reason for rejecting <strong>{rejectingMechanic.user?.full_name || 'this provider'}</strong>. This will be permanently written to the audit log.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#6B5E3E] mb-1.5">
+                Rejection Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. Fraudulent certification document or failed background check..."
+                rows={3}
+                className="w-full rounded-xl border border-[#DDD0A8] p-3 text-xs text-[#1F1B10] focus:border-[#8A6B08] focus:outline-none focus:ring-1 focus:ring-[#8A6B08]"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectingMechanic(null)
+                  setRejectReason('')
+                }}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!rejectReason.trim() || actionLoading === rejectingMechanic.user_id}
+                onClick={() => handleAction(rejectingMechanic.user_id, 'reject', rejectReason)}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-40 cursor-pointer"
+              >
+                {actionLoading === rejectingMechanic.user_id ? (
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <X size={13} strokeWidth={2.5} />
+                )}
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <MechanicDetailModal
         isOpen={!!selectedMechanic}

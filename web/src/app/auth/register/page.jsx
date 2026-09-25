@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 
 import RegisterForm from '@/components/auth/RegisterForm'
@@ -13,7 +14,9 @@ export default function RegisterPage() {
         <p className="text-sm text-slate-500">Create an account for secure operations.</p>
       </div>
 
-      <RegisterForm />
+      <Suspense fallback={<div className="h-64 animate-pulse bg-slate-50 rounded-xl" />}>
+        <RegisterForm />
+      </Suspense>
 
       <p className="text-center text-sm text-slate-500">
         Already have an account? <Link href="/auth/login" className="font-bold text-amber-600">Login</Link>
