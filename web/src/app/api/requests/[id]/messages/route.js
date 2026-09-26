@@ -10,7 +10,12 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const requestId = params?.id
+    const resolvedParams = await params
+    const requestId = resolvedParams?.id
+
+    if (!requestId) {
+      return NextResponse.json({ error: 'requestId parameter is required' }, { status: 400 })
+    }
 
     // Verify user is a participant
     const { data: rescueRequest, error: requestError } = await supabase
@@ -52,7 +57,13 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const requestId = params?.id
+    const resolvedParams = await params
+    const requestId = resolvedParams?.id
+
+    if (!requestId) {
+      return NextResponse.json({ error: 'requestId parameter is required' }, { status: 400 })
+    }
+
     const rawBody = await request.json()
     const body = sanitizeInput(rawBody)
     const message = body.message?.trim()

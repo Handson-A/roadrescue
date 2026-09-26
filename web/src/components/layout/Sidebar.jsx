@@ -43,7 +43,7 @@ const navByRole = {
     { href: '/dashboard/admin/mechanics', label: 'Mechanics', icon: User },
     { href: '/dashboard/admin/reports', label: 'Analytics', icon: ChartColumn },
     { href: '/dashboard/admin/users', label: 'Identity Hub', icon: ShieldCheck },
-    { href: '/dashboard/admin/account', label: 'Account', icon: Settings },
+ 
   ],
 }
 
@@ -217,22 +217,35 @@ export default function Sidebar() {
           )}
 
           {/* ACCOUNT SNAPSHOT PROFILE BOX */}
+         
           <div className={`rounded-xl border p-3 ${isAdmin ? 'border-[#4A4230] bg-[#2F2A20]' : 'border-[#D8CCAE]/60 bg-[#EAE0C7]/50'}`}>
-            <div className="flex items-center gap-3">
-              <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="md" />
-              <div className="min-w-0 flex-1">
-                <p className={`truncate text-xs font-black tracking-tight ${isAdmin ? 'text-[#F2EAD7]' : 'text-[#2A261C]'}`}>{profile?.full_name || 'RoadRescue User'}</p>
-                <p className={`text-[10px] uppercase font-black tracking-widest mt-0.5 ${isAdmin ? 'text-[#B6AA8D]' : 'text-[#6E644D]'}`}>{role}</p>
-              </div>
+          {/* Profile section that navigates to the admin account route */}
+          <div 
+            onClick={() => router.push('/dashboard/admin/account')}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="md" />
+            <div className="min-w-0 flex-1">
+              <p className={`truncate text-xs font-black tracking-tight ${isAdmin ? 'text-[#F2EAD7]' : 'text-[#2A261C]'}`}>
+                {profile?.full_name || 'RoadRescue User'}
+              </p>
+              <p className={`text-[10px] uppercase font-black tracking-widest mt-0.5 ${isAdmin ? 'text-[#B6AA8D]' : 'text-[#6E644D]'}`}>
+                {role}
+              </p>
             </div>
-
-            <button
-              onClick={handleSignOut}
-              className={`mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border text-[11px] font-black uppercase tracking-wider transition ${isAdmin ? 'border-[#534B38] text-[#F2EAD7] hover:bg-[#3A3428]' : 'border-[#CDBD97] text-[#3D3627] hover:bg-[#E1D6BA]'}`}
-            >
-              <LogOut size={12} /> Sign out
-            </button>
           </div>
+
+          {/* Sign out button with e.stopPropagation() to prevent triggering the div's router push */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSignOut();
+            }}
+            className={`mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border text-[11px] font-black uppercase tracking-wider transition ${isAdmin ? 'border-[#534B38] text-[#F2EAD7] hover:bg-[#3A3428]' : 'border-[#CDBD97] text-[#3D3627] hover:bg-[#E1D6BA]'}`}
+          >
+            <LogOut size={12} /> Sign out
+          </button>
+        </div>
         </div>
       </aside>
 

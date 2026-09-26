@@ -36,15 +36,18 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     aiDiagnosticResult,
   } = payload
 
+  const targetMechanicId = payload.target_mechanic_id || payload.targetMechanicId || payload.preferredMechanicId || payload.preferred_mechanic_id || null
+
   // Extract vehicle image URL from payload (passed as vehicle_image_url)
-  const vehicleImageUrl = payload.vehicle_image_url || null
+  const vehicleImageUrl = payload.vehicle_image_url || payload.vehicleImageUrl || null
 
   try {
-    // 1. Insert the rescue request row
+    // 1. Insert the rescue request row (locking mechanic_id if targeted dispatch)
     const { data: request, error: requestError } = await supabase
       .from('rescue_requests')
       .insert({
         driver_id: driverId,
+        mechanic_id: targetMechanicId || null,
         status: REQUEST_STATUS.PENDING,
         service_type: serviceType,
         // PostGIS requires POINT(longitude, latitude) — lng first, always
@@ -64,55 +67,88 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
 
     if (requestError) throw requestError
 
-    // 2. Find nearby mechanics using PostGIS geospatial function
-    const { data: nearbyMechanics, error: matchError } = await supabase.rpc('get_nearby_verified_mechanics', {
-      lat: incidentLat,
-      lng: incidentLng,
-      radius_km: DEFAULT_SEARCH_RADIUS_KM,
-    })
+    // Lock target mechanic availability state immediately to avoid double-booking
+    if (targetMechanicId && serviceSupabase) {
+      await serviceSupabase
+        .from('mechanic_profiles')
+        .update({ is_available: false, current_status: 'dispatched' })
+        .eq('user_id', targetMechanicId)
+    }
 
-    if (matchError) throw matchError
+    let targetMechanics = []
+
+    // 2. Dispatch routing
+    if (targetMechanicId) {
+      const { data: preferredMech, error: mechErr } = await (serviceSupabase || supabase)
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('id', targetMechanicId)
+        .maybeSingle()
+
+      if (!mechErr && preferredMech) {
+        targetMechanics = [{
+          user_id: preferredMech.id,
+          full_name: preferredMech.full_name || 'Mechanic',
+          email: preferredMech.email,
+          distance_km: 'Direct',
+        }]
+      }
+    } else {
+      // Find nearby mechanics using PostGIS geospatial function
+      const { data: nearbyMechanics, error: matchError } = await supabase.rpc('get_nearby_verified_mechanics', {
+        lat: incidentLat,
+        lng: incidentLng,
+        radius_km: DEFAULT_SEARCH_RADIUS_KM,
+      })
+
+      if (matchError) throw matchError
+      targetMechanics = nearbyMechanics || []
+    }
 
     // 3. If no mechanics found, still return request (driver sees "searching" state)
-    if (!nearbyMechanics || nearbyMechanics.length === 0) {
+    if (!targetMechanics || targetMechanics.length === 0) {
       return { request, notifiedCount: 0 }
     }
 
-    // 4. Create notifications for each nearby mechanic
+    // 4. Create notifications for target mechanics
     // Use service role because RLS blocks inserts from client
-    const notifications = nearbyMechanics.map((mechanic) => ({
+    const notifications = targetMechanics.map((mechanic) => ({
       profile_id: mechanic.user_id,
       type: NOTIFICATION_TYPE.NEW_REQUEST,
-      title: 'New rescue request',
-      body: `New ${serviceType} request ${mechanic.distance_km}km away — ${incidentAddress || 'location pinned'}`,
-      request_id: requestId,
+      title: targetMechanicId ? 'Direct rescue request' : 'New rescue request',
+      body: targetMechanicId
+        ? `Direct ${serviceType} request dispatched to you — ${incidentAddress || 'location pinned'}`
+        : `New ${serviceType} request ${mechanic.distance_km}km away — ${incidentAddress || 'location pinned'}`,
+      request_id: request.id,
     }))
 
     try {
-      await insertNotifications(serviceSupabase, notifications)
+      await insertNotifications(serviceSupabase || supabase, notifications)
     } catch (notifError) {
       console.error('[BACKGROUND NOTIFICATIONS INSERT ERROR]:', notifError.message)
     }
 
     // 5. Send email notifications (non-blocking, best-effort)
-    nearbyMechanics.forEach((mechanic) => {
+    targetMechanics.forEach((mechanic) => {
       sendNotificationEmail({
         to: mechanic.email || `mechanic-${mechanic.user_id}@roadrescue.com`,
-        subject: `New ${serviceType} Request ${mechanic.distance_km}km away!`,
+        subject: targetMechanicId
+          ? `Direct ${serviceType} Request from Driver!`
+          : `New ${serviceType} Request ${mechanic.distance_km}km away!`,
         type: 'new_request',
         data: {
           mechanicName: mechanic.full_name,
           issueDescription: problemDescription,
           location: incidentAddress || 'Location pinned',
-          distance: `${mechanic.distance_km} km`,
-          appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/mechanic/requests`,
+          distance: typeof mechanic.distance_km === 'number' ? `${mechanic.distance_km} km` : `${mechanic.distance_km}`,
+          appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/mechanic/job/${request.id}`,
         },
       }).catch((err) => {
         console.warn(`Email failed for mechanic ${mechanic.user_id}:`, err)
       })
     })
 
-    return { request, notifiedCount: nearbyMechanics.length }
+    return { request, notifiedCount: targetMechanics.length }
   } catch (error) {
     console.error('Error creating rescue request:', error)
     throw error
@@ -272,11 +308,11 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         }
       }
 
-      if (request.status !== REQUEST_STATUS.PENDING) {
+      if (request.status !== REQUEST_STATUS.PENDING && request.status !== REQUEST_STATUS.OFFERED) {
         throw new Error('Request is no longer available')
       }
 
-      if (request.mechanic_id) {
+      if (request.mechanic_id && request.mechanic_id !== actorId) {
         throw new Error('Another mechanic already accepted this request')
       }
     } else {
@@ -350,7 +386,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
     const updatePayload = { status: newStatus }
 
     if (newStatus === REQUEST_STATUS.ACCEPTED) {
-      if (request.mechanic_id && request.mechanic_id !== 'null') {
+      if (request.mechanic_id && request.mechanic_id !== 'null' && request.mechanic_id !== actorId) {
         throw new Error('Another mechanic already accepted this request')
       }
       updatePayload.mechanic_id = actorId
@@ -440,7 +476,7 @@ export async function updateRequestStatus(serviceSupabase, payload) {
     ) {
       await serviceSupabase
         .from('mechanic_profiles')
-        .update({ is_available: true })
+        .update({ is_available: true, current_status: null })
         .eq('user_id', request.mechanic_id)
         .then(({ error: availabilityError }) => {
           if (availabilityError) console.warn('Failed to release mechanic:', availabilityError)

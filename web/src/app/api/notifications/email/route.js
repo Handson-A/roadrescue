@@ -31,7 +31,8 @@ export async function POST(request) {
       return Response.json({ error: authResult.error }, { status: authResult.status })
     }
 
-    const { to, subject, message, htmlContent, templateData } = await request.json()
+    const { user, profile } = authResult
+    const { to, subject, message, htmlContent } = await request.json()
 
     if (!to) {
       return Response.json({ error: 'Missing recipient email' }, { status: 400 })
@@ -43,6 +44,18 @@ export async function POST(request) {
 
     if (!message && !htmlContent) {
       return Response.json({ error: 'Missing email body (message or htmlContent)' }, { status: 400 })
+    }
+
+    // SECURITY RESTRICTION: Only admins can send arbitrary emails.
+    // Non-admin users (drivers, mechanics) can only receive/trigger emails addressed directly to their own verified email.
+    const isAdmin = profile?.role === 'admin'
+    const isSelfRecipient = user?.email && to.toLowerCase().trim() === user.email.toLowerCase().trim()
+
+    if (!isAdmin && !isSelfRecipient) {
+      return Response.json(
+        { error: 'Forbidden: Insufficient privileges to dispatch emails to arbitrary recipients' },
+        { status: 403 }
+      )
     }
 
     const html = htmlContent || `<p>${message}</p>`

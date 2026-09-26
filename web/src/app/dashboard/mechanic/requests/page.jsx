@@ -24,11 +24,13 @@ export default function MechanicRequestsPage() {
 
 
   async function loadRequests() {
+    if (!user?.id) return
     const supabase = createClient()
     const { data } = await supabase
       .from('rescue_requests')
-      .select('id, status, service_type, problem_description, incident_address, created_at')
-      .eq('status', 'pending') // Only show actual unassigned incoming work
+      .select('id, status, service_type, problem_description, incident_address, created_at, mechanic_id')
+      .eq('status', 'pending')
+      .or(`mechanic_id.is.null,mechanic_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
       .limit(20)
     
@@ -38,22 +40,41 @@ export default function MechanicRequestsPage() {
   }
 
   useEffect(() => {
+    if (!user?.id) return
     let mounted = true
-    const initialTimer = setTimeout(() => {
-      if (mounted) loadRequests()
-    }, 0)
-    
-    // Polling backup to seamlessly capture new incidents every 15 seconds
+    const supabase = createClient()
+
+    loadRequests()
+
+    // 1. Primary: Listen to live Postgres Changes for incoming rescue requests
+    const channel = supabase
+      .channel(`mechanic-live-requests-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rescue_requests',
+        },
+        () => {
+          if (mounted) {
+            loadRequests()
+          }
+        }
+      )
+      .subscribe()
+
+    // 2. Secondary fallback: 30-second polling interval for resilience
     const interval = setInterval(() => {
       if (mounted) loadRequests()
-    }, 15000)
-    
-    return () => { 
-      mounted = false 
-      clearTimeout(initialTimer)
+    }, 30000)
+
+    return () => {
+      mounted = false
       clearInterval(interval)
+      supabase.removeChannel(channel)
     }
-  }, [])
+  }, [user?.id])
 
   const handleManualRefresh = async () => {
     setRefreshing(true)

@@ -73,8 +73,9 @@ export default function MechanicPage() {
 
       const { data: pending, error: pendingErr } = await supabase
         .from('rescue_requests')
-        .select('id, status, service_type, problem_description, incident_address, incident_location, created_at')
+        .select('id, status, service_type, problem_description, incident_address, incident_location, created_at, mechanic_id')
         .eq('status', 'pending')
+        .or(`mechanic_id.is.null,mechanic_id.eq.${currentUserId}`)
         .order('created_at', { ascending: false })
 
       if (pendingErr) console.error('[DB EXCEPTION] Pending fetch:', pendingErr.message)

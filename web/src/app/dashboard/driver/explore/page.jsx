@@ -616,7 +616,6 @@ export default function DriverExploreMap() {
             }}
             className="h-12 rounded-2xl border-2 border-slate-200 text-slate-800 font-black text-xs uppercase tracking-wider hover:bg-slate-50 flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Navigation size={15} className="text-slate-600" />
             Directions Only
           </Button>
 
@@ -627,7 +626,6 @@ export default function DriverExploreMap() {
             }}
             className="h-12 rounded-2xl bg-primary hover:bg-primary-hover text-[#1F1B10] font-black text-xs uppercase tracking-wider shadow-md flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Wrench size={15} className="text-[#1F1B10]" />
             Request Assistance
           </Button>
         </div>

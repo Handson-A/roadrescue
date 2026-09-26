@@ -11,7 +11,7 @@ const severityVariantMap = {
 export default function DiagnosticResult({ diagnosis }) {
   if (!diagnosis) return null
 
-  const { problem, severity, recommendations = [], estimated_causes = [], isFallback, fallbackReason } = diagnosis
+  const { problem, severity, recommendations = [], estimated_causes = [], isFallback } = diagnosis
 
   return (
     <div className="space-y-3.5">
@@ -23,7 +23,7 @@ export default function DiagnosticResult({ diagnosis }) {
               Basic Guidance (Offline / Fallback)
             </span>
             <p className="text-[11px] text-amber-700 leading-snug font-medium">
-              {fallbackReason || 'Full AI diagnosis temporarily unavailable. Showing standard preliminary checks.'}
+              {'AI diagnosis temporarily unavailable. Showing standard preliminary checks.'}
             </p>
           </div>
         </div>

@@ -75,21 +75,38 @@ export async function POST(req) {
 
     // basic input validation
     const { incidentLat, incidentLng, serviceType } = body
-    if (!incidentLat || !incidentLng || !serviceType) {
+    if (incidentLat === undefined || incidentLat === null || incidentLng === undefined || incidentLng === null || !serviceType) {
       return NextResponse.json(
         { error: 'incidentLat, incidentLng, and serviceType are required' },
         { status: 400 }
       )
     }
 
-    const preferredMechanicId = body.preferredMechanicId || body.preferred_mechanic_id || null
+    const latNum = Number(incidentLat)
+    const lngNum = Number(incidentLng)
+
+    if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+      return NextResponse.json(
+        { error: 'incidentLat must be a valid latitude between -90 and 90 degrees' },
+        { status: 400 }
+      )
+    }
+
+    if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+      return NextResponse.json(
+        { error: 'incidentLng must be a valid longitude between -180 and 180 degrees' },
+        { status: 400 }
+      )
+    }
+
+    const targetMechanicId = body.target_mechanic_id || body.targetMechanicId || body.preferredMechanicId || body.preferred_mechanic_id || null
 
     // SECURITY & AVAILABILITY GATING FOR TARGETED DISPATCH
-    if (preferredMechanicId) {
+    if (targetMechanicId) {
       const { data: targetMechProfile, error: targetMechErr } = await serviceSupabase
         .from('mechanic_profiles')
         .select('verification_status, is_available')
-        .eq('user_id', preferredMechanicId)
+        .eq('user_id', targetMechanicId)
         .maybeSingle()
 
       if (targetMechErr || !targetMechProfile) {
@@ -124,11 +141,12 @@ export async function POST(req) {
 
     const vehicleImageUrl = body.vehicle_image_url || body.vehicleImageUrl || null
 
-    // 1. Insert the rescue request row immediately
+    // 1. Insert the rescue request row immediately with target mechanic lock if direct
     const { data: request, error: requestError } = await supabase
       .from('rescue_requests')
       .insert({
         driver_id: user.id,
+        mechanic_id: targetMechanicId || null,
         status: 'pending',
         service_type: serviceType,
         incident_location: `POINT(${incidentLng} ${incidentLat})`,
@@ -147,29 +165,25 @@ export async function POST(req) {
 
     if (requestError) throw requestError
 
-    // 2. Broadcast the ticket live to the Supabase realtime channel (non-blocking)
-    const channel = supabase.channel('rescue-requests')
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        channel.send({
-          type: 'broadcast',
-          event: 'new_request',
-          payload: request
-        })
-      }
-    })
+    // Lock target mechanic availability state immediately to prevent double-booking
+    if (targetMechanicId) {
+      await serviceSupabase
+        .from('mechanic_profiles')
+        .update({ is_available: false, current_status: 'dispatched' })
+        .eq('user_id', targetMechanicId)
+    }
 
-    // 3. Decoupled asynchronous matching & notifications logic
+    // 2. Decoupled asynchronous matching & notifications logic
     Promise.resolve().then(async () => {
       try {
         let targetMechanics = []
 
-        // BRANCH A: Targeted dispatch to a preferred mechanic selected from map discovery
-        if (preferredMechanicId) {
+        // BRANCH A: Targeted dispatch directly and exclusively to the chosen mechanic
+        if (targetMechanicId) {
           const { data: preferredMech, error: mechErr } = await serviceSupabase
             .from('profiles')
             .select('id, full_name, email')
-            .eq('id', preferredMechanicId)
+            .eq('id', targetMechanicId)
             .maybeSingle()
 
           if (!mechErr && preferredMech) {
@@ -180,10 +194,8 @@ export async function POST(req) {
               distance_km: 'Direct',
             }]
           }
-        }
-
-        // BRANCH B: Standard geospatial broadcast matching (existing behavior unchanged)
-        if (targetMechanics.length === 0) {
+        } else {
+          // BRANCH B: Standard geospatial broadcast matching (bypassed for targeted dispatch)
           const { data: nearbyMechanics, error: matchError } = await serviceSupabase.rpc('get_nearby_verified_mechanics', {
             lat: Number(incidentLat),
             lng: Number(incidentLng),
@@ -204,10 +216,11 @@ export async function POST(req) {
           const notifications = targetMechanics.map((mechanic) => ({
             profile_id: mechanic.user_id,
             type: 'new_request',
-            title: preferredMechanicId ? 'Direct rescue request' : 'New rescue request',
-            body: preferredMechanicId 
+            title: targetMechanicId ? 'Direct rescue request' : 'New rescue request',
+            body: targetMechanicId 
               ? `Direct ${serviceType} request dispatched to you — ${body.incidentAddress || 'location pinned'}`
               : `New ${serviceType} request ${mechanic.distance_km}km away — ${body.incidentAddress || 'location pinned'}`,
+            request_id: request.id,
           }))
 
           const { error: notifError } = await serviceSupabase
@@ -222,7 +235,7 @@ export async function POST(req) {
           targetMechanics.forEach((mechanic) => {
             sendNotificationEmail({
               to: mechanic.email || `mechanic-${mechanic.user_id}@roadrescue.com`,
-              subject: preferredMechanicId
+              subject: targetMechanicId
                 ? `Direct ${serviceType} Request from Driver!`
                 : `New ${serviceType} Request ${mechanic.distance_km}km away!`,
               type: 'new_request',
@@ -231,7 +244,7 @@ export async function POST(req) {
                 issueDescription: body.problemDescription,
                 location: body.incidentAddress || 'Location pinned',
                 distance: typeof mechanic.distance_km === 'number' ? `${mechanic.distance_km} km` : `${mechanic.distance_km}`,
-                appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/mechanic/requests`,
+                appUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app'}/dashboard/mechanic/job/${request.id}`,
               },
             }).catch((err) => {
               console.warn(`Email failed for mechanic ${mechanic.user_id}:`, err)

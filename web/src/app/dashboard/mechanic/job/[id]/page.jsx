@@ -11,6 +11,7 @@ import Textarea from '@/components/ui/Textarea'
 import Card from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -182,6 +183,26 @@ export default function MechanicJobDetailsPage() {
   const [mechanicProfile, setMechanicProfile] = useState(null)
   const [graceTimeLeft, setGraceTimeLeft] = useState(null)
 
+  /* ── Shared update helper ─────────────────────────────────── */
+  const updateStatus = async (newStatus, extra = {}) => {
+    if (!user?.id) { alert('Session expired — please log in again.'); return }
+    setUpdating(true)
+    try {
+      const res = await fetch('/api/requests/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: jobId, mechanicId: user.id, newStatus, ...extra }),
+      })
+      const result = await res.json()
+      if (res.ok && result.request) {
+        setJob(result.request)
+      } else {
+        alert(result.error || 'Could not update status.')
+      }
+    } catch { alert('Network error — please try again.') }
+    finally { setUpdating(false) }
+  }
+
   useEffect(() => {
     if (!user?.id) return
     const supabase = createClient()
@@ -291,26 +312,6 @@ export default function MechanicJobDetailsPage() {
       supabase.removeChannel(channel)
     }
   }, [jobId, supabase])
-
-  /* ── Shared update helper ─────────────────────────────────── */
-  const updateStatus = async (newStatus, extra = {}) => {
-    if (!user?.id) { alert('Session expired — please log in again.'); return }
-    setUpdating(true)
-    try {
-      const res = await fetch('/api/requests/status', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: jobId, mechanicId: user.id, newStatus, ...extra }),
-      })
-      const result = await res.json()
-      if (res.ok && result.request) {
-        setJob(result.request)
-      } else {
-        alert(result.error || 'Could not update status.')
-      }
-    } catch { alert('Network error — please try again.') }
-    finally { setUpdating(false) }
-  }
 
   const cancelJob = () => {
     setShowCancelModal(true)

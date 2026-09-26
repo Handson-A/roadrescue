@@ -30,6 +30,7 @@ export function useIncomingJobs(mechanicId) {
           )
         `)
         .eq('status', 'pending')
+        .or(`mechanic_id.is.null,mechanic_id.eq.${mechanicId}`)
         .order('created_at', { ascending: false })
 
       if (!error) setPendingJobs(data || [])

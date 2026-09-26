@@ -209,6 +209,14 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
+         {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
+            <div className="p-4 bg-slate-50/40">
+              <LiveHotspotsMap 
+                mechanics={stats?.activeMechanicLocations || []} 
+                activeIncidents={stats?.activeIncidents || []} 
+              />
+            </div>
+            
             {/* Dynamic Incident Logging Feeds */}
             <div className="divide-y divide-slate-100 border-b border-slate-100 max-h-48 overflow-y-auto">
               {recentRequests.length === 0 ? (
@@ -228,13 +236,7 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
-            {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
-            <div className="p-4 bg-slate-50/40">
-              <LiveHotspotsMap 
-                mechanics={stats?.activeMechanicLocations || []} 
-                activeIncidents={stats?.activeIncidents || []} 
-              />
-            </div>
+           
           </Card>
 
           {/* RIGHT COLUMNS: VERIFICATION TRAFFIC & ARCHITECTURAL BALANCES */}

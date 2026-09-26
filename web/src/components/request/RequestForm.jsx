@@ -620,7 +620,7 @@ export default function RequestForm() {
                 onClick={() => router.push('/dashboard/driver/explore')}
                 className="h-8 text-xs px-3 rounded-xl border-slate-300 hover:bg-white shrink-0 font-bold"
               >
-                Pick Mechanic
+               Pick mechanic 
               </Button>
             </div>
           )}
@@ -1114,7 +1114,7 @@ export default function RequestForm() {
                       {selectedServiceObj.label}
                     </span>
                     <p className="text-xs text-slate-800 mt-1 leading-relaxed font-medium break-words">
-                      "{problemDescription}"
+                      &quot;{problemDescription}&quot;
                     </p>
                     {aiDiagnosticResult && (
                       <div className="mt-2 rounded-lg bg-amber-100/60 border border-amber-200 p-2 text-[11px] text-amber-900">

@@ -3,7 +3,7 @@ import { submitRating } from '@/lib/request'
 import { NextResponse } from 'next/server'
 import { sanitizeInput } from '@/lib/validate'
 
-export async function PATCH(req) {
+export async function PATCH(req, { params }) {
   try {
     const supabase = await createClient()
 
@@ -12,16 +12,20 @@ export async function PATCH(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const resolvedParams = await params
     const rawBody = await req.json()
     const body = sanitizeInput(rawBody)
-    const { requestId, rating, review } = body
+    const requestId = resolvedParams?.id || body.requestId
 
-    if (!requestId || !rating) {
+    if (!requestId || !body.rating) {
       return NextResponse.json(
         { error: 'requestId and rating are required' },
         { status: 400 }
       )
     }
+
+    const rating = Number(body.rating)
+    const review = body.review
 
     if (rating < 1 || rating > 5) {
       return NextResponse.json(
