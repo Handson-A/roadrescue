@@ -51,7 +51,7 @@ export default async function DashboardLayout({ children }) {
   }
 
   return (
-    <DashboardShell>
+    <DashboardShell initialRole={role}>
       {children}
     </DashboardShell>
   )

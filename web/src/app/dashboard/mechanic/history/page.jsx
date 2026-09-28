@@ -81,33 +81,33 @@ export default function MechanicHistoryPage() {
         
         {/* ================= METRICS STATS SUMMARY HEADER ================= */}
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Rescues</span>
-              <CheckCircle2 size={16} className="text-emerald-500" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50]">Total Rescues</span>
+              <CheckCircle2 size={16} className="text-emerald-600" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{jobs.length}</p>
+            <p className="mt-1.5 text-3xl font-black text-[#1E1B15] tracking-tight">{jobs.length}</p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Lifetime closed service calls</p>
           </Card>
 
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Average Rating</span>
-              <Star size={16} className="text-primary fill-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50]">Average Rating</span>
+              <Star size={16} className="text-amber-500 fill-amber-500" />
             </div>
-            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+            <p className="mt-1.5 text-2xl font-black text-[#1E1B15] tracking-tight flex items-center gap-1.5">
               <Star size={18} className="text-amber-500 fill-amber-500" />
               <span>{avgRating} ({ratedJobs.length} reviews)</span>
             </p>
-            <p className="mt-1 text-xs text-slate-500 font-medium">Driver feedback satisfaction index</p>
+            <p className="mt-1 text-xs text-slate-500 font-medium">Driver satisfaction score</p>
           </Card>
 
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Monthly Volume</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50]">Monthly Volume</span>
               <Calendar size={16} className="text-slate-400" />
             </div>
-            <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{currentMonthJobs}</p>
+            <p className="mt-1.5 text-3xl font-black text-[#1E1B15] tracking-tight">{currentMonthJobs}</p>
             <p className="mt-1 text-xs text-slate-500 font-medium">Resolved within current cycle</p>
           </Card>
         </div>
@@ -115,25 +115,25 @@ export default function MechanicHistoryPage() {
         {/* ================= MAIN HISTORICAL FEED AREA ================= */}
         <div className="w-full">
           {loading ? (
-            <Card className="rounded-2xl border-slate-200 bg-white py-16 flex justify-center shadow-sm">
+            <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white py-16 flex justify-center shadow-sm">
               <Spinner />
             </Card>
           ) : jobs.length === 0 ? (
             /* Premium design placeholder empty-state setup */
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-xl mx-auto mt-6">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-4">
+            <div className="rounded-2xl border border-dashed border-[#DCCDA9] bg-white/70 py-16 px-4 text-center max-w-xl mx-auto mt-6">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#FAF6EC] text-slate-500 mb-3.5 border border-[#E8DFC6] shadow-2xs">
                 <HardHat size={22} />
               </div>
               <h3 className="text-sm font-bold text-slate-900">No Historical Records Found</h3>
-              <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
+              <p className="mx-auto mt-1 max-w-xs text-xs text-slate-500 font-medium leading-relaxed">
                 When you toggle online and complete incoming breakdown requests, your full dispatch logs will display here.
               </p>
             </div>
           ) : (
-            <div className="space-y-3.5">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">Archived Dispatch History</h3>
+            <div className="space-y-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-[#8A7A50] mb-1">Archived Dispatch History ({jobs.length})</h3>
               {jobs.map((job) => (
-                <Card key={job.id} className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 transition-all">
+                <Card key={job.id} className="rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm hover:border-[#CDBD97] hover:shadow-md transition-all">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     
                     <div className="min-w-0 flex-1 space-y-2">
@@ -146,7 +146,7 @@ export default function MechanicHistoryPage() {
                         <h4 className="text-base font-bold text-slate-900 tracking-tight">
                           {job.driver?.full_name || 'Anonymous Client'}
                         </h4>
-                        <p className="mt-1 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-start gap-2 max-w-3xl">
+                        <p className="mt-1 text-xs font-medium text-slate-600 bg-[#FAF6EC]/60 border border-slate-100 rounded-xl p-3 flex items-start gap-2 max-w-3xl">
                           <MessageSquare size={14} className="text-slate-400 shrink-0 mt-0.5" />
                           <span className="italic">
                             {job.driver_review ? `"${job.driver_review}"` : 'No text feedback logged for this session.'}
@@ -156,8 +156,8 @@ export default function MechanicHistoryPage() {
                     </div>
 
                     {/* Clean structural rating alignment badge */}
-                    <div className="shrink-0 self-start sm:self-auto bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-                      <Star size={14} className={job.driver_rating ? 'text-primary fill-primary' : 'text-slate-300'} />
+                    <div className="shrink-0 self-start sm:self-auto bg-[#FAF6EC] border border-[#E8DFC6] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                      <Star size={13} className={job.driver_rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'} />
                       <span className="text-xs font-bold text-slate-800">
                         {job.driver_rating ? `${job.driver_rating}.0` : 'Unrated'}
                       </span>

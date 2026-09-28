@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useMap } from 'react-leaflet' 
 import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
+import { useFuelLayer } from '@/hooks/useFuelLayer'
 import OverpassFuelLayer from '@/components/map/OverpassFuelLayer'
 import { Fuel, AlertTriangle } from 'lucide-react'
 
@@ -121,20 +122,7 @@ export default function RescueMap({
   const [driverIcon, setDriverIcon] = useState(null)
   const [mechanicIcon, setMechanicIcon] = useState(null)
   const [strandedIcon, setStrandedIcon] = useState(null)
-  const [showFuelStations, setShowFuelStations] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('show_fuel_stations') === 'true'
-    }
-    return false
-  })
-
-  useEffect(() => {
-    const handleToggle = (e) => {
-      setShowFuelStations(e.detail)
-    }
-    window.addEventListener('toggle-fuel-stations', handleToggle)
-    return () => window.removeEventListener('toggle-fuel-stations', handleToggle)
-  }, [])
+  const [showFuelStations, , , isHydrated] = useFuelLayer()
 
   useEffect(() => {
     const L = require('leaflet')
@@ -280,10 +268,10 @@ export default function RescueMap({
             <Popup>
               <div className="p-1 min-w-[120px]">
                 <p className="font-bold text-blue-600 text-xs uppercase tracking-wider">
-                  {isFixed ? 'Workshop Base' : 'Assigned Mechanic'}
+                  {isFixed ? 'Workshop Base' : 'Mechanic Location'}
                 </p>
                 <p className="font-semibold text-sm mt-1">
-                  {isFixed ? 'Fixed Location' : 'En Route'}
+                  {isFixed ? 'Fixed Location' : 'Active'}
                 </p>
                 <p className="text-[10px] font-mono text-gray-500 mt-0.5">{mechanic.lat.toFixed(4)}, {mechanic.lng.toFixed(4)}</p>
               </div>
@@ -323,7 +311,7 @@ export default function RescueMap({
           )
         })}
 
-        <OverpassFuelLayer isActive={showFuelStations} />
+        <OverpassFuelLayer isActive={isHydrated && showFuelStations} />
 
         {routePositions.length === 2 && (
           <Polyline positions={routePositions} color="#0ea5e9" dashArray="8, 12" />

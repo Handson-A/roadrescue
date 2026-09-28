@@ -12,7 +12,9 @@ import {
 } from 'lucide-react'
 
 import Avatar from '@/components/ui/Avatar'
-import Card from '@/components/ui/Card' // Ensure this path correctly targets your custom Card component
+import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { signOut } from '@/lib/auth'
 import toast from 'react-hot-toast'
@@ -41,17 +43,26 @@ const navByRole = {
     { href: '/dashboard/admin/mechanics', label: 'Mechanics', icon: User },
     { href: '/dashboard/admin/reports', label: 'Analytics', icon: ChartColumn },
     { href: '/dashboard/admin/users', label: 'Identity Hub', icon: ShieldCheck },
-    { href: '/dashboard/admin/account', label: 'Account', icon: Settings },
+ 
   ],
 }
 
-export default function Sidebar() {
+export default function Sidebar({ initialRole = null }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { profile, user } = useAuth()
+  const { profile, user, loading } = useAuth()
 
-  const role = profile?.role || 'driver'
-  const links = navByRole[role] || []
+  // Derive role with progressive fallbacks to prevent blank screen / hydration flash
+  const urlRole = pathname?.startsWith('/dashboard/admin')
+    ? 'admin'
+    : pathname?.startsWith('/dashboard/mechanic')
+      ? 'mechanic'
+      : pathname?.startsWith('/dashboard/driver')
+        ? 'driver'
+        : null
+
+  const role = profile?.role || user?.user_metadata?.role || initialRole || urlRole || null
+  const links = role ? navByRole[role] || [] : []
   
   const isAdmin = role === 'admin'
   const isMechanic = role === 'mechanic'
@@ -95,12 +106,46 @@ export default function Sidebar() {
     : 'bg-[#F1EAD6] text-[#2A261C] border-r border-[#D8CCAE]'
 
   const activeClass = isAdmin
-    ? 'bg-primary text-[#2A261C] shadow-[inset_0_-2px_0_rgba(0,0,0,0.1)]'
-    : 'bg-primary text-[#2A261C] shadow-sm'
+    ? 'bg-primary text-[#2A261C] font-black shadow-xs'
+    : 'bg-primary text-[#2A261C] font-black shadow-xs'
 
   const idleClass = isAdmin
-    ? 'text-[#E2D9C2] hover:bg-[#383223] hover:text-[#F5EED9]'
-    : 'text-[#433C2B] hover:bg-[#E8DFC6] hover:text-[#2A261C]'
+    ? 'text-[#E2D9C2] hover:bg-[#383223] hover:text-[#F5EED9] font-bold'
+    : 'text-[#433C2B] hover:bg-[#E8DFC6] hover:text-[#2A261C] font-bold'
+
+  // Render a neutral loading skeleton while auth/profile is resolving to avoid flashing the wrong role
+  if (loading || !role) {
+    return (
+      <aside className="hidden md:fixed md:left-0 md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col bg-[#F1EAD6] border-r border-[#D8CCAE] animate-pulse">
+        {/* Branding placeholder */}
+        <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-4">
+          <div className="h-10 w-10 mx-auto rounded-full bg-[#D8CCAE]/50 mb-2" />
+          <div className="h-3 w-24 mx-auto rounded bg-[#D8CCAE]/50" />
+        </div>
+
+        {/* Navigation placeholder items */}
+        <div className="flex-1 space-y-1.5 px-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-10 rounded-xl bg-[#D8CCAE]/40" />
+          ))}
+        </div>
+
+        {/* Footer placeholder */}
+        <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5">
+          <div className="h-10 rounded-xl bg-[#D8CCAE]/50" />
+          <div className="rounded-xl border border-[#D8CCAE]/60 bg-[#EAE0C7]/50 p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-[#D8CCAE]/60" />
+              <div className="space-y-1.5 flex-1">
+                <div className="h-3 w-20 rounded bg-[#D8CCAE]/60" />
+                <div className="h-2.5 w-12 rounded bg-[#D8CCAE]/40" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    )
+  }
 
   return (
     <>
@@ -108,12 +153,12 @@ export default function Sidebar() {
       <aside className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col ${sidebarClass}`}>
         
         {/* BRANDING LOGO BLOCK */}
-        <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-4">
+        <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-3">
           <Image
             src="/images/logo.png"
             alt="RoadRescue"
-            width={42}
-            height={42}
+            width={40}
+            height={40}
             className="mx-auto rounded-full h-auto w-auto shadow-sm"
           />
           <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.2em] ${isAdmin ? 'text-[#C1B596]' : 'text-[#786D53]'}`}>
@@ -139,10 +184,10 @@ export default function Sidebar() {
                 <Link
                   key={`${link.href}-${link.label}`}
                   href={link.href}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-black uppercase tracking-wider transition ${isActive ? activeClass : idleClass}`}
+                  className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs uppercase tracking-wider transition-all duration-150 ${isActive ? activeClass : idleClass}`}
                 >
-                  <Icon size={16} strokeWidth={isActive ? 2.5 : 1.8} />
-                  <span>{link.label}</span>
+                  <Icon size={16} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                  <span className="truncate">{link.label}</span>
                 </Link>
               )
             })
@@ -150,18 +195,18 @@ export default function Sidebar() {
         </nav>
 
         {/* FOOTER USER MANAGEMENT & CTA HUB */}
-        <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5 bg-black/1">
+        <div className="px-3 pb-4 pt-3 space-y-2.5 border-t border-black/5 bg-black/5">
           {isAdmin ? (
             <Link
               href="/dashboard/admin/requests"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm hover:brightness-105 transition"
             >
               <ClipboardList size={14} /> Incident Log
             </Link>
           ) : isDriver ? (
             <Link
               href="/dashboard/driver/request/new"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-slate-800 transition"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition"
             >
               <PlusCircle size={14} /> Request Aid
             </Link>
@@ -169,30 +214,42 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={handleAvailabilityToggle}
-              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
+              className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
                 isAvailable 
                   ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
                   : 'bg-primary text-[#2A261C] hover:bg-primary/90'
               }`}
             >
               <WifiSync size={14} className={isAvailable ? 'animate-pulse' : ''} />
-            
+              <span>{isAvailable ? 'Online (Duty)' : 'Go Online'}</span>
             </button>
           )}
 
           {/* ACCOUNT SNAPSHOT PROFILE BOX */}
-          <div className={`rounded-xl border p-3 ${isAdmin ? 'border-[#4A4230] bg-[#2F2A20]' : 'border-[#D8CCAE]/60 bg-[#EAE0C7]/50'}`}>
-            <div className="flex items-center gap-3">
-              <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="md" />
+          <div className={`rounded-xl border p-3 ${isAdmin ? 'border-[#4A4230] bg-[#2F2A20]' : 'border-[#D8CCAE]/70 bg-[#EAE0C7]/60'}`}>
+            {/* Profile section that navigates to the admin account route */}
+            <div 
+              onClick={() => router.push(isAdmin ? '/dashboard/admin/account' : isMechanic ? '/dashboard/mechanic/account' : '/dashboard/driver/account')}
+              className="flex items-center gap-2.5 cursor-pointer group"
+            >
+              <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
               <div className="min-w-0 flex-1">
-                <p className={`truncate text-xs font-black tracking-tight ${isAdmin ? 'text-[#F2EAD7]' : 'text-[#2A261C]'}`}>{profile?.full_name || 'RoadRescue User'}</p>
-                <p className={`text-[10px] uppercase font-black tracking-widest mt-0.5 ${isAdmin ? 'text-[#B6AA8D]' : 'text-[#6E644D]'}`}>{role}</p>
+                <p className={`truncate text-xs font-black tracking-tight ${isAdmin ? 'text-[#F2EAD7]' : 'text-[#2A261C]'}`}>
+                  {profile?.full_name || 'RoadRescue User'}
+                </p>
+                <p className={`text-[10px] uppercase font-bold tracking-wider mt-0.5 ${isAdmin ? 'text-[#B6AA8D]' : 'text-[#6E644D]'}`}>
+                  {role}
+                </p>
               </div>
             </div>
 
+            {/* Sign out button with e.stopPropagation() to prevent triggering the div's router push */}
             <button
-              onClick={handleSignOut}
-              className={`mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border text-[11px] font-black uppercase tracking-wider transition ${isAdmin ? 'border-[#534B38] text-[#F2EAD7] hover:bg-[#3A3428]' : 'border-[#CDBD97] text-[#3D3627] hover:bg-[#E1D6BA]'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSignOut();
+              }}
+              className={`mt-2.5 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition cursor-pointer ${isAdmin ? 'border-[#534B38] text-[#F2EAD7] hover:bg-[#3A3428]' : 'border-[#CDBD97] text-[#3D3627] hover:bg-[#E1D6BA]'}`}
             >
               <LogOut size={12} /> Sign out
             </button>
@@ -200,46 +257,39 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ================= CONFIRMATION OFFLINE MODAL VECTOR ================= */}
-      {showOfflineModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
-            <button 
-              onClick={() => setShowOfflineModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition-colors"
+      {/* ================= CONFIRMATION OFFLINE MODAL ================= */}
+      <Modal
+        isOpen={showOfflineModal}
+        onClose={() => setShowOfflineModal(false)}
+        title="Disconnect from Dispatch?"
+        size="sm"
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => executeStatusUpdate(false)}
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-red-600 hover:bg-red-50/50 cursor-pointer"
             >
-              <X size={18} />
-            </button>
-            
-            <div className="flex gap-3.5 items-start">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-black text-slate-900 tracking-tight">Disconnect from Dispatch?</h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Going offline removes your workshop profile from the active emergency network system. You will need to be online to track broadcast breakdown signals to your terminal.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2.5 justify-end pt-2">
-              <button 
-                onClick={() => setShowOfflineModal(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Stay Online
-              </button>
-              <button 
-                onClick={() => executeStatusUpdate(false)}
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-slate-800 transition-colors shadow-sm"
-              >
-                Confirm Offline
-              </button>
-            </div>
-          </Card>
+              Confirm Offline
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowOfflineModal(false)}
+              className="text-xs font-bold uppercase tracking-wider text-slate-900 bg-primary hover:bg-primary/90 shadow-sm cursor-pointer"
+            >
+              Stay Online
+            </Button>
+          </>
+        }
+      >
+        <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-4">
+          <p className="text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            Going offline removes your workshop profile from the active emergency network. You will not receive nearby breakdown alerts until you reconnect.
+          </p>
         </div>
-      )}
+      </Modal>
     </>
   )
 }

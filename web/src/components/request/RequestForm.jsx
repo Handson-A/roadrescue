@@ -620,7 +620,7 @@ export default function RequestForm() {
                 onClick={() => router.push('/dashboard/driver/explore')}
                 className="h-8 text-xs px-3 rounded-xl border-slate-300 hover:bg-white shrink-0 font-bold"
               >
-                Pick Mechanic
+               Pick mechanic 
               </Button>
             </div>
           )}
@@ -1114,7 +1114,7 @@ export default function RequestForm() {
                       {selectedServiceObj.label}
                     </span>
                     <p className="text-xs text-slate-800 mt-1 leading-relaxed font-medium break-words">
-                      "{problemDescription}"
+                      &quot;{problemDescription}&quot;
                     </p>
                     {aiDiagnosticResult && (
                       <div className="mt-2 rounded-lg bg-amber-100/60 border border-amber-200 p-2 text-[11px] text-amber-900">
@@ -1185,35 +1185,33 @@ export default function RequestForm() {
       <Modal
         isOpen={showOfflineModal}
         onClose={() => setShowOfflineModal(false)}
-        title="Mechanic Currently Unavailable"
+        title="Mechanic Unavailable"
         size="sm"
         actions={
           <>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setShowOfflineModal(false)}
-              className="text-xs font-bold cursor-pointer"
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 cursor-pointer"
             >
               Cancel
             </Button>
             <Button
+              variant="primary"
               size="sm"
               onClick={handleConfirmBroadcast}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black cursor-pointer"
+              className="text-xs font-bold uppercase tracking-wider text-slate-900 bg-primary hover:bg-primary/90 shadow-sm cursor-pointer px-4"
             >
-              Broadcast to All Nearby
+              Broadcast Nearby
             </Button>
           </>
         }
       >
         <div className="space-y-3">
-          <p className="text-sm text-slate-700 leading-relaxed">
-            Selected mechanic <strong className="text-slate-950">{selectedMechanic?.business_name || 'provider'}</strong> is currently unavailable.
-          </p>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Would you like to broadcast this request to all nearby active mechanics instead? Your vehicle and breakdown details will be kept.
-          </p>
+          <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-3 text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            <strong>{selectedMechanic?.business_name || 'Selected provider'}</strong> went offline or is engaged. Broadcast to all active responders within your zone?
+          </div>
         </div>
       </Modal>
       

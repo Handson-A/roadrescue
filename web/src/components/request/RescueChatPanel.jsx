@@ -1,158 +1,243 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowLeft, Send } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { ArrowLeft, Send, X, Shield, Wrench, User, Lock, MessageSquare } from 'lucide-react'
+import { useRescueChat } from '@/hooks/useRescueChat'
 import { useKeyboardOpen } from '@/hooks/useKeyboardOpen'
+import Spinner from '@/components/ui/Spinner'
 
 export default function RescueChatPanel({
   requestId,
   contactName,
-  contactRole,
+  contactRole = 'Mechanic',
   statusText,
   statusTone = 'success',
+  initialStatus = null,
+  onClose = null,
+  isModal = false,
 }) {
   const [input, setInput] = useState('')
-  const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(!!requestId)
-  const [currentUserId, setCurrentUserId] = useState(null)
   const messagesEndRef = useRef(null)
-  const supabase = createClient()
   const pathname = usePathname()
   const isKeyboardOpen = useKeyboardOpen()
 
-  useEffect(() => {
-    if (!requestId) {
-      return
-    }
+  const {
+    messages,
+    requestStatus,
+    driverId,
+    mechanicId,
+    currentUserId,
+    isTerminal,
+    isCompleted,
+    isCancelled,
+    loading,
+    sending,
+    sendMessage,
+  } = useRescueChat(requestId, initialStatus)
 
-    async function loadUserAndMessages() {
-      const { data: { user } } = await supabase.auth.getUser()
-      setCurrentUserId(user?.id || null)
-
-      const response = await fetch(`/api/requests/${requestId}/messages`)
-      const result = await response.json()
-      if (response.ok) {
-        setMessages(result.messages || [])
-      }
-      setLoading(false)
-    }
-
-    loadUserAndMessages()
-  }, [requestId, supabase])
-
-  useEffect(() => {
-    if (!requestId) return
-
-    const channel = supabase
-      .channel(`messages-${requestId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `request_id=eq.${requestId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new])
-        }
-      )
-      .subscribe()
-
-    return () => supabase.removeChannel(channel)
-  }, [requestId, supabase])
-
+  // Scroll to bottom when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = async () => {
-    if (!input.trim() || !requestId) return
+  const handleSend = async (e) => {
+    e?.preventDefault()
+    if (!input.trim() || !requestId || isTerminal || sending) return
 
-    const response = await fetch(`/api/requests/${requestId}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: input.trim() }),
-    })
-
-    if (response.ok) {
-      setInput('')
+    const messageText = input.trim()
+    setInput('')
+    const success = await sendMessage(messageText)
+    if (!success) {
+      // Restore input on failure so user doesn't lose their typed message
+      setInput(messageText)
     }
   }
 
-  const statusClass = statusTone === 'warning'
-    ? 'border-amber-200 bg-amber-50 text-amber-800'
-    : statusTone === 'danger'
-      ? 'border-red-200 bg-red-50 text-red-700'
-      : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  // Format message time
+  const formatMsgTime = (timestamp) => {
+    if (!timestamp) return ''
+    try {
+      return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } catch {
+      return ''
+    }
+  }
 
-  const hasMobileNav = !pathname?.startsWith('/dashboard/admin')
+  const hasMobileNav = !pathname?.startsWith('/dashboard/admin') && !isModal
+
+  // Determine helper status pill
+  const activeStatus = requestStatus || initialStatus || 'active'
+  const isStatusCompleted = isCompleted || activeStatus === 'completed'
+  const isStatusCancelled = isCancelled || activeStatus === 'cancelled'
 
   return (
-    <div className={`flex flex-1 w-full flex-col overflow-hidden bg-transparent ${hasMobileNav && !isKeyboardOpen ? 'has-mobile-nav' : ''}`}>
-      <div className="flex items-center gap-3 border-b border-[#D7CCAD] bg-[#FFFBF4]/80 backdrop-blur-md px-4 py-4 shrink-0">
-        <Link href=".." className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-950 shadow-sm ring-1 ring-slate-200">
-          <ArrowLeft size={18} />
-        </Link>
+    <div
+      className={`flex flex-1 w-full flex-col overflow-hidden bg-[#F6F2E7] ${
+        isModal ? 'h-[75dvh] max-h-[640px] rounded-2xl' : 'h-full'
+      } ${hasMobileNav && !isKeyboardOpen ? 'has-mobile-nav' : ''}`}
+    >
+      {/* ── HEADER ── */}
+      <div className="flex items-center justify-between gap-3 border-b border-[#DCCDA9] bg-[#FFFBF4]/95 backdrop-blur-md px-4 py-3.5 shrink-0 shadow-xs">
+        <div className="flex items-center gap-3 min-w-0">
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E1B15] border border-[#DCCDA9] shadow-xs hover:bg-[#F5EED9] active:scale-95 transition-all cursor-pointer"
+              aria-label="Close chat"
+            >
+              <X size={17} />
+            </button>
+          ) : (
+            <Link
+              href=".."
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E1B15] border border-[#DCCDA9] shadow-xs hover:bg-[#F5EED9] active:scale-95 transition-all"
+              aria-label="Go back"
+            >
+              <ArrowLeft size={17} />
+            </Link>
+          )}
 
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-black text-slate-950">Chat</h1>
-          <p className="truncate text-xs text-slate-500">{contactName} · {contactRole}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="truncate text-sm font-black text-[#1E1B15]">
+                {contactName || (contactRole === 'Mechanic' ? 'Assigned Mechanic' : 'Assigned Driver')}
+              </h2>
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#1E1B15] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary shrink-0">
+                {contactRole === 'Mechanic' ? <Wrench size={9} /> : <User size={9} />}
+                {contactRole}
+              </span>
+            </div>
+            <p className="truncate text-[11px] font-mono text-[#7C6B44]">
+              {statusText || `Job #${requestId?.slice?.(0, 8)?.toUpperCase?.() || requestId}`}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {isStatusCompleted ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-800 border border-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+              Completed
+            </span>
+          ) : isStatusCancelled ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-800 border border-red-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-600" />
+              Cancelled
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 border border-emerald-200">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Sync
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="px-4 pb-4 pt-5 shrink-0">
-        <div className={`mx-auto w-fit rounded-full px-4 py-2 text-sm font-semibold ring-1 ${statusClass}`}>
-          {statusText}
-        </div>
-      </div>
-
-      <div className="chat-messages-viewport">
+      {/* ── MESSAGES VIEWPORT ── */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[#F6F2E7]/60">
         {loading ? (
-          <div className="text-center text-sm text-slate-500">Loading messages...</div>
-        ) : messages.length === 0 && !requestId ? (
-          <div className="text-center text-sm text-slate-500">
-            Admin coordination console is read-only. Select a specific request to chat.
+          <div className="flex flex-col items-center justify-center h-48 gap-2 text-xs font-semibold text-[#7C6B44]">
+            <Spinner />
+            <span>Loading conversation...</span>
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-sm text-slate-500">No messages yet. Start the conversation.</div>
+          <div className="flex flex-col items-center justify-center h-48 text-center px-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFFBF4] border border-[#DCCDA9] text-[#7C6B44] mb-2 shadow-xs">
+              <MessageSquare size={20} />
+            </div>
+            <p className="text-xs font-bold text-[#1E1B15]">No messages yet</p>
+            <p className="text-[11px] text-[#7C6B44] mt-0.5 max-w-xs">
+              Direct, real-time coordination between driver and mechanic for this rescue operation.
+            </p>
+          </div>
         ) : (
           messages.map((msg) => {
-            const isMine = msg.sender_id === currentUserId
+            const isMine = currentUserId ? msg.sender_id === currentUserId : false
+            
+            // Determine role of the message sender
+            let senderRoleLabel = 'Participant'
+            if (msg.sender_id === driverId) {
+              senderRoleLabel = 'Driver'
+            } else if (msg.sender_id === mechanicId) {
+              senderRoleLabel = 'Mechanic'
+            } else if (isMine) {
+              senderRoleLabel = contactRole === 'Mechanic' ? 'Driver' : 'Mechanic'
+            }
 
             return (
-              <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[88%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-sm ${isMine ? 'bg-amber-400 text-slate-950' : 'bg-white text-slate-800 ring-1 ring-slate-200'}`}>
-                  <p>{msg.message}</p>
-                  <p className={`mt-1 text-[11px] ${isMine ? 'text-slate-700' : 'text-slate-400'}`}>
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+              <div
+                key={msg.id}
+                className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} space-y-1`}
+              >
+                {/* Sender badge */}
+                <div className="flex items-center gap-1.5 px-1 text-[10px] font-mono font-bold text-[#7C6B44]">
+                  <span>{isMine ? 'You' : senderRoleLabel}</span>
+                  <span className="text-[9px] opacity-60">·</span>
+                  <span className="text-[9px] opacity-75">{formatMsgTime(msg.created_at)}</span>
+                </div>
+
+                {/* Message Bubble */}
+                <div
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-xs ${
+                    isMine
+                      ? 'bg-[#1E1B15] text-[#EFE8D4] rounded-tr-xs border border-white/10'
+                      : 'bg-[#FFFBF4] text-[#1E1B15] rounded-tl-xs border border-[#DCCDA9]'
+                  }`}
+                >
+                  <p className="break-words whitespace-pre-wrap">{msg.message}</p>
                 </div>
               </div>
             )
           })
         )}
+
+        {/* ── TERMINAL NOTICE BANNER (COMPLETED / CANCELLED) ── */}
+        {isTerminal && (
+          <div className="my-3 rounded-xl border border-[#DCCDA9] bg-[#FFF9EF] p-3 text-center shadow-xs">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#7C6B44]">
+              <Lock size={13} className="text-[#A29A84]" />
+              <span>
+                {isStatusCompleted
+                  ? 'This job has been completed. Chat is closed.'
+                  : 'This job has been cancelled. Chat is closed.'}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="chat-input-dock shrink-0">
-        <div className="flex items-center gap-2 rounded-[28px] border border-[#DCCDA9] bg-white px-3 py-3 shadow-sm focus-within:border-[#B8A060] transition-colors">
+      {/* ── INPUT DOCK ── */}
+      <div className="border-t border-[#DCCDA9] bg-[#FFFBF4]/90 backdrop-blur-md p-3 shrink-0">
+        <form onSubmit={handleSend} className="flex items-center gap-2">
           <input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={requestId ? "Type a message..." : "Select a request to chat..."}
-            disabled={!requestId}
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-[#2A261C] placeholder:text-[#A19258] outline-none disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ fontSize: '16px' }}
+            placeholder={
+              isTerminal
+                ? isStatusCompleted
+                  ? 'This job has been completed. Chat is closed.'
+                  : 'This job has been cancelled. Chat is closed.'
+                : 'Type a message...'
+            }
+            disabled={!requestId || isTerminal || sending}
+            className="flex-1 rounded-xl border border-[#DCCDA9] bg-white px-3.5 py-2.5 text-xs text-[#1E1B15] placeholder:text-[#A29A84] outline-none focus:border-[#1E1B15] focus:ring-1 focus:ring-[#1E1B15] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60 transition-colors"
+            style={{ fontSize: '14px' }}
           />
-          <button onClick={sendMessage} disabled={!input.trim() || !requestId} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-[#1A1609] text-white transition hover:bg-[#2C2410] disabled:opacity-30 active:scale-95" aria-label="Send message">
-            <Send size={16} />
+          <button
+            type="submit"
+            disabled={!input.trim() || !requestId || isTerminal || sending}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E1B15] text-primary transition-all hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer shadow-xs"
+            aria-label="Send message"
+          >
+            {sending ? <Spinner className="h-4 w-4 text-primary" /> : <Send size={15} />}
           </button>
-        </div>
+        </form>
       </div>
     </div>
   )

@@ -148,42 +148,42 @@ export default function AdminRequestDetailPage() {
 
 
             {/* Incident Details Card */}
-            <Card className="p-5 border-slate-200 bg-white">
+            <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm">
               <div className="flex justify-between items-start gap-4 border-b border-slate-100 pb-4">
                 <div>
-                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400">Service Category</span>
-                  <h2 className="text-lg font-black text-slate-900 mt-0.5 uppercase">{request.serviceType?.replace('_', ' ') || 'Assistance'}</h2>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50]">Service Category</span>
+                  <h2 className="text-lg font-black text-slate-900 mt-0.5 uppercase tracking-tight">{request.serviceType?.replace('_', ' ') || 'Assistance'}</h2>
                 </div>
-                <Badge label={request.status} variant={request.status} />
+                <Badge label={request.status} variant={request.status} dot />
               </div>
 
               <div className="mt-4 space-y-4">
                 <div>
-                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400">Problem Description</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50]">Problem Description</span>
                   <p className="text-sm font-medium text-slate-800 mt-1 leading-relaxed">{request.issue || 'No problem description specified.'}</p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-50">
+                <div className="grid gap-4 sm:grid-cols-2 pt-3 border-t border-slate-100">
                   <div>
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400">Location Address</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50]">Location Address</span>
                     <p className="text-xs font-bold text-slate-700 mt-1 flex items-start gap-1.5">
-                      <MapPin size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                      {request.location || 'Accra, Ghana'}
+                      <MapPin size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                      <span>{request.location || 'Accra, Ghana'}</span>
                     </p>
                   </div>
                   <div>
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400">Reported Timeline</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50]">Reported Timeline</span>
                     <p className="text-xs font-bold text-slate-700 mt-1 flex items-start gap-1.5">
-                      <Calendar size={12} className="text-slate-400 shrink-0 mt-0.5" />
-                      {timeAgo(request.createdAt)} ({new Date(request.createdAt).toLocaleString()})
+                      <Calendar size={13} className="text-slate-400 shrink-0 mt-0.5" />
+                      <span>{timeAgo(request.createdAt)} ({new Date(request.createdAt).toLocaleString()})</span>
                     </p>
                   </div>
                 </div>
 
                 {request.status === 'cancelled' && (
-                  <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 mt-2">
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-red-500 block">Cancellation Metadata</span>
-                    <p className="text-xs font-bold text-red-800 mt-1">Reason: {request.cancellation_reason || 'No cancellation reason logged.'}</p>
+                  <div className="rounded-xl border border-red-200 bg-red-50/60 p-3.5 mt-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-red-600 block">Cancellation Metadata</span>
+                    <p className="text-xs font-bold text-red-900 mt-0.5">Reason: {request.cancellation_reason || 'No cancellation reason logged.'}</p>
                     <p className="text-[10px] text-red-600 mt-0.5">Cancelled at: {request.cancelled_at ? new Date(request.cancelled_at).toLocaleString() : 'N/A'}</p>
                   </div>
                 )}
@@ -192,16 +192,16 @@ export default function AdminRequestDetailPage() {
 
             {/* Quality & Feedback Section */}
             {(request.rating || request.review || (request.reports && request.reports.length > 0)) ? (
-              <Card className="p-5 border-slate-200 bg-white space-y-4">
+              <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm space-y-4">
                 <div className="border-b border-slate-100 pb-3">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Quality & Feedback</h3>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Quality & Feedback</h3>
                 </div>
 
                 {/* Star Rating and Written Feedback */}
                 {(request.rating || request.review) && (
                   <div className="space-y-2">
-                    <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400 block">Driver Review Summary</span>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50] block">Driver Review Summary</span>
+                    <div className="rounded-xl border border-slate-100 bg-[#FAF6EC]/60 p-3.5 space-y-2">
                       {request.rating && (
                         <div className="flex items-center gap-1.5">
                           <div className="flex items-center gap-0.5">
@@ -227,8 +227,8 @@ export default function AdminRequestDetailPage() {
 
                 {/* Driver-to-Mechanic and Mechanic-to-Driver report/flag status */}
                 <div className="space-y-2">
-                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400 block">Safety & Conduct Flags</span>
-                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-2.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50] block">Safety & Conduct Flags</span>
+                  <div className="rounded-xl border border-slate-100 bg-[#FAF6EC]/60 p-3.5 space-y-2.5">
                     {request.reports && request.reports.length > 0 ? (
                       request.reports.map((rep) => {
                         const reporterRole = rep.reporter_id === request.driver_id ? 'Driver' : 'Mechanic'
@@ -253,7 +253,7 @@ export default function AdminRequestDetailPage() {
                         )
                       })
                     ) : (
-                      <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                      <p className="text-xs text-slate-600 font-semibold flex items-center gap-1.5">
                         <CheckCircle className="text-emerald-500 h-4 w-4" /> No flags logged
                       </p>
                     )}
@@ -261,11 +261,11 @@ export default function AdminRequestDetailPage() {
                 </div>
               </Card>
             ) : (
-              <Card className="p-5 border-slate-200 bg-white">
+              <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm">
                 <div className="border-b border-slate-100 pb-3 mb-3">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Quality & Feedback</h3>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Quality & Feedback</h3>
                 </div>
-                <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                <p className="text-xs text-slate-600 font-semibold flex items-center gap-1.5">
                   <CheckCircle className="text-emerald-500 h-4 w-4" /> No ratings or incident flags logged for this request.
                 </p>
               </Card>
@@ -273,8 +273,8 @@ export default function AdminRequestDetailPage() {
 
             {/* Workflow Pipeline Tracker */}
             {request.status !== 'cancelled' && (
-              <Card className="p-5 border-slate-200 bg-white">
-                <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-400 block mb-4">Operations Lifecycle Progress</span>
+              <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A7A50] block mb-3.5">Operations Lifecycle Progress</span>
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                   {workflowStages.map((stage, idx) => {
                     const isPast = idx < currentStageIndex
@@ -284,13 +284,13 @@ export default function AdminRequestDetailPage() {
                         key={stage.key}
                         className={`rounded-xl p-2.5 border text-center transition-all ${
                           isCurrent
-                            ? 'border-primary bg-primary/10 ring-1 ring-primary/20 font-bold'
+                            ? 'border-primary bg-primary/20 ring-1 ring-primary/40 font-bold'
                             : isPast
-                              ? 'border-slate-200 bg-slate-50 opacity-60'
-                              : 'border-slate-100 bg-slate-50/40 opacity-40'
+                              ? 'border-emerald-200 bg-emerald-50/50 text-emerald-800'
+                              : 'border-slate-100 bg-[#FAF6EC]/40 opacity-50'
                         }`}
                       >
-                        <p className={`text-[10px] font-black uppercase tracking-tight ${isCurrent ? 'text-slate-900' : 'text-slate-500'}`}>
+                        <p className={`text-[10px] font-black uppercase tracking-tight ${isCurrent ? 'text-slate-950' : isPast ? 'text-emerald-800' : 'text-slate-400'}`}>
                           {stage.label}
                         </p>
                       </div>
@@ -302,25 +302,25 @@ export default function AdminRequestDetailPage() {
           </div>
 
           {/* Sidebar panel */}
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Driver Profile */}
-            <Card className="p-5 border-slate-200 bg-white">
+            <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3 text-slate-500">
-                <User size={14} className="text-primary" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-900">Driver Account details</span>
+                <User size={14} className="text-slate-800" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">Driver Account Details</span>
               </div>
               {driver ? (
                 <div className="space-y-2">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase">Full Name</span>
-                    <p className="text-sm font-black text-slate-800">{driver.full_name || 'Anonymous'}</p>
+                    <span className="text-[10px] text-[#8A7A50] uppercase font-bold">Full Name</span>
+                    <p className="text-sm font-black text-slate-900">{driver.full_name || 'Anonymous'}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase">Contact Phone</span>
+                    <span className="text-[10px] text-[#8A7A50] uppercase font-bold">Contact Phone</span>
                     <p className="text-xs font-bold text-slate-800 font-mono">{driver.phone || 'No phone registered'}</p>
                   </div>
-                  <div className="pt-2 border-t border-slate-50">
-                    <span className="text-[9px] text-slate-400 uppercase block">Vehicle Info Assets</span>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[9px] text-[#8A7A50] uppercase font-bold block">Vehicle Info</span>
                     <p className="text-xs font-bold text-slate-700 mt-0.5">{request.vehicleDetails || 'No vehicle data'}</p>
                   </div>
                 </div>
@@ -330,23 +330,23 @@ export default function AdminRequestDetailPage() {
             </Card>
 
             {/* Mechanic Profile */}
-            <Card className="p-5 border-slate-200 bg-white">
+            <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3 text-slate-500">
-                <HardHat size={14} className="text-primary" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-900">Assigned Mechanic</span>
+                <HardHat size={14} className="text-slate-800" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">Assigned Mechanic</span>
               </div>
               {mechanic ? (
                 <div className="space-y-2">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase">Full Name</span>
-                    <p className="text-sm font-black text-slate-800">{mechanic.full_name || 'Independent Specialist'}</p>
+                    <span className="text-[10px] text-[#8A7A50] uppercase font-bold">Full Name</span>
+                    <p className="text-sm font-black text-slate-900">{mechanic.full_name || 'Independent Specialist'}</p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase">Contact Phone</span>
+                    <span className="text-[10px] text-[#8A7A50] uppercase font-bold">Contact Phone</span>
                     <p className="text-xs font-bold text-slate-800 font-mono">{mechanic.phone || 'No contact number'}</p>
                   </div>
-                  <div className="pt-2 border-t border-slate-50">
-                    <span className="text-[9px] text-slate-400 uppercase block">Garage workshop</span>
+                  <div className="pt-2 border-t border-slate-100">
+                    <span className="text-[9px] text-[#8A7A50] uppercase font-bold block">Garage Workshop</span>
                     <p className="text-xs font-bold text-slate-700 mt-0.5">{mechanic.mechanic_profiles?.business_name || 'Mobile Operator'}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">{mechanic.mechanic_profiles?.location_label || 'Ghana grid network'}</p>
                   </div>
@@ -359,10 +359,10 @@ export default function AdminRequestDetailPage() {
             </Card>
 
             {/* Admin Control Panel */}
-            <Card className="p-5 border-slate-200 bg-white border-l-4 border-l-red-500">
+            <Card className="p-5 border-[#DCCDA9]/70 bg-white shadow-sm border-l-4 border-l-red-500">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3">
                 <Info size={14} className="text-red-500" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-900">Operations Control</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">Operations Control</span>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-4">
                 Administrators can override request states in cases of dispatch failure, duplicate creation, or communication dropouts.
@@ -373,14 +373,14 @@ export default function AdminRequestDetailPage() {
                   type="button"
                   onClick={handleAdminCancel}
                   disabled={canceling}
-                  className="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-xs font-bold uppercase tracking-wider text-red-600 transition-colors disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-xs font-black uppercase tracking-wider text-red-600 transition-colors disabled:opacity-50 cursor-pointer"
                 >
                   {canceling ? 'Cancelling ticket...' : 'Cancel Request'}
                 </button>
               ) : (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Cancellation Locked</p>
-                  <p className="text-[9px] text-slate-400 mt-0.5">
+                <div className="p-3 bg-[#FAF6EC] rounded-xl border border-[#E8DFC6] text-center">
+                  <p className="text-[10px] font-bold text-slate-600 uppercase">Cancellation Locked</p>
+                  <p className="text-[9px] text-slate-500 mt-0.5">
                     {request.status === 'cancelled'
                       ? 'Incident is already cancelled.'
                       : request.status === 'completed'

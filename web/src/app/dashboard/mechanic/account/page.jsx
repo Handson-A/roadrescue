@@ -13,10 +13,11 @@ import { createClient } from '@/lib/supabase/client'
 import { 
   Building2, MapPin, Wrench, ShieldAlert, Award, Clock, 
   Phone, Mail, FileText, CheckCircle2, MessageSquare, Camera, Loader2,
-  AlertTriangle, Star
+  AlertTriangle, Star, Check
 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { normalizeGeoPoint } from '@/lib/utils'
+import { MECHANIC_SPECIALTIES } from '@/lib/constants'
 
 export default function MechanicAccountPage() {
   const { user, profile, setProfile } = useAuth()
@@ -32,6 +33,7 @@ export default function MechanicAccountPage() {
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [pinningLocation, setPinningLocation] = useState(false)
   const [reviews, setReviews] = useState([])
+  const [pendingChangeRequests, setPendingChangeRequests] = useState([])
 
   // Unified application form schema state instance
   const [formData, setFormData] = useState({
@@ -40,10 +42,9 @@ export default function MechanicAccountPage() {
     phone: '',
     avatarUrl: '',
     businessName: '',
-    specializations: '',
+    specializations: [],
     serviceArea: '',
     serviceRadius: '',
-    hourlyRate: '',
     currentStatus: 'offline',
     yearsExperience: '',
     licenseNumber: '',
@@ -129,6 +130,18 @@ export default function MechanicAccountPage() {
         console.warn('[REVIEWS FETCH FAULT]:', reviewsErr.message)
       }
 
+      // 7. Fetch pending profile change requests
+      const { data: changeReqData, error: changeReqErr } = await supabase
+        .from('profile_change_requests')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+
+      if (changeReqErr) {
+        console.warn('[CHANGE REQUESTS FETCH FAULT]:', changeReqErr.message)
+      }
+
       if (mounted && userIdRef.current) {
         const resolvePhoneNumber = (profileVal, userObj) => {
           const isValidPhone = (val) => {
@@ -153,6 +166,7 @@ export default function MechanicAccountPage() {
         setCompletedRescuesCount(completedCount || 0)
         setDocuments(docsData || [])
         setReviews(reviewsData || [])
+        setPendingChangeRequests(changeReqData || [])
 
         setFormData((prev) => ({
           ...prev,
@@ -161,9 +175,11 @@ export default function MechanicAccountPage() {
           phone: resolvePhoneNumber(baseProfile, user),
           avatarUrl: baseProfile?.avatar_url || prev.avatarUrl,
           businessName: mechData?.business_name || '',
-          specializations: Array.isArray(mechData?.specializations) ? mechData.specializations.join(', ') : (mechData?.specializations || ''),
+          specializations: Array.isArray(mechData?.specializations) 
+            ? mechData.specializations 
+            : (mechData?.specializations ? mechData.specializations.split(',').map(s => s.trim()).filter(Boolean) : []),
           serviceArea: mechData?.location_label || '',
-          yearsExperience: mechData?.years_experience || '',
+          yearsExperience: mechData?.years_experience !== null && mechData?.years_experience !== undefined ? String(mechData.years_experience) : '',
           availability: mechData?.is_available ?? false,
           secondaryPhone: preferenceData?.secondary_phone || '',
           serviceMode: mechData?.service_mode || 'mobile',
@@ -176,6 +192,13 @@ export default function MechanicAccountPage() {
     loadFullProfile()
     return () => { mounted = false }
   }, [user])
+
+  const toggleSpecialty = (specialty) => {
+    const current = Array.isArray(formData.specializations) ? formData.specializations : []
+    const exists = current.includes(specialty)
+    const updated = exists ? current.filter(s => s !== specialty) : [...current, specialty]
+    setFormData((p) => ({ ...p, specializations: updated }))
+  }
 
   const handleChange = (field, value) => {
     let cleanValue = value
@@ -412,6 +435,7 @@ export default function MechanicAccountPage() {
     try {
       const supabase = createClient()
       
+      // 1. Direct update for base profile (full_name, phone)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ full_name: formData.fullName.trim(), phone: formData.phone.trim() })
@@ -433,23 +457,104 @@ export default function MechanicAccountPage() {
         }
       }
 
+      // 2. Direct update for non-sensitive operational fields on mechanic_profiles
       const { error: mechanicError } = await supabase
-         .from('mechanic_profiles')
-         .update({
-           years_experience: formData.yearsExperience ? parseInt(formData.yearsExperience, 10) || 0 : 0,
-           is_available: formData.availability,
-           current_status: currentStatusVal,
-           specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
-           business_name: formData.businessName.trim() || null,
-           location_label: formData.serviceArea.trim() || null,
-           service_mode: formData.serviceMode,
-           base_location_label: formData.baseLocationLabel.trim() || null,
-           show_base_location_offline: formData.showBaseLocationOffline,
-         })
-         .eq('user_id', user?.id)
- 
-       if (mechanicError) throw mechanicError
+        .from('mechanic_profiles')
+        .update({
+          is_available: formData.availability,
+          current_status: currentStatusVal,
+          service_mode: formData.serviceMode,
+          base_location_label: formData.baseLocationLabel.trim() || null,
+          show_base_location_offline: formData.showBaseLocationOffline,
+        })
+        .eq('user_id', user?.id)
 
+      if (mechanicError) throw mechanicError
+
+      // 3. Sensitive / Verified Fields: Check for differences and route to profile_change_requests
+      const currentSpecs = Array.isArray(mechanicProfile?.specializations) 
+        ? [...mechanicProfile.specializations].sort() 
+        : []
+      const newSpecs = Array.isArray(formData.specializations) 
+        ? [...formData.specializations].sort() 
+        : []
+      const specsChanged = JSON.stringify(currentSpecs) !== JSON.stringify(newSpecs)
+
+      const currentBiz = (mechanicProfile?.business_name || '').trim()
+      const newBiz = (formData.businessName || '').trim()
+      const bizChanged = currentBiz !== newBiz
+
+      const currentExp = mechanicProfile?.years_experience !== null && mechanicProfile?.years_experience !== undefined ? Number(mechanicProfile.years_experience) : 0
+      const newExp = formData.yearsExperience ? parseInt(formData.yearsExperience, 10) || 0 : 0
+      const expChanged = currentExp !== newExp
+
+      const currentArea = (mechanicProfile?.location_label || '').trim()
+      const newArea = (formData.serviceArea || '').trim()
+      const areaChanged = currentArea !== newArea
+
+      const changeSubmissions = []
+
+      if (bizChanged) {
+        changeSubmissions.push({
+          role: 'mechanic',
+          target_table: 'mechanic_profiles',
+          field_key: 'business_name',
+          old_value: currentBiz || null,
+          new_value: newBiz || null,
+          reason: 'Mechanic requested business trade name update from profile settings',
+        })
+      }
+
+      if (specsChanged) {
+        changeSubmissions.push({
+          role: 'mechanic',
+          target_table: 'mechanic_profiles',
+          field_key: 'specializations',
+          old_value: currentSpecs,
+          new_value: newSpecs,
+          reason: 'Mechanic requested specialties update from profile settings',
+        })
+      }
+
+      if (expChanged) {
+        changeSubmissions.push({
+          role: 'mechanic',
+          target_table: 'mechanic_profiles',
+          field_key: 'years_experience',
+          old_value: currentExp,
+          new_value: newExp,
+          reason: 'Mechanic requested years of experience update from profile settings',
+        })
+      }
+
+      if (areaChanged) {
+        changeSubmissions.push({
+          role: 'mechanic',
+          target_table: 'mechanic_profiles',
+          field_key: 'location_label',
+          old_value: currentArea || null,
+          new_value: newArea || null,
+          reason: 'Mechanic requested primary service area update from profile settings',
+        })
+      }
+
+      let sensitiveSubmittedCount = 0
+      for (const change of changeSubmissions) {
+        try {
+          const res = await fetch('/api/profile/change-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(change),
+          })
+          if (res.ok) {
+            sensitiveSubmittedCount++
+          }
+        } catch (e) {
+          console.warn('Failed to submit change request:', change.field_key, e)
+        }
+      }
+
+      // Secondary phone preference sync
       try {
         await fetch('/api/profile/preferences', {
           method: 'PUT',
@@ -462,19 +567,35 @@ export default function MechanicAccountPage() {
         console.warn('Preferences middleware sync bypassed:', prefErr)
       }
 
-      setMechanicProfile((prev) => ({
-         ...prev,
-         business_name: formData.businessName,
-         specializations: formData.specializations.split(',').map((s) => s.trim()).filter(Boolean),
-         location_label: formData.serviceArea,
-         is_available: formData.availability,
-         years_experience: formData.yearsExperience,
-         service_mode: formData.serviceMode,
-         base_location_label: formData.baseLocationLabel,
-         show_base_location_offline: formData.showBaseLocationOffline,
-       }))
+      // Refresh pending change requests list
+      const { data: updatedPending } = await supabase
+        .from('profile_change_requests')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
 
-      toast.success('Profile configurations updated successfully')
+      if (updatedPending) {
+        setPendingChangeRequests(updatedPending)
+      }
+
+      setMechanicProfile((prev) => ({
+        ...prev,
+        is_available: formData.availability,
+        service_mode: formData.serviceMode,
+        base_location_label: formData.baseLocationLabel,
+        show_base_location_offline: formData.showBaseLocationOffline,
+      }))
+
+      if (sensitiveSubmittedCount > 0) {
+        toast.success(
+          `Operational settings saved. ${sensitiveSubmittedCount} sensitive parameter change(s) submitted for Admin approval.`,
+          { duration: 5000 }
+        )
+      } else {
+        toast.success('Profile configurations updated successfully')
+      }
+
       setIsEditing(false)
     } catch (err) {
       toast.error(err?.message || 'Failed to complete configuration synchronization logs')
@@ -584,9 +705,42 @@ export default function MechanicAccountPage() {
 
         {/* ================= WORKPLACE OPTIONS ================= */}
         <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs relative">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2 mb-5">
-            <Building2 size={15} className="text-amber-500" /> Workplace Parameters
-          </h3>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <Building2 size={15} className="text-amber-500" /> Workplace Parameters
+            </h3>
+            {pendingChangeRequests.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[11px] font-bold text-amber-800">
+                <AlertTriangle size={13} className="text-amber-600" />
+                {pendingChangeRequests.length} update{pendingChangeRequests.length > 1 ? 's' : ''} awaiting admin review
+              </span>
+            )}
+          </div>
+
+          {/* Pending clearance alert banner if any requests exist */}
+          {pendingChangeRequests.length > 0 && (
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 sm:p-4 text-xs">
+              <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                <ShieldAlert size={15} className="text-amber-600 shrink-0" /> Sensitive Field Changes Under Administrative Review
+              </p>
+              <div className="mt-2 space-y-1.5 text-amber-800">
+                {pendingChangeRequests.map((req) => (
+                  <div key={req.id} className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="font-bold uppercase tracking-wider text-amber-950 bg-amber-200/60 px-2 py-0.5 rounded">
+                      {req.field_key.replace(/_/g, ' ')}
+                    </span>
+                    <span className="text-amber-700">Proposed:</span>
+                    <span className="font-semibold text-amber-950">
+                      {Array.isArray(req.new_value) ? req.new_value.join(', ') : String(req.new_value || 'None')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] text-amber-700/80 italic">
+                Your live public profile remains active with current verified values until reviewed and cleared by the dispatch command.
+              </p>
+            </div>
+          )}
 
           {isEditing ? (
             <div className="space-y-4">
@@ -595,14 +749,10 @@ export default function MechanicAccountPage() {
                 <Input label="Years of Active Experience" type="number" value={formData.yearsExperience} onChange={(e) => handleChange('yearsExperience', e.target.value)} placeholder="5" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Input label="Hourly Labor Rate (₵)" type="number" value={formData.hourlyRate} onChange={(e) => handleChange('hourlyRate', e.target.value)} placeholder="45" />
                 <Input label="Service Range Radius (km)" type="number" value={formData.serviceRadius} onChange={(e) => handleChange('serviceRadius', e.target.value)} placeholder="30" />
+                <Input label="Primary Dispatch Base Area" value={formData.serviceArea} onChange={(e) => handleChange('serviceArea', e.target.value)} placeholder="e.g. Accra Metropolitan, Greater Accra" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Input label="Primary Dispatch Base Area" value={formData.serviceArea} onChange={(e) => handleChange('serviceArea', e.target.value)} placeholder="e.g. Accra Metropolitan, Greater Accra" />
-                <Input label="Specializations (Comma Separated)" value={formData.specializations} onChange={(e) => handleChange('specializations', e.target.value)} placeholder="Towing, Engine Diagnostics, Brake Repair" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 items-end">
                 <Select
                   label="Service Engagement Mode"
                   value={formData.serviceMode}
@@ -614,6 +764,41 @@ export default function MechanicAccountPage() {
                   ]}
                 />
               </div>
+
+              {/* Standardized Specialties Dropdown/Pills Selection */}
+              <div>
+                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">
+                  Specialties & Technical Capabilities
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {MECHANIC_SPECIALTIES.map((spec) => {
+                    const selected = Array.isArray(formData.specializations) && formData.specializations.includes(spec)
+                    return (
+                      <button
+                        key={spec}
+                        type="button"
+                        onClick={() => toggleSpecialty(spec)}
+                        className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-all ${
+                          selected
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-950 font-bold shadow-xs ring-1 ring-amber-500/30'
+                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-amber-400/80 hover:bg-amber-50/30'
+                        }`}
+                      >
+                        <span className="truncate">{spec}</span>
+                        {selected ? (
+                          <Check size={14} className="text-amber-700 shrink-0" />
+                        ) : (
+                          <div className="h-3.5 w-3.5 rounded border border-slate-300 bg-white shrink-0" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-500 font-medium">
+                  Standardized categories ensure accurate AI dispatch matching. Updates will be queued for Admin approval.
+                </p>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input 
                   label="Base Location / Shop Address" 
@@ -694,7 +879,20 @@ export default function MechanicAccountPage() {
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Skills & Specialties</span>
-                <p className="mt-1 text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words"><Wrench size={14} className="text-slate-400 shrink-0" /> {formData.specializations || 'Not specified'}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {Array.isArray(formData.specializations) && formData.specializations.length > 0 ? (
+                    formData.specializations.map((spec) => (
+                      <span key={spec} className="inline-flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-200/70 px-2.5 py-0.5 text-xs font-bold text-amber-900">
+                        <Wrench size={11} className="text-amber-600" />
+                        {spec}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 break-words">
+                      <Wrench size={14} className="text-slate-400 shrink-0" /> Not specified
+                    </p>
+                  )}
+                </div>
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Experience Depth</span>

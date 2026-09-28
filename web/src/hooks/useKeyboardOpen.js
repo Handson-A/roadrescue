@@ -48,21 +48,6 @@ export function useKeyboardOpen(threshold = 60) {
 
     const handleFocusIn = () => {
       handleCheck()
-      if (typeof window !== 'undefined') {
-        window.scrollTo(0, 0)
-      }
-      setTimeout(() => {
-        handleCheck()
-        if (typeof window !== 'undefined') {
-          window.scrollTo(0, 0)
-        }
-      }, 50)
-      setTimeout(() => {
-        handleCheck()
-        if (typeof window !== 'undefined') {
-          window.scrollTo(0, 0)
-        }
-      }, 300)
     }
 
     const handleFocusOut = () => {

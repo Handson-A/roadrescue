@@ -10,7 +10,7 @@
 
 ### Key Pain Points Solved
 *   **Response Windows**: Traditional breakdown support relies on manual calls and uncoordinated dispatch. RoadRescue matches drivers with the closest verified mechanic in seconds using PostGIS radial indexing.
-*   **Diagnostic Gaps**: Drivers often struggle to describe breakdown symptoms. An in-app diagnostic chat reads natural language and queries Google Gemini 2.5 Flash to generate structured diagnostics with instructions and severity ratings.
+*   **Diagnostic Gaps**: Drivers often struggle to describe breakdown symptoms. An in-app diagnostic chat reads natural language and queries Google Gemini 2.5 Flash, grok, OpenRouter and lastly a rulebase fallback to generate structured diagnostics with instructions and severity ratings.
 *   **Security Auditing**: Traditional systems lack transparent coordination. Real-time updates and RLS policies ensure data security, scoping information to request participants.
 *   **Operations Gating**: Unverified mechanics are blocked from claiming jobs. Blacklisted emails are blocked at the database level to prevent re-registration.
 
@@ -23,7 +23,7 @@
 *   **Background Dispatching**: The system searches and notifies mechanics asynchronously. The PostGIS RPC function `get_nearby_verified_mechanics(request_latitude, request_longitude, search_radius_km)` queries mechanics within a 10 km radius.
 *   **Transactional Notification**: Matching records and automated emails (Resend) are sent to available, verified mechanics in the background.
 
-### B. Map Koordinations & Refueling Grids
+### B. Map Coordinations & Refueling Grids
 *   **Leaflet Integration**: Renders maps using OpenStreetMap tiles (no API keys required), enforcing standard zoom boundaries (`maxZoom={19}`, `minZoom={3}`, `fitBounds` capped at `maxZoom: 16`).
 *   **Unified Full-Bleed Map Architecture**: Driver Explore (`/dashboard/driver/explore`) and Mechanic Navigation (`/dashboard/mechanic/navigation`) share a standardized layout container (`FullBleedMapShell.jsx`), presenting a 100% viewport map canvas layered with floating status pills, recenter controls, and bottom inspection sheets.
 *   **Mobile Map Separation**: To optimize mechanic operational focus on mobile devices, live GPS tracking maps are isolated to the dedicated Navigation tab, allowing the primary Service Console dashboard to prioritize actionable feeds (Active Jobs and Urgent Incident Broadcasts).
