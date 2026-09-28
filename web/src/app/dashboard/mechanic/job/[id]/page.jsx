@@ -9,6 +9,9 @@ import ReportModal from '@/components/report/ReportModal'
 import Select from '@/components/ui/Select'
 import Textarea from '@/components/ui/Textarea'
 import Card from '@/components/ui/Card'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
@@ -30,7 +33,9 @@ import {
   Zap,
   ChevronRight,
   Flag,
+  MessageSquare,
 } from 'lucide-react'
+import RescueChatModal from '@/components/request/RescueChatModal'
 
 const RescueMap = dynamic(() => import('@/components/map/RescueMap'), {
   ssr: false,
@@ -127,10 +132,10 @@ function StatusTimeline({ currentStatus }) {
 /* ─── SectionCard ───────────────────────────────────────────────────────── */
 function SectionCard({ icon: Icon, title, children, className = '' }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden ${className}`}>
-      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-50">
-        <Icon size={15} className="text-slate-400 flex-shrink-0" />
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{title}</span>
+    <div className={`bg-white rounded-2xl border border-[#DCCDA9]/70 shadow-sm overflow-hidden ${className}`}>
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-[#FAF6EC]/50">
+        <Icon size={14} className="text-[#8A7A50] flex-shrink-0" />
+        <span className="text-[10px] font-black text-[#8A7A50] uppercase tracking-widest">{title}</span>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -139,14 +144,14 @@ function SectionCard({ icon: Icon, title, children, className = '' }) {
 
 /* ─── ActionButton ──────────────────────────────────────────────────────── */
 function ActionButton({ onClick, disabled, children, variant = 'primary', className = '' }) {
-  const base = 'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+  const base = 'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-150 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs'
   const variants = {
-    primary:  'bg-slate-900 hover:bg-slate-800 text-white focus:ring-slate-700',
-    success:  'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500',
-    warning:  'bg-amber-500 hover:bg-amber-600 text-white focus:ring-amber-400',
-    blue:     'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500',
-    danger:   'bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 focus:ring-red-400',
-    ghost:    'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 focus:ring-slate-300',
+    primary:  'bg-slate-900 hover:bg-slate-800 text-white shadow-xs',
+    success:  'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs',
+    warning:  'bg-primary hover:brightness-105 text-slate-950 shadow-xs',
+    blue:     'bg-blue-600 hover:bg-blue-700 text-white shadow-xs',
+    danger:   'bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300',
+    ghost:    'bg-[#FAF6EC] hover:bg-white text-slate-700 border border-slate-200',
   }
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`${base} ${variants[variant]} ${className}`}>
@@ -171,6 +176,7 @@ export default function MechanicJobDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReasonCategory, setCancelReasonCategory] = useState('')
   const [cancelReason, setCancelReason] = useState('')
@@ -179,6 +185,35 @@ export default function MechanicJobDetailsPage() {
   const [localCoords, setLocalCoords] = useState(null)
   const [mechanicProfile, setMechanicProfile] = useState(null)
   const [graceTimeLeft, setGraceTimeLeft] = useState(null)
+
+  /* ── Shared update helper ─────────────────────────────────── */
+  const updateStatus = async (newStatus, extra = {}) => {
+    if (!user?.id) { alert('Session expired — please log in again.'); return }
+    setUpdating(true)
+    try {
+      const res = await fetch('/api/requests/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: jobId, mechanicId: user.id, newStatus, ...extra }),
+      })
+      const result = await res.json()
+      if (res.ok && result.request) {
+        setJob(result.request)
+      } else if (res.status === 409) {
+        // Explicit 409 Conflict handling for race conditions / double-claim attempts
+        alert(' Job Unavailable: ' + (result.error || 'This rescue request was already claimed by another mechanic or its status was changed.'))
+        // Re-fetch current state to update the UI
+        const refreshRes = await fetch(`/api/requests/${jobId}`)
+        const refreshData = await refreshRes.json()
+        if (refreshRes.ok && refreshData.request) {
+          setJob(refreshData.request)
+        }
+      } else {
+        alert(result.error || 'Could not update status.')
+      }
+    } catch { alert('Network error — please try again.') }
+    finally { setUpdating(false) }
+  }
 
   useEffect(() => {
     if (!user?.id) return
@@ -289,26 +324,6 @@ export default function MechanicJobDetailsPage() {
       supabase.removeChannel(channel)
     }
   }, [jobId, supabase])
-
-  /* ── Shared update helper ─────────────────────────────────── */
-  const updateStatus = async (newStatus, extra = {}) => {
-    if (!user?.id) { alert('Session expired — please log in again.'); return }
-    setUpdating(true)
-    try {
-      const res = await fetch('/api/requests/status', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: jobId, mechanicId: user.id, newStatus, ...extra }),
-      })
-      const result = await res.json()
-      if (res.ok && result.request) {
-        setJob(result.request)
-      } else {
-        alert(result.error || 'Could not update status.')
-      }
-    } catch { alert('Network error — please try again.') }
-    finally { setUpdating(false) }
-  }
 
   const cancelJob = () => {
     setShowCancelModal(true)
@@ -515,6 +530,14 @@ export default function MechanicJobDetailsPage() {
             </div>
 
             <div className="space-y-2">
+              <ActionButton
+                variant="warning"
+                onClick={() => setIsChatOpen(true)}
+                className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold shadow-xs cursor-pointer"
+              >
+                <MessageSquare size={14} />
+                Chat with driver
+              </ActionButton>
               {job.driver?.phone && (
                 <a href={`tel:${job.driver.phone}`} className="block">
                   <ActionButton variant="primary">
@@ -618,65 +641,88 @@ export default function MechanicJobDetailsPage() {
         reporterId={user?.id}
       />
 
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <Card className="w-full max-w-md bg-white rounded-2xl shadow-xl border-slate-200 p-6 space-y-4 animate-in zoom-in-95 duration-200 relative">
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Cancel Job Assignment?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Please select a reason for cancelling this job. Cancellation may impact your dispatch metrics.
-            </p>
-            <Select
-              label="Select Cancellation Reason"
-              id="cancel-reason-category"
-              value={cancelReasonCategory}
-              onChange={(e) => {
-                const val = e.target.value
-                setCancelReasonCategory(val)
-                if (val !== 'other') {
-                  const opt = CANCEL_REASON_OPTIONS.find(o => o.value === val)
-                  setCancelReason(opt ? opt.label : '')
-                } else {
-                  setCancelReason('')
-                }
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false)
+          setCancelReasonCategory('')
+          setCancelReason('')
+        }}
+        title="Cancel Job Assignment?"
+        size="sm"
+        actions={
+          <>
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowCancelModal(false)
+                setCancelReasonCategory('')
+                setCancelReason('')
               }}
-              options={[{ value: '', label: 'Select a cancellation reason...' }, ...CANCEL_REASON_OPTIONS]}
+              className="text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 cursor-pointer"
+            >
+              Keep Job
+            </Button>
+            <Button 
+              variant="danger"
+              size="sm"
+              onClick={confirmCancelJob}
+              disabled={updating || !cancelReasonCategory}
+              loading={updating}
+              className="text-xs font-bold uppercase tracking-wider px-4"
+            >
+              Confirm Cancel
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl bg-[#FFF9EF] border border-[#E8DCC0] p-3 text-xs text-[#6C5E3B] font-medium leading-relaxed">
+            Please select a reason for cancellation. This will release the job back to available nearby units.
+          </div>
+
+          <Select
+            label="Cancellation Reason"
+            id="cancel-reason-category"
+            value={cancelReasonCategory}
+            onChange={(e) => {
+              const val = e.target.value
+              setCancelReasonCategory(val)
+              if (val !== 'other') {
+                const opt = CANCEL_REASON_OPTIONS.find(o => o.value === val)
+                setCancelReason(opt ? opt.label : '')
+              } else {
+                setCancelReason('')
+              }
+            }}
+            options={[{ value: '', label: 'Select a cancellation reason...' }, ...CANCEL_REASON_OPTIONS]}
+          />
+          
+          {(cancelReasonCategory === 'other' || cancelReasonCategory === '') && (
+            <Textarea
+              label="Custom Reason / Explanation"
+              id="cancel-reason"
+              rows={3}
+              placeholder="Please describe why you are cancelling..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
             />
-            
-            {(cancelReasonCategory === 'other' || cancelReasonCategory === '') && (
-              <Textarea
-                label="Custom Reason / Explanation"
-                id="cancel-reason"
-                rows={2}
-                placeholder="Please describe why you are cancelling..."
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="p-3 text-xs bg-[#FFFBF7] text-[#1F1B10] border-[#DDD0A8]"
-              />
-            )}
-            <div className="flex gap-2.5 justify-end">
-              <ActionButton 
-                variant="ghost"
-                onClick={() => {
-                  setShowCancelModal(false)
-                  setCancelReasonCategory('')
-                  setCancelReason('')
-                }}
-                className="h-10 text-xs px-4"
-              >
-                Keep Job
-              </ActionButton>
-              <ActionButton 
-                variant="danger"
-                onClick={confirmCancelJob}
-                disabled={updating || !cancelReasonCategory}
-                className="h-10 text-xs px-4"
-              >
-                {updating ? 'Cancelling...' : 'Confirm Cancel'}
-              </ActionButton>
-            </div>
-          </Card>
+          )}
         </div>
-      )}
+      </Modal>
+
+      {/* LIVE CHAT MODAL */}
+      <RescueChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        requestId={jobId}
+        contactName={job.driver?.full_name || 'Driver'}
+        contactRole="Driver"
+        statusText={`Job #${jobId.slice(0, 8).toUpperCase()} · ${job.status?.replace('_', ' ')}`}
+        initialStatus={job.status}
+      />
     </PageWrapper>
   )
 }

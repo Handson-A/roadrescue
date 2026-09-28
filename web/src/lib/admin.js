@@ -89,7 +89,7 @@ export async function getMechanicsByStatus(serviceSupabase, status = 'pending') 
 }
 
 /**
- * Approve or reject a mechanic verification log row
+ * Approve or reject a mechanic verification log row and record an immutable audit entry
  */
 export async function updateMechanicVerification(
   serviceSupabase,
@@ -103,19 +103,48 @@ export async function updateMechanicVerification(
     approve: 'approved',
   }
 
-  // Option (b): If more_info is requested, keep the verification_status as 'pending'
-  // and store the request-for-info message in rejection_reason without altering the DB enum.
   const isMoreInfo = newStatus === 'more_info'
   const dbStatus = isMoreInfo ? 'pending' : (statusMap[newStatus] || newStatus)
 
-  // Commits the review metadata directly to the true log tracking table
+  // Map to audit action enum ('verified', 'rejected', 'more_info_requested')
+  const auditAction = dbStatus === 'approved'
+    ? 'verified'
+    : (newStatus === 'rejected' ? 'rejected' : 'more_info_requested')
+
+  const auditReason = isMoreInfo
+    ? (reason || 'Additional information/credentials requested by admin')
+    : (newStatus === 'rejected' ? reason : null)
+
+  if (auditAction === 'rejected' && (!auditReason || !auditReason.trim())) {
+    throw new Error('A justification reason is required when rejecting a mechanic application')
+  }
+
+  // 1. Write immutable audit log record
+  const { error: auditError } = await serviceSupabase
+    .from('mechanic_verification_audit')
+    .insert({
+      admin_id: adminId,
+      mechanic_id: mechanicUserId,
+      action: auditAction,
+      reason: auditReason,
+      metadata: {
+        raw_status: newStatus,
+        db_status: dbStatus,
+        reviewed_at: new Date().toISOString()
+      }
+    })
+
+  if (auditError) {
+    console.error('[AUDIT LOG ERROR] Failed to record mechanic verification audit row:', auditError.message)
+    throw new Error(`Audit recording failed: ${auditError.message}`)
+  }
+
+  // 2. Commit the review metadata to mechanic_verifications
   const updatePayload = {
     status: dbStatus,
     reviewed_by: adminId,
     reviewed_at: new Date().toISOString(),
-    rejection_reason: isMoreInfo
-      ? (reason || 'Additional information/credentials requested by admin')
-      : (newStatus === 'rejected' ? (reason || 'Verification rejected by admin') : null),
+    rejection_reason: auditReason,
   }
 
   const { data, error } = await serviceSupabase
@@ -126,7 +155,7 @@ export async function updateMechanicVerification(
 
   if (error) throw error
 
-  // Also update verification_status in mechanic_profiles
+  // 3. Also update verification_status in mechanic_profiles
   const { error: profileError } = await serviceSupabase
     .from('mechanic_profiles')
     .update({ verification_status: dbStatus })
@@ -134,6 +163,7 @@ export async function updateMechanicVerification(
 
   if (profileError) {
     console.error('[DB EXCEPTION] Failed to sync verification_status to mechanic_profiles:', profileError.message)
+    throw profileError
   }
 
   return data && data.length > 0 ? data[0] : null

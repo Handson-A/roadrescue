@@ -175,11 +175,7 @@ export default function DriverDashboard() {
                 <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
             </div>
-
-            {/* Embedded Live Map Viewport */}
-            <div className="relative overflow-hidden border border-[#DCCDA9] rounded-2xl h-64 shadow-sm">
-              <RescueMap request={activeRequest} userRole="driver" height="100%" />
-            </div>
+            
           </div>
         )}
 

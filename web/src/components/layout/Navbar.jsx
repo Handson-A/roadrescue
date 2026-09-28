@@ -10,6 +10,7 @@ import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import { useAuth } from '@/hooks/useAuth'
 import { useNotifications } from '@/hooks/useNotifications'
+import { useFuelLayer } from '@/hooks/useFuelLayer'
 import { signOut } from '@/lib/auth'
 import { timeAgo, truncate } from '@/lib/utils'
 
@@ -19,6 +20,7 @@ export default function Navbar() {
 
   const [searchQuery, setSearchQuery] = useState('')
   const notificationRef = useRef(null)
+  const mobileNotificationRef = useRef(null)
 
   const pathname = usePathname()
   const { user, profile } = useAuth()
@@ -28,15 +30,13 @@ export default function Navbar() {
 
   const visibleOnScroll = useHideOnScroll({ threshold: 10, initialVisible: true })
   const visible = isDashboardRoot ? visibleOnScroll : true
-  const [greeting, setGreeting] = useState('Welcome')
+  const [greeting] = useState(() => {
+    const hrs = new Date().getHours()
+    return hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
+  })
   const router = useRouter()
   
-  useEffect(() => {
-    const hrs = new Date().getHours()
-    setGreeting(hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening')
-  }, [])
-  
-  const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id)
+  const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id || user?.id)
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -55,7 +55,10 @@ export default function Navbar() {
 
   useEffect(() => {
     function handlePointerDown(event) {
-      if (!notificationRef.current?.contains(event.target)) {
+      if (
+        !notificationRef.current?.contains(event.target) &&
+        !mobileNotificationRef.current?.contains(event.target)
+      ) {
         setOpen(false)
       }
     }
@@ -77,21 +80,10 @@ export default function Navbar() {
   
   const fullName = profile?.full_name || 'member'
 
-  const activeRescueCount = notifications.filter((n) => !n.is_read).length
-
-  const [showFuel, setShowFuel] = useState(false)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setShowFuel(localStorage.getItem('show_fuel_stations') === 'true')
-    }
-  }, [])
+  const [showFuel, toggleFuel, , isHydrated] = useFuelLayer()
 
   const handleToggleFuel = () => {
-    const nextVal = !showFuel
-    setShowFuel(nextVal)
-    localStorage.setItem('show_fuel_stations', nextVal ? 'true' : 'false')
-    window.dispatchEvent(new CustomEvent('toggle-fuel-stations', { detail: nextVal }))
+    toggleFuel()
   }
 
   const isTrackingPage = pathname?.includes('/request/') && role === 'driver'
@@ -139,10 +131,10 @@ export default function Navbar() {
   const mobileSubtitle = isDashboardRoot
     ? 'System online & ready'
     : pathname.includes('/request/')
-      ? 'Track responder deployment coordinates'
+      ? 'Track responder coordinates'
       : pathname.includes('/account')
-        ? `${profile?.full_name || 'Secure account session'}`
-        : 'Secure RoadRescue session'
+        ? `${profile?.full_name || 'Secure session'}`
+        : 'Secure session'
 
   // Safety Extraction Check: Prioritize live database field string, fallback directly onto active login context parameters
   const authenticatedEmail = profile?.email || user?.email || 'authenticated@roadrescue.gh'
@@ -154,7 +146,7 @@ export default function Navbar() {
     
       {/*  MOBILE HEADER DISPLAY GRID  */}
 
-      <div className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-2xl transition-all duration-300 border-b border-white/[0.08] relative">
+      <div ref={mobileNotificationRef} className="md:hidden bg-[#1E1B15] text-[#EFE8D4] shadow-2xl transition-all duration-300 border-b border-white/[0.08] relative">
         {isDashboardRoot ? (
           <div className="px-5 pb-5 pt-4">
             {/* Top row: Greeting & Profile/Notification Toggles */}
@@ -176,7 +168,12 @@ export default function Navbar() {
                 >
                   <Bell size={18} />
                   {unreadCount > 0 && (
-                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary ring-4 ring-[#1E1B15]" />
+                    <>
+                      <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary animate-ping" />
+                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-black text-[#1E1B15] shadow-xs">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    </>
                   )}
                 </button>
 
@@ -209,7 +206,7 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-3">
-              {isTrackingPage && (
+              {isTrackingPage && isHydrated && (
                 <button
                   type="button"
                   onClick={handleToggleFuel}
@@ -230,7 +227,14 @@ export default function Navbar() {
                 aria-label="Open notifications"
               >
                 <Bell size={16} />
-                {unreadCount > 0 && <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-primary" />}
+                {unreadCount > 0 && (
+                  <>
+                    <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary animate-ping" />
+                    <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8.5px] font-black text-[#1E1B15]">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  </>
+                )}
               </button>
 
               <button
@@ -276,13 +280,13 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04]">
               <span className="text-xs font-bold text-[#A29A84]">Active Updates ({unreadCount})</span>
               {unreadCount > 0 && (
-                <button onClick={markAllAsRead} className="text-[11px] font-bold text-primary hover:underline">
+                <button type="button" onClick={markAllAsRead} className="text-[11px] font-bold text-primary hover:underline cursor-pointer">
                   Mark all read
                 </button>
               )}
             </div>
             {notifications.length === 0 ? (
-              <div className="px-5 py-6 text-center text-xs text-[#6C6552]">No new dispatch feeds</div>
+              <div className="px-5 py-6 text-center text-xs text-[#6C6552]">No active updates</div>
             ) : (
               notifications.map((n) => (
                 <Link
@@ -293,13 +297,14 @@ export default function Navbar() {
                     await markAsRead(n.id)
                     setOpen(false)
                   }}
-                  className={`block px-5 py-3 border-b border-white/[0.02] active:bg-white/[0.02] ${n.is_read ? 'opacity-40' : 'bg-primary/[0.02]'}`}
+                  className="block px-5 py-3 border-b border-white/[0.02] active:bg-white/[0.04] bg-primary/[0.03] transition-colors"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[#EFE8D4] truncate">{n.title || 'Update'}</p>
                     <Badge label={n.type} variant={n.type} />
                   </div>
                   <p className="mt-0.5 text-xs text-[#A29A84] line-clamp-2">{n.message}</p>
+                  <p className="mt-1 text-[10px] text-[#786D53]">{timeAgo(n.created_at)}</p>
                 </Link>
               ))
             )}
@@ -341,7 +346,14 @@ export default function Navbar() {
           <div ref={notificationRef} className="relative shrink-0">
             <button type="button" onClick={() => setOpen((prev) => !prev)} className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-[#D7CCAD] bg-[#F8F4EA] text-[#3B3528] shadow-sm active:scale-95 transition-transform cursor-pointer">
               <Bell size={18} />
-              {unreadCount > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
+              {unreadCount > 0 && (
+                <>
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
+                  <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-[#1E1B15] shadow-xs ring-2 ring-[#F5F0E2]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                </>
+              )}
             </button>
 
             {open && (
@@ -349,7 +361,7 @@ export default function Navbar() {
                 <div className="flex items-center justify-between border-b border-[#E0D5B7] bg-[#FFF9EF] px-4 py-3">
                   <div>
                     <p className="text-sm font-black text-slate-900">Notifications</p>
-                    <p className="text-[11px] text-slate-500">Live dispatch updates</p>
+                    <p className="text-[11px] text-slate-500">Live updates ({unreadCount} active)</p>
                   </div>
                   {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs font-bold text-amber-600 hover:underline cursor-pointer">Mark all read</button>}
                 </div>
@@ -367,7 +379,7 @@ export default function Navbar() {
                           await markAsRead(notification.id)
                           setOpen(false)
                         }}
-                        className={`block w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-[#FFF9EF] ${notification.is_read ? 'opacity-60' : 'bg-amber-50/40'}`}
+                        className="block w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-[#FFF9EF] bg-amber-50/40"
                       >
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-black text-slate-900">{notification.title || 'Dispatch Update'}</p>
@@ -390,7 +402,7 @@ export default function Navbar() {
           >
             <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} online={true} className="shrink-0" />
             <div className="leading-tight text-left min-w-0 hidden xl:block">
-              <p className="text-xs font-black text-[#2D271C] truncate">{profile?.full_name || 'Rescue Driver'}</p>
+              <p className="text-xs font-black text-[#2D271C] truncate">{profile?.full_name || 'User'}</p>
               <p className="text-[10px] text-[#6E634B] font-medium truncate">{authenticatedEmail}</p>
             </div>
           </button>

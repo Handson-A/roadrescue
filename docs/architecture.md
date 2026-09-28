@@ -1,157 +1,184 @@
-# RoadRescue - System Architecture
+# RoadRescue System Architecture
 
-## Overview
+> Formal technical architecture specification detailing frontend, backend, database layers, external integrations, data flows, and security boundaries.
 
-RoadRescue is a real-time roadside assistance platform connecting drivers with nearby verified mechanics. The system uses direct mechanic acceptance, strict server-side lifecycle transitions, live location updates, and AI-assisted diagnostics.
+---
 
-## Architecture Diagram
+## 1. High-Level Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Client Layer (Next.js)                     │
-│  Driver UI        Mechanic UI        Admin UI                │
-└────────┬──────────────────┬──────────────────┬───────────────┘
-         │                  │                  │
-┌────────▼──────────────────▼──────────────────▼───────────────┐
-│              API Layer (Next.js Route Handlers)               │
-│  /api/requests   /api/ai/diagnose   /api/admin/*             │
-│  /api/profile/*  /api/notifications /api/webhooks            │
-└────────┬──────────────────┬──────────────────┬───────────────┘
-         │                  │                  │
-┌────────▼──────────────────▼──────────────────▼───────────────┐
-│            External Services Integration                       │
-│  Supabase (Auth, DB, Realtime) | Gemini AI | Email provider   │
-└───────────────────────────────────────────────────────────────┘
-```
+```mermaid
+flowchart TD
+    subgraph Client ["Client Presentation Layer (Next.js 16 + React 19)"]
+        D_UI[Driver Dashboard & Map]
+        M_UI[Mechanic Navigation & Feed]
+        A_UI[Admin Matrix & Hotspots]
+    end
 
-## Technology Stack
+    subgraph Edge ["Edge Protection & Middleware Layer"]
+        MW[Edge Route Guard: proxy.js]
+    end
 
-### Frontend
-- Next.js App Router
-- React Server and Client Components
-- Tailwind CSS
-- Leaflet maps
-- Supabase client for authenticated reads and realtime subscriptions
+    subgraph Backend ["Application & API Gateway (Route Handlers)"]
+        AUTH_G[RBAC Guards: rbac.js]
+        REQ_API[/api/requests/*]
+        AI_API[/api/ai/diagnose]
+        ADM_API[/api/admin/*]
+        PROF_API[/api/profile/*]
+        NOTIF_API[/api/notifications/*]
+    end
 
-### Backend
-- Next.js Route Handlers
-- Supabase Auth for user sessions
-- PostgreSQL with PostGIS for geospatial matching
-- Service role client for server-side writes and notifications
-- Gemini API for AI diagnostic responses
+    subgraph Persistence ["Data & Event Broker Layer (Supabase)"]
+        PG[(PostgreSQL 15 + PostGIS)]
+        RLS[Row-Level Security Policies]
+        WS[Supabase Realtime CDC WebSockets]
+        AUTH_SRV[Supabase Auth Engine]
+        STOR[Supabase Storage Buckets]
+    end
 
-### Infrastructure
-- Vercel for the Next.js app
-- Supabase Cloud for PostgreSQL, Auth, Storage, and Realtime
+    subgraph External ["External Third-Party Ecosystem"]
+        GEMINI[Google Gemini 2.5 Flash]
+        GROQ[Groq Llama-3.3-70B]
+        OPENROUTER[OpenRouter Gateway]
+        RESEND[Resend Transactional Email]
+        OSM[OpenStreetMap / Leaflet Tiles]
+    end
 
-## Core Features
+    Client --> MW
+    MW --> Backend
+    Backend --> AUTH_G
+    AUTH_G --> Persistence
 
-### Authentication and Authorization
-- Driver, mechanic, and admin roles
-- Role-aware dashboards
-- Server-side authorization checks for sensitive mutations
-
-### Rescue Request Lifecycle
-
-```
-pending → accepted → en_route → arrived → in_progress → completed
-```
-
-Cancellation is allowed from:
-
-```
-pending, accepted, en_route, arrived, in_progress
+    REQ_API --> PG
+    AI_API --> GEMINI
+    AI_API -.->|Failover| GROQ
+    AI_API -.->|Failover| OPENROUTER
+    NOTIF_API --> RESEND
+    D_UI & M_UI --> OSM
+    Persistence <-->|Bi-Directional State| Client
 ```
 
-All status changes go through `PATCH /api/requests/status`. Mechanics cannot update `rescue_requests` directly from the browser.
+---
 
-### Mechanic Matching
-- PostGIS distance search through `get_nearby_verified_mechanics(lat double precision, lng double precision, radius_km double precision DEFAULT 10)` RPC function
-- Returns `(user_id, business_name, rating_avg, distance_km, service_mode, location_label)`
-- Only verified (`verification_status = 'approved'`) mechanics who are online/available are returned
-- **Location & Service Mode Fallback:** Evaluates mechanic `service_mode` (`mobile`, `fixed_location`, `hybrid`). For mobile operations, matching measures distance against dynamic `current_location`. For hybrid or fixed workshops where dynamic GPS is inactive or consent is granted (`show_base_location_offline = true`), the query leverages `COALESCE(current_location, base_location)` to match against the mechanic's permanent base location
-- Drivers are notified when nearby mechanics are found
+## 2. Layer Specifications
 
-### AI Diagnostics
-- Client chat posts to `/api/ai/diagnose`
-- Server route calls Gemini and returns a concise reply
-- Request form can store structured diagnostic output on `rescue_requests.ai_diagnostic_result`
+### 2.1 Frontend Presentation Layer
+* **Framework:** Next.js 16.2.6 (App Router) with React 19 and Turbopack compiler.
+* **Component Architecture:**
+  * Server Components (`RSC`) for initial shell rendering and static metadata extraction.
+  * Client Components (`'use client'`) for interactive maps, state subscriptions, forms, and camera captures.
+* **Layout Design System:** Tailwind CSS v4 featuring a unified brand palette (Warm Cream `#FDFBF7`, Gold Amber `#F5C400`, Charcoal Slate `#1F1B10`).
+* **Shared Mapping Shell:** `FullBleedMapShell.jsx` provides consistent 100% viewport map canvases across `/dashboard/driver/explore` and `/dashboard/mechanic/navigation`.
+* **State Management:** Zustand stores (`useRequestStore`, `authStore`) for managing request creation wizards and session caching.
 
-### Real-time Updates
-- Mechanic location updates
-- Request status changes
-- Notifications and messages
+---
 
-## Database Schema
+### 2.2 Edge Protection & Middleware Layer (`src/proxy.js`)
+* Executes at the edge before any route handler or page segment is evaluated.
+* Intercepts `/dashboard/*` and `/auth/*` paths.
+* Validates Supabase JWT cookies, retrieves the verified database role (`driver`, `mechanic`, `admin`) from `public.profiles`, and redirects unauthenticated users or users attempting cross-role dashboard access to their respective home routes.
 
-Key tables:
+---
 
-- `profiles`: user account information for all roles
-- `mechanic_profiles`: mechanic verification, availability, location, and ratings
-- `driver_profiles`: driver vehicle details and preferences
-- `rescue_requests`: rescue lifecycle records
-- `notifications`: user notifications
-- `messages`: request chat messages
-- `profile_preferences`: user-specific preferences
-- `profile_change_requests`: admin-reviewed profile updates
+### 2.3 Application & API Gateway Layer (`src/app/api`)
+* **REST Handlers:** Modular route handlers for requests, AI diagnostics, administrative oversight, and profile preferences.
+* **RBAC Enforcement (`src/lib/rbac.js`):** Enforces role checks before executing business logic:
+  * `requireDriver()`
+  * `requireMechanic()`
+  * `requireAdmin()`
+* **Server-Side Client Generator (`src/lib/supabase/server.js`):**
+  * `createClient()` — Scoped to authenticated user JWT (enforcing RLS).
+  * `createServiceClient()` — Uses `SUPABASE_SERVICE_ROLE_KEY` to execute system-level operations (e.g. cross-user notifications, admin reviews, and email trigger audits).
 
-## API Endpoints
+---
 
-See `api-reference.md` for details.
+### 2.4 Database & Persistence Layer (Supabase)
+* **Storage Engine:** PostgreSQL 15+ with PostGIS spatial extension.
+* **Spatial Matching:** Stored procedure `get_nearby_verified_mechanics(lat, lng, radius_km)` executes radial bounding box queries (`ST_DWithin`, `ST_Distance`) accelerated by GiST spatial indexes.
+* **Database Triggers:**
+  * `handles_new_auth_user()` automatically provisions role-specific sub-profiles (`driver_profiles` or `mechanic_profiles`) upon user registration.
+  * `blocked_email_signup_trigger` checks registration attempts against `blocked_emails` and aborts signups from blacklisted accounts.
+* **Realtime Broadcast:** Supabase Realtime listens to PostgreSQL WAL (Write-Ahead Logging) changes on `rescue_requests`, `messages`, and `notifications`, pushing events over WebSockets to active browser clients.
 
-Main endpoints:
+---
 
-- `POST /api/requests` - create rescue request
-- `GET /api/requests/:id` - request details
-- `PATCH /api/requests/status` - lifecycle transitions
-- `GET/POST /api/requests/:id/messages` - request chat
-- `PATCH /api/requests/rate` - driver rating
-- `POST /api/ai/diagnose` - AI diagnostic reply
-- `GET/PATCH /api/admin/*` - admin operations
-- `GET/PATCH /api/profile/*` - profile preferences and change requests
-- `POST /api/notifications/email` - email notification relay
-- `POST /api/webhooks` - third-party webhooks
+### 2.5 External Services & Resilience Strategy
 
-## User Interfaces
+| Service | Protocol | Primary Purpose | Fallback / Redundancy Strategy |
+| :--- | :--- | :--- | :--- |
+| **Google Gemini** | HTTPS REST | Primary AI breakdown triage | Fails over to Groq Llama-3.3, then OpenRouter, then offline rule engine |
+| **Groq LPU** | HTTPS REST | First AI fallback provider | Ultra-fast inference failover if Gemini is rate-limited (HTTP 429) |
+| **OpenRouter** | HTTPS REST | Second AI fallback provider | Multi-model upstream gateway |
+| **Resend** | HTTPS REST | Transactional email dispatches | Non-blocking background promises; failure logged without breaking HTTP response |
+| **OpenStreetMap / Leaflet** | HTTP Tile Cache | Map tiles & Geolocation | No vendor API key required; browser geolocation with manual geocoding fallback |
 
-### Driver Dashboard
-- Create rescue requests
-- Track active and past requests
-- Chat with assigned mechanic
-- Rate completed jobs
+---
 
-### Mechanic Dashboard & Navigation
-- Accept nearby requests through lifecycle API
-- Update status through the same lifecycle API
-- Cancel assigned requests through the lifecycle API
-- Manage availability and profile details
-- Dedicated full-bleed Navigation screen (`/dashboard/mechanic/navigation`) using shared `FullBleedMapShell` with floating status pills and coordinate readouts
-- Mobile-optimized Service Console with 2-column compact stat cards and prioritized incident feed
+## 3. End-to-End Data Flows
 
-### Admin Dashboard
-- View platform statistics
-- Monitor requests, users, and mechanic verification
-- Review profile change requests
-- Escalate trusted users to admin
+### 3.1 Driver Distress Dispatch & Radial Matching
 
-## Key Features Implemented
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Driver as Driver (Browser)
+    participant API as POST /api/requests
+    participant DB as PostgreSQL (Supabase)
+    participant PostGIS as get_nearby_verified_mechanics
+    actor Mechanic as Mechanic (Browser)
+    participant Resend as Resend Email SDK
 
-1. Role-based authentication with RBAC component protection
-2. Request creation and geospatial mechanic matching
-3. Server-side lifecycle transition validation
-4. Mechanic acceptance without bidding
-5. Mechanic approval lifecycle with `blocked_emails` blocking
-6. AI diagnostic chat (Google Gemini)
-7. Real-time mechanic location tracking
-8. Admin user and profile management
-9. In-app notifications
-10. Request chat
-11. Driver ratings
+    Driver->>API: Submit coordinates, problem & vehicle info
+    API->>DB: INSERT into rescue_requests (status = 'pending')
+    DB-->>API: Return created request row
+    API-->>Driver: HTTP 201 Created (Instant UI Feedback)
+    
+    rect rgb(240, 245, 255)
+        Note over API,DB: Decoupled Asynchronous Matching
+        API->>PostGIS: Execute spatial radial query (radius: 10km)
+        PostGIS-->>API: List of online, verified mechanics
+        API->>DB: INSERT notifications (type = 'new_request')
+        API->>Resend: Dispatch best-effort notification emails
+        DB->>Mechanic: Supabase Realtime pushes new_request event
+    end
+```
 
-## Features Deferred
+### 3.2 Mechanic Acceptance & Lifecycle Transition
 
-- Payments and earnings settlement
-- Push notifications
-- Native mobile apps
-- Advanced route optimization
-- Insurance integrations
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Mechanic as Mechanic
+    participant API as PATCH /api/requests/status
+    participant DB as PostgreSQL
+    actor Driver as Driver
+
+    Mechanic->>API: Claim request (newStatus = 'accepted')
+    API->>DB: Verify mechanic is approved & request is 'pending'
+    API->>DB: UPDATE rescue_requests SET status = 'accepted', mechanic_id = user_id
+    API->>DB: UPDATE mechanic_profiles SET is_available = true
+    API->>DB: INSERT notification for driver
+    DB-->>API: Verified updated row
+    API-->>Mechanic: HTTP 200 OK
+    DB->>Driver: Realtime event pushes status: 'accepted'
+    Driver->>Driver: UI transitions to Live GPS Tracking Screen
+```
+
+---
+
+## 4. Production Deployment Topology
+
+```text
+[Vercel Serverless Edge Platform]
+       │
+       ├── Global CDN (Static assets, Turbopack chunks)
+       ├── Edge Middleware (proxy.js authentication checks)
+       └── Serverless Node.js Route Handlers (API endpoints)
+               │
+               ▼
+[Supabase Managed Cloud Infrastructure]
+       │
+       ├── Auth Server (JWT token issuance & session management)
+       ├── PostgreSQL Database (PostGIS, RLS, WAL replication)
+       ├── Realtime Server (WebSocket message distribution)
+       └── Object Storage (mechanic-documents, vehicle-images)
+```

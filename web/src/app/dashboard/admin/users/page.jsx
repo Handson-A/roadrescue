@@ -166,6 +166,24 @@ export default function AdminUsersPage() {
     setCurrentPage(1)
   }, [searchQuery, statusFilter, activeTab, sortOption])
 
+  // Dynamic contextual summary wording
+  const getResultSummary = () => {
+    const count = filteredUsers.length
+    let roleText = 'user account'
+    if (activeTab === 'driver') roleText = 'driver account'
+    else if (activeTab === 'mechanic') roleText = 'mechanic account'
+    else if (activeTab === 'admin') roleText = 'admin account'
+
+    if (count !== 1) {
+      roleText += 's'
+    }
+
+    if (searchQuery.trim()) {
+      return `${count} ${roleText} matching “${searchQuery.trim()}”`
+    }
+    return `${count} ${roleText}`
+  }
+
   // Helper for rendering custom badges
   const renderRoleBadge = (role) => {
     switch (role) {
@@ -208,30 +226,52 @@ export default function AdminUsersPage() {
       <div className="mx-auto flex flex-col w-full max-w-7xl pb-12">
         
         {/* ================= SECTION 1: SEGMENTED ROLE TABS & COUNT METRICS ================= */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
+        <div 
+          className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6"
+          role="tablist"
+          aria-label="Filter user accounts by role"
+        >
           {[
-            { id: 'all', label: 'All Users', count: counts.all, bg: 'hover:border-slate-300' },
-            { id: 'driver', label: 'Drivers', count: counts.driver, bg: 'hover:border-amber-300' },
-            { id: 'mechanic', label: 'Mechanics', count: counts.mechanic, bg: 'hover:border-blue-300' },
-            { id: 'admin', label: 'Admins', count: counts.admin, bg: 'hover:border-purple-300' },
+            { id: 'all', label: 'All Users', count: counts.all },
+            { id: 'driver', label: 'Drivers', count: counts.driver },
+            { id: 'mechanic', label: 'Mechanics', count: counts.mechanic },
+            { id: 'admin', label: 'Admins', count: counts.admin },
           ].map((tab) => {
             const isActive = activeTab === tab.id
             return (
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => {
                   setActiveTab(tab.id)
                   setInspecting(false)
                 }}
-                className={`flex flex-col p-4 rounded-2xl border text-left transition-all shadow-sm ${
+                className={`group relative flex flex-col justify-between p-4 rounded-2xl border text-left transition-all duration-200 shadow-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-2 ${
                   isActive 
-                    ? 'ring-2 ring-slate-900 border-slate-900 bg-slate-50/50' 
-                    : `border-slate-200 bg-white ${tab.bg}`
+                    ? 'border-amber-400 bg-amber-50/40 shadow-sm ring-1 ring-amber-400/40' 
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 hover:shadow'
                 }`}
               >
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{tab.label}</span>
-                <span className="text-2xl font-black text-slate-900 mt-1 font-mono">{tab.count}</span>
+                <div className="flex items-center justify-between w-full">
+                  <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${
+                    isActive ? 'text-amber-900' : 'text-slate-400 group-hover:text-slate-600'
+                  }`}>
+                    {tab.label}
+                  </span>
+                  {isActive ? (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-100/90 px-1.5 py-0.5 rounded-md tracking-wider uppercase">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Active
+                    </span>
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-transparent group-hover:bg-slate-200 transition-colors" />
+                  )}
+                </div>
+                <span className="text-2xl font-black text-slate-900 mt-2 font-mono">
+                  {tab.count}
+                </span>
               </button>
             )
           })}
@@ -248,7 +288,7 @@ export default function AdminUsersPage() {
               placeholder="Search by Name, Email, or Phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
+              className="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 outline-none transition-all duration-200 placeholder:text-slate-400"
             />
           </div>
 
@@ -257,7 +297,7 @@ export default function AdminUsersPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
+                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 outline-none transition-all duration-200 cursor-pointer"
               >
                 <option value="all">All Statuses</option>
                 <option value="active">Active Accounts</option>
@@ -270,7 +310,7 @@ export default function AdminUsersPage() {
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all"
+                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 outline-none transition-all duration-200 cursor-pointer"
               >
                 <option value="name_asc">Alphabetical (A-Z)</option>
                 <option value="newest">Newest Registered</option>
@@ -299,9 +339,63 @@ export default function AdminUsersPage() {
               </div>
             ) : (
               <>
-                <div className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-1 flex items-center justify-between">
-                  <span>Displaying {filteredUsers.length} matched profiles</span>
-                  {totalPages > 1 && <span>Page {currentPage} of {totalPages}</span>}
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-2 px-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">
+                      {getResultSummary()}
+                    </span>
+
+                    {/* Active Filter Indicators */}
+                    {(activeTab !== 'all' || statusFilter !== 'all' || searchQuery.trim()) && (
+                      <div className="flex flex-wrap items-center gap-1.5 ml-1">
+                        {activeTab !== 'all' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 border border-amber-200 text-amber-900 shadow-xs">
+                            <span className="capitalize">{activeTab === 'driver' ? 'Drivers' : activeTab === 'mechanic' ? 'Mechanics' : 'Admins'}</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab('all')}
+                              className="text-amber-700 hover:text-amber-950 p-0.5 rounded hover:bg-amber-100/70 transition-colors"
+                              aria-label="Remove role filter"
+                            >
+                              <X size={12} strokeWidth={2.5} />
+                            </button>
+                          </span>
+                        )}
+                        {statusFilter !== 'all' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 border border-slate-200 text-slate-700 shadow-xs">
+                            <span className="capitalize">{statusFilter === 'active' ? 'Active' : statusFilter === 'pending' ? 'Pending' : 'Suspended'}</span>
+                            <button
+                              type="button"
+                              onClick={() => setStatusFilter('all')}
+                              className="text-slate-500 hover:text-slate-800 p-0.5 rounded hover:bg-slate-200 transition-colors"
+                              aria-label="Remove status filter"
+                            >
+                              <X size={12} strokeWidth={2.5} />
+                            </button>
+                          </span>
+                        )}
+                        {searchQuery.trim() && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 border border-slate-200 text-slate-700 shadow-xs">
+                            <span className="max-w-[120px] truncate">“{searchQuery.trim()}”</span>
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery('')}
+                              className="text-slate-500 hover:text-slate-800 p-0.5 rounded hover:bg-slate-200 transition-colors"
+                              aria-label="Clear search filter"
+                            >
+                              <X size={12} strokeWidth={2.5} />
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <span className="text-[11px] font-bold text-slate-400 font-mono">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-3.5">
                   {paginatedUsers.map((user) => (

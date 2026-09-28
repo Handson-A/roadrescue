@@ -1,7 +1,18 @@
-/**
- * Email notification helper for Resend
- * Use this to send notifications to drivers, mechanics, admins
- */
+import { Resend } from 'resend'
+
+let resendInstance = null
+function getResend() {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) return null
+    resendInstance = new Resend(apiKey)
+  }
+  return resendInstance
+}
+
+const primaryFromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@roadrescue.com'
+const fallbackFromEmail = 'RoadRescue <onboarding@resend.dev>'
+
 export async function sendNotificationEmail({
   to,
   subject,
@@ -17,30 +28,57 @@ export async function sendNotificationEmail({
   const htmlContent = buildEmailTemplate(type, data)
 
   try {
-    // Fallback determination for backend executions lacking window domains
-    const origin = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
-
-    const response = await fetch(`${origin}/api/notifications/email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const resend = getResend()
+    if (resend) {
+      let result = await resend.emails.send({
+        from: primaryFromEmail,
         to,
         subject,
-        htmlContent,
-      }),
-    })
+        html: htmlContent,
+      })
 
-    if (!response.ok) {
-      const error = await response.json()
-      console.error('Failed to send notification email:', error)
-      return null
+      if (result.error?.statusCode === 403 || result.error?.name === 'validation_error') {
+        console.warn('Primary Resend sender rejected, retrying with fallback onboarding sender')
+        result = await resend.emails.send({
+          from: fallbackFromEmail,
+          to,
+          subject,
+          html: htmlContent,
+        })
+      }
+
+      if (result.error) {
+        console.error('Resend error:', result.error)
+        return null
+      }
+
+      return { success: true, messageId: result.data?.id }
     }
 
-    return await response.json()
+    // Client-side fallback if called in browser
+    if (typeof window !== 'undefined') {
+      const response = await fetch('/api/notifications/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to,
+          subject,
+          htmlContent,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('Failed to send notification email:', error)
+        return null
+      }
+
+      return await response.json()
+    }
+
+    return null
   } catch (error) {
     console.error('Error sending notification email:', error)
     return null

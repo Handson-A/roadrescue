@@ -24,12 +24,20 @@ export async function protectApiRoute(allowedRoles = '') {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, role')
+      .select('id, role, is_suspended, suspended_at, suspension_reason')
       .eq('id', user.id)
       .single()
 
     if (profileError || !profile) {
       return { error: 'Profile not found', status: 404 }
+    }
+
+    // Check account suspension status
+    if (profile.is_suspended) {
+      return {
+        error: `Your account has been suspended: ${profile.suspension_reason || 'Policy violations'}. Contact dispatch support for assistance.`,
+        status: 403,
+      }
     }
 
     // Check role authorization

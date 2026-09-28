@@ -1,243 +1,250 @@
-# RoadRescue Database Schema
+# RoadRescue Database Schema Reference
 
-## Tables
+> Source of Truth: PostgreSQL 15+ with PostGIS Extension applied via migrations in `supabase/migrations/`.
 
-### profiles
-User accounts shared by drivers, mechanics, and admins.
+---
 
-```sql
-profiles {
-  id: uuid primary key
-  email: text unique
-  full_name: text
-  phone: text
-  avatar_url: text
-  role: text -- driver, mechanic, admin
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-```
-
-### mechanic_profiles
-Mechanic-specific verification, availability, ratings, and location.
-Updated: The account page now includes all these fields editable via the profile interface.
-- `hourly_rate`: Labor rate in local currency
-- `service_radius`: Maximum distance for accepting requests (km)
-- `license_number` & `license_expiry`: Professional credentials
-- `location_label`: Human-readable service area name
+## 1. Global Custom Types & Enums
 
 ```sql
-mechanic_profiles {
-  id: uuid primary key
-  user_id: uuid references profiles(id)
-  specializations: text[]
-  years_experience: integer
-  business_name: text
-  verification_status: text -- pending, approved, rejected
-  verified_at: timestamptz
-  verified_by: uuid references profiles(id)
-  credential_document_url: text
-  rating_avg: numeric
-  total_jobs: integer
-  is_available: boolean
-  service_mode: text -- mobile, fixed_location, hybrid
-  hourly_rate: numeric
-  service_radius: integer
-  license_number: text
-  license_expiry: date
-  current_location: geography(Point, 4326)
-  location_label: text
-  base_location: geography(Point, 4326)
-  base_location_label: text
-  show_base_location_offline: boolean
-  location_updated_at: timestamptz
-  created_at: timestamptz
-  updated_at: timestamptz
-}
+CREATE TYPE public.user_role AS ENUM ('driver', 'mechanic', 'admin');
+
+CREATE TYPE public.request_status AS ENUM (
+  'pending',
+  'offered',
+  'accepted',
+  'en_route',
+  'arrived',
+  'in_progress',
+  'completed',
+  'cancelled'
+);
+
+CREATE TYPE public.verification_status AS ENUM (
+  'pending',
+  'approved',
+  'rejected',
+  'more_info'
+);
+
+CREATE TYPE public.notification_type AS ENUM (
+  'system',
+  'request',
+  'chat',
+  'verification'
+);
 ```
 
-### driver_profiles
-Driver-specific vehicle and preference data.
+---
+
+## 2. Table Specifications
+
+### 2.1 `profiles`
+Central user table linked 1:1 with Supabase Auth (`auth.users`).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | `PRIMARY KEY, REFERENCES auth.users(id) ON DELETE CASCADE` | User unique ID |
+| `role` | `public.user_role` | `NOT NULL` | System role (`driver`, `mechanic`, `admin`) |
+| `full_name` | `text` | `DEFAULT ''` | Display name |
+| `email` | `text` | `DEFAULT ''` | Registered email |
+| `phone` | `text` | `DEFAULT ''` | Contact phone number |
+| `avatar_url` | `text` | `NULLABLE` | Profile image URL |
+| `is_active` | `boolean` | `DEFAULT true` | Account active state |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Account creation timestamp |
+| `updated_at` | `timestamptz` | `DEFAULT now()` | Last update timestamp |
+
+---
+
+### 2.2 `mechanic_profiles`
+Mechanic-specific credentials, verification status, and geospatial coordinates.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `user_id` | `uuid` | `PRIMARY KEY, REFERENCES profiles(id) ON DELETE CASCADE` | Mechanic ID |
+| `business_name` | `text` | `DEFAULT ''` | Registered garage/business name |
+| `years_experience` | `integer` | `DEFAULT 0` | Professional experience |
+| `specializations` | `jsonb` | `DEFAULT '[]'::jsonb` | Specialization tags |
+| `verification_status`| `text` | `DEFAULT 'pending'` | Status (`pending`, `approved`, `rejected`) |
+| `is_available` | `boolean` | `DEFAULT false` | Duty toggle (online/offline) |
+| `rating_avg` | `numeric(3,2)`| `DEFAULT 5.0` | Recalculated average rating |
+| `rating_count` | `integer` | `DEFAULT 0` | Total completed ratings count |
+| `service_mode` | `text` | `DEFAULT 'mobile'` | Service type (`mobile`, `fixed_location`, `hybrid`) |
+| `location_label` | `text` | `NULLABLE` | Human-readable service area (e.g. "Airport Area") |
+| `current_location`| `geometry(Point, 4326)` | `NULLABLE` | Live GPS location (indexed via GiST) |
+| `base_location` | `geometry(Point, 4326)` | `NULLABLE` | Permanent workshop location |
+| `show_base_location_offline` | `boolean` | `DEFAULT false` | Opt-in to appear in directory while offline |
+| `location_updated_at` | `timestamptz` | `NULLABLE` | Timestamp of last GPS ping |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Creation timestamp |
+
+---
+
+### 2.3 `driver_profiles`
+Driver vehicle specifications and emergency contacts.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `user_id` | `uuid` | `PRIMARY KEY, REFERENCES profiles(id) ON DELETE CASCADE` | Driver ID |
+| `vehicle_make` | `text` | `NULLABLE` | Vehicle make (e.g. Toyota) |
+| `vehicle_model` | `text` | `NULLABLE` | Vehicle model (e.g. Corolla) |
+| `vehicle_year` | `integer` | `NULLABLE` | Vehicle year |
+| `vehicle_color` | `text` | `NULLABLE` | Vehicle color |
+| `vehicle_plate` | `text` | `NULLABLE` | Vehicle registration plate |
+| `emergency_contact_name` | `text` | `NULLABLE` | Emergency contact full name |
+| `emergency_contact_phone` | `text` | `NULLABLE` | Emergency contact phone |
+| `home_area` | `text` | `NULLABLE` | Residential area |
+| `preferences` | `jsonb` | `DEFAULT '{}'::jsonb` | Vehicle preferences |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Creation timestamp |
+
+---
+
+### 2.4 `rescue_requests`
+Core operational entity managing the vehicle breakdown lifecycle.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Rescue request ID |
+| `driver_id` | `uuid` | `REFERENCES profiles(id) ON DELETE CASCADE` | Requesting driver |
+| `mechanic_id` | `uuid` | `NULLABLE, REFERENCES profiles(id) ON DELETE SET NULL` | Assigned mechanic |
+| `status` | `public.request_status` | `DEFAULT 'pending'` | Current lifecycle status |
+| `service_type` | `text` | `DEFAULT 'other'` | Breakdown service category |
+| `problem_description` | `text` | `DEFAULT ''` | Driver's problem description |
+| `incident_address` | `text` | `NULLABLE` | Reverse-geocoded or entered address |
+| `incident_location` | `geometry(Point, 4326)` | `NULLABLE` | PostGIS spatial point `POINT(lng lat)` |
+| `vehicle_make` | `text` | `NULLABLE` | Vehicle make |
+| `vehicle_model` | `text` | `NULLABLE` | Vehicle model |
+| `vehicle_year` | `integer` | `NULLABLE` | Vehicle year |
+| `vehicle_color` | `text` | `NULLABLE` | Vehicle color |
+| `vehicle_plate` | `text` | `NULLABLE` | Vehicle license plate |
+| `vehicle_image_url` | `text` | `NULLABLE` | Attached breakdown photo URL |
+| `ai_diagnostic_result` | `jsonb` | `NULLABLE` | Structured AI diagnostic output |
+| `accepted_at` | `timestamptz` | `NULLABLE` | Timestamp when claimed |
+| `en_route_at` | `timestamptz` | `NULLABLE` | Timestamp when mechanic started driving |
+| `arrived_at` | `timestamptz` | `NULLABLE` | Timestamp when mechanic arrived on-site |
+| `started_at` | `timestamptz` | `NULLABLE` | Timestamp when repair started |
+| `completed_at` | `timestamptz` | `NULLABLE` | Timestamp when job completed |
+| `cancelled_at` | `timestamptz` | `NULLABLE` | Timestamp when cancelled |
+| `cancelled_by` | `uuid` | `NULLABLE, REFERENCES profiles(id)` | User who cancelled |
+| `cancellation_reason` | `text` | `NULLABLE` | Reason for cancellation |
+| `completion_notes` | `text` | `NULLABLE` | Mechanic's final job notes |
+| `performed_services` | `text[]` | `NULLABLE` | List of completed services |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Creation timestamp |
+
+---
+
+### 2.5 `messages`
+In-app communication scoped to active rescue requests.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Message ID |
+| `request_id` | `uuid` | `REFERENCES rescue_requests(id) ON DELETE CASCADE` | Associated request |
+| `sender_id` | `uuid` | `REFERENCES profiles(id) ON DELETE CASCADE` | Message author |
+| `message` | `text` | `NOT NULL` | Text body |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Creation timestamp |
+
+---
+
+### 2.6 `notifications`
+In-app user notifications.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Notification ID |
+| `profile_id` | `uuid` | `REFERENCES profiles(id) ON DELETE CASCADE` | Recipient user |
+| `type` | `text` | `DEFAULT 'system'` | Notification category |
+| `title` | `text` | `DEFAULT ''` | Short title |
+| `body` | `text` | `DEFAULT ''` | Notification message |
+| `request_id` | `uuid` | `NULLABLE, REFERENCES rescue_requests(id)` | Linked rescue ticket |
+| `is_read` | `boolean` | `DEFAULT false` | Read/unread flag |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Creation timestamp |
+
+---
+
+### 2.7 `request_reviews`
+Driver reviews and ratings submitted upon job completion.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Review ID |
+| `request_id` | `uuid` | `UNIQUE, REFERENCES rescue_requests(id) ON DELETE CASCADE` | Target rescue job |
+| `driver_id` | `uuid` | `REFERENCES profiles(id)` | Reviewing driver |
+| `mechanic_id` | `uuid` | `REFERENCES profiles(id)` | Rated mechanic |
+| `rating` | `integer` | `CHECK (rating >= 1 AND rating <= 5)` | 1 to 5 star rating |
+| `review` | `text` | `NULLABLE` | Written feedback |
+| `created_at` | `timestamptz` | `DEFAULT now()` | Creation timestamp |
+
+---
+
+### 2.8 `blocked_emails`
+Permanent registration blocklist for rejected or suspended mechanics.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `email` | `text` | `PRIMARY KEY` | Blacklisted email address |
+| `reason` | `text` | `NULLABLE` | Administrative reason |
+| `blocked_at` | `timestamptz` | `DEFAULT now()` | Block timestamp |
+
+---
+
+### 2.9 `fuel_ev_stations`
+Public directory of refueling and EV charging stations across Ghana.
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `uuid` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Station ID |
+| `name` | `text` | `NOT NULL` | Station brand and name |
+| `station_type` | `text` | `CHECK (station_type IN ('fuel', 'ev'))` | Station type |
+| `location` | `geometry(Point, 4326)` | `NOT NULL` | PostGIS spatial point |
+| `address` | `text` | `NULLABLE` | Address string |
+
+---
+
+## 3. Spatial Matching Stored Procedure
 
 ```sql
-driver_profiles {
-  id: uuid primary key
-  user_id: uuid references profiles(id)
-  vehicle_make: text
-  vehicle_model: text
-  vehicle_year: integer
-  vehicle_color: text
-  vehicle_plate: text
-  created_at: timestamptz
-  updated_at: timestamptz
-}
+CREATE OR REPLACE FUNCTION get_nearby_verified_mechanics(
+  lat double precision,
+  lng double precision,
+  radius_km double precision DEFAULT 10
+)
+RETURNS TABLE (
+  user_id uuid,
+  full_name text,
+  business_name text,
+  rating_avg numeric,
+  distance_km double precision,
+  service_mode text,
+  location_label text,
+  email text
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    mp.user_id,
+    p.full_name,
+    mp.business_name,
+    mp.rating_avg,
+    ROUND((ST_Distance(
+      COALESCE(mp.current_location, mp.base_location)::geography,
+      ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography
+    ) / 1000)::numeric, 2)::double precision AS distance_km,
+    mp.service_mode,
+    mp.location_label,
+    p.email
+  FROM mechanic_profiles mp
+  JOIN profiles p ON p.id = mp.user_id
+  WHERE mp.verification_status = 'approved'
+    AND (
+      (mp.is_available = true AND mp.current_location IS NOT NULL)
+      OR (mp.show_base_location_offline = true AND mp.base_location IS NOT NULL)
+    )
+    AND ST_DWithin(
+      COALESCE(mp.current_location, mp.base_location)::geography,
+      ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography,
+      radius_km * 1000
+    )
+  ORDER BY distance_km ASC;
+$$;
 ```
-
-### rescue_requests
-Core rescue lifecycle records.
-
-```sql
-rescue_requests {
-  id: uuid primary key
-  driver_id: uuid references profiles(id)
-  mechanic_id: uuid references profiles(id)
-  status: text -- pending, accepted, en_route, arrived, in_progress, completed, cancelled
-  service_type: text
-  problem_description: text
-  vehicle_details: text
-  vehicle_make: text
-  vehicle_model: text
-  vehicle_year: integer
-  vehicle_color: text
-  vehicle_plate: text
-  vehicle_image_url: text
-  ai_diagnostic_result: jsonb
-  incident_location: geography(Point, 4326)
-  incident_address: text
-  accepted_at: timestamptz
-  en_route_at: timestamptz
-  arrived_at: timestamptz
-  started_at: timestamptz
-  completed_at: timestamptz
-  cancelled_at: timestamptz
-  cancelled_by: uuid references profiles(id)
-  cancellation_reason: text
-  completion_notes: text
-  performed_services: text[]
-  driver_rating: integer
-  driver_review: text
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-```
-
-### notifications
-In-app notifications for drivers, mechanics, and admins.
-
-```sql
-notifications {
-  id: uuid primary key
-  user_id: uuid references profiles(id)
-  type: text
-  message: text
-  request_id: uuid references rescue_requests(id)
-  is_read: boolean
-  created_at: timestamptz
-}
-```
-
-### messages
-Request chat between driver and assigned mechanic.
-
-```sql
-messages {
-  id: uuid primary key
-  request_id: uuid references rescue_requests(id)
-  sender_id: uuid references profiles(id)
-  sender_role: text -- driver, mechanic
-  message: text
-  created_at: timestamptz
-}
-```
-
-### profile_preferences
-User preferences.
-
-```sql
-profile_preferences {
-  id: uuid primary key
-  user_id: uuid references profiles(id)
-  preferences: jsonb
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-```
-
-### profile_change_requests
-Admin-reviewed profile updates.
-
-```sql
-profile_change_requests {
-  id: uuid primary key
-  user_id: uuid references profiles(id)
-  requested_changes: jsonb
-  status: text -- pending, approved, rejected
-  reviewed_by: uuid references profiles(id)
-  reviewed_at: timestamptz
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-```
-
-### mechanic_verifications
-Audit log of mechanic verification reviews submitted by platform administrators.
-- `status`: Verification status enum (`pending`, `approved`, `rejected`).
-- **Verification Status Decision:** The enum stays strictly at `pending`, `approved`, `rejected`. When an administrator requests more information from a mechanic, the status remains `pending` (avoiding schema/enum churn) while the request explanation is stored in `rejection_reason`.
-- `rejection_reason`: Text detailing the reason for application rejection or the specific documentation/clarification requested when additional information is needed.
-
-```sql
-mechanic_verifications {
-  id: uuid primary key
-  mechanic_id: uuid references profiles(id)
-  status: text -- pending, approved, rejected
-  reviewed_by: uuid references profiles(id)
-  reviewed_at: timestamptz
-  rejection_reason: text
-  created_at: timestamptz
-  updated_at: timestamptz
-}
-```
-
-### blocked_emails
-Email addresses permanently blocked from registration (e.g., rejected mechanics).
-
-```sql
-blocked_emails {
-  email: text primary key
-  reason: text
-  blocked_at: timestamptz
-  blocked_by: uuid references profiles(id)
-}
-```
-
-### request_reviews
-Driver ratings for completed mechanics.
-
-```sql
-request_reviews {
-  id: uuid primary key
-  request_id: uuid references rescue_requests(id)
-  driver_id: uuid references profiles(id)
-  mechanic_id: uuid references profiles(id)
-  rating: integer (1-5 scale)
-  review: text
-  created_at: timestamptz
-}
-```
-
-## Entity Relationship Diagram
-
-```
-profiles
-  ├─ mechanic_profiles.user_id
-  ├─ driver_profiles.user_id
-  ├─ rescue_requests.driver_id
-  ├─ rescue_requests.mechanic_id
-  ├─ mechanic_verifications.mechanic_id
-  ├─ mechanic_verifications.reviewed_by
-  ├─ notifications.user_id
-  ├─ messages.sender_id
-  ├─ profile_preferences.user_id
-  ├─ profile_change_requests.user_id
-  ├─ request_reviews.mechanic_id
-  └─ blocked_emails.blocked_by
-
-rescue_requests
-  ├─ notifications.request_id
-  ├─ messages.request_id
-  └─ request_reviews.request_id
-```
-
-## Geospatial Queries
-
-Mechanic matching uses PostGIS via `get_nearby_verified_mechanics(lat double precision, lng double precision, radius_km double precision DEFAULT 10)`. The query evaluates spatial distances over dynamic `current_location` and falls back to `base_location` based on `service_mode` and `show_base_location_offline` consent, supported by GiST indexes (`idx_mechanic_geo` and `idx_mechanic_profiles_base_geo_gist`).

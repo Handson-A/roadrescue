@@ -138,13 +138,13 @@ export default function MechanicNavigationPage() {
         </div>
         <div className="min-w-0">
           <span className="text-[9px] font-black uppercase tracking-widest text-[#7C6B44] block">
-            {activeJob ? 'Active Navigation Telemetry' : 'Telemetry Status'}
+            {activeJob ? 'Active Navigation' : 'Status'}
           </span>
           <p className="text-xs font-black text-[#1F1B10] truncate">
             {activeJob 
-              ? 'Live Satellite Navigation Array' 
+              ? 'Live Satellite Navigation' 
               : isAvailable 
-                ? 'Standby Telemetry Scanning (Online)' 
+                ? 'Standby Scanning (Online)' 
                 : 'Core Grid Standby (Offline)'}
           </p>
         </div>
@@ -338,4 +338,4 @@ export default function MechanicNavigationPage() {
       )}
     </FullBleedMapShell>
   )
-}
+}
