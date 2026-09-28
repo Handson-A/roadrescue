@@ -13,9 +13,9 @@ const variantMap = {
 }
 
 const sizeMap = {
-  sm: 'min-h-[36px] h-9 px-3 text-xs rounded-xl',
-  md: 'min-h-[44px] h-11 px-4 text-sm rounded-xl',
-  lg: 'min-h-[48px] h-12 px-6 text-sm rounded-2xl',
+  sm: 'min-h-[36px] h-9 px-3.5 text-xs rounded-xl font-bold',
+  md: 'min-h-[42px] h-[42px] px-4 text-xs font-bold rounded-xl',
+  lg: 'min-h-[46px] h-[46px] px-6 text-sm font-bold rounded-xl',
 }
 
 export default function Button({

@@ -6,7 +6,7 @@
 
 ---
 
-## ⚠️ Audit & Accuracy Flags (Prior Inaccuracies Resolved)
+## Audit & Accuracy Flags (Prior Inaccuracies Resolved)
 
 The following sections in the legacy technical documentation have been audited and updated to reflect verified, production-working code:
 

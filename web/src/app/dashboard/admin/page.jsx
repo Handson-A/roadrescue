@@ -171,19 +171,19 @@ export default function AdminDashboardPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
         {/* ================= HIGH-LEVEL METRICS OVERVIEW ================= */}
-        <section className="grid gap-4 grid-cols-1 md:grid-cols-4">
+        <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
           {dashboardStats.map((stat) => {
             const Icon = stat.icon
 
             return (
-              <Card key={stat.label} className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+              <Card key={stat.label} className="rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{stat.label}</p>
-                    <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">{stat.value}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50]">{stat.label}</p>
+                    <p className="mt-1.5 text-3xl font-black text-[#1E1B15] tracking-tight">{stat.value}</p>
                     <p className="mt-1 text-xs font-medium text-slate-500 truncate">{stat.note}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-700 shadow-sm shrink-0">
+                  <div className="rounded-xl border border-[#E8DFC6] bg-[#FAF6EC] p-2 text-slate-700 shadow-2xs shrink-0">
                     <Icon size={16} strokeWidth={2.2} />
                   </div>
                 </div>
@@ -194,23 +194,23 @@ export default function AdminDashboardPage() {
 
         {/* ================= LIVE ROUTING MONITOR & MAP MATRIX ================= */}
         <section className="grid gap-6 lg:grid-cols-[1.7fr_0.9fr]">
-          <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm p-0">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3.5">
+          <Card className="overflow-hidden rounded-2xl border-[#DCCDA9]/70 bg-white shadow-sm p-0">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-[#FAF6EC]/80 px-4 py-3.5">
               <div className="flex items-center gap-2">
                 <div className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 </div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Global Dispatch Tracker Feed</h3>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Global Dispatch Tracker Feed</h3>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-                <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600 shadow-xs">Operations System Online</span>
-                <span className="rounded-md bg-slate-900 px-2 py-0.5 text-primary">24/7 Live Map</span>
+                <span className="rounded-lg border border-[#DCCDA9]/60 bg-white px-2.5 py-1 text-slate-700 shadow-2xs">Operations Online</span>
+                <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-primary">Live Radar</span>
               </div>
             </div>
 
-         {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
-            <div className="p-4 bg-slate-50/40">
+            {/* LIVE OPENSTREETMAP TRACKING LAYER CONTAINER */}
+            <div className="p-3 bg-slate-50/50">
               <LiveHotspotsMap 
                 mechanics={stats?.activeMechanicLocations || []} 
                 activeIncidents={stats?.activeIncidents || []} 
@@ -218,14 +218,14 @@ export default function AdminDashboardPage() {
             </div>
             
             {/* Dynamic Incident Logging Feeds */}
-            <div className="divide-y divide-slate-100 border-b border-slate-100 max-h-48 overflow-y-auto">
+            <div className="divide-y divide-slate-100 border-t border-slate-100 max-h-48 overflow-y-auto">
               {recentRequests.length === 0 ? (
                 <div className="px-4 py-6 text-center text-xs font-medium text-slate-400">No active roadside incidents broadcasted across system sectors.</div>
               ) : (
                 recentRequests.map((request) => (
-                  <div key={request.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/40 transition-colors">
+                  <div key={request.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FAF6EC]/40 transition-colors">
                     <div className="min-w-0 flex-1 pr-4">
-                      <p className="text-xs font-bold text-slate-900 truncate capitalize">{request.problem_description || `${request.service_type.replace('_', ' ')} breakdown`}</p>
+                      <p className="text-xs font-bold text-slate-900 truncate capitalize">{request.problem_description || `${request.service_type?.replace('_', ' ')} breakdown`}</p>
                       <p className="text-[11px] font-medium text-slate-400 truncate mt-0.5">
                         {request.driver?.full_name || 'Anonymous Client'} • {request.incident_address || 'GPS Coordinates Flagged'}
                       </p>
@@ -236,52 +236,51 @@ export default function AdminDashboardPage() {
               )}
             </div>
 
-           
           </Card>
 
           {/* RIGHT COLUMNS: VERIFICATION TRAFFIC & ARCHITECTURAL BALANCES */}
           <div className="space-y-4">
-            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Verification Vectors</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Identity Hub Backlog</h3>
-              <p className="mt-1 text-4xl font-black text-slate-900 tracking-tight">{pendingMechanics.length}</p>
-              <p className="text-xs font-medium text-slate-400 mt-0.5">Mechanics awaiting clearance</p>
+            <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50] block">Verification Vectors</span>
+              <h3 className="text-sm font-extrabold text-slate-900 mt-2">Identity Hub Backlog</h3>
+              <p className="mt-1 text-3xl font-black text-slate-900 tracking-tight">{pendingMechanics.length}</p>
+              <p className="text-xs font-medium text-slate-500 mt-0.5">Mechanics awaiting clearance</p>
               <Link
                 href="/dashboard/admin/mechanics"
-                className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition-colors"
+                className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-xs font-bold uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Manage Pending Profiles <ArrowRight size={14} className="ml-2" />
               </Link>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Performance Metrics</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3">Operational KPIs</h3>
-              <div className="mt-3.5 space-y-2 text-xs font-semibold">
-                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+            <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50] block">Performance Metrics</span>
+              <h3 className="text-sm font-extrabold text-slate-900 mt-2">Operational KPIs</h3>
+              <div className="mt-3 space-y-1.5 text-xs font-semibold">
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-[#FAF6EC]/60 px-3.5 py-2 text-slate-700">
                   <span>Avg response time</span>
                   <span className="text-slate-900 font-bold">{stats?.avgResponseTime ?? 0} mins</span>
-                </p>
-                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-[#FAF6EC]/60 px-3.5 py-2 text-slate-700">
                   <span>Avg completion time</span>
                   <span className="text-slate-900 font-bold">{stats?.avgCompletionTime ?? 0} mins</span>
-                </p>
-                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-[#FAF6EC]/60 px-3.5 py-2 text-slate-700">
                   <span>Avg rating</span>
                   <span className="text-slate-900 font-bold">{stats?.avgRating ?? '—'}</span>
-                </p>
-                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-[#FAF6EC]/60 px-3.5 py-2 text-slate-700">
                   <span>Verified mechanics</span>
                   <span className="text-slate-900 font-bold">{stats?.verifiedMechanics ?? 0}</span>
-                </p>
-                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-emerald-50/30 px-4 py-2.5 text-slate-700">
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-emerald-200/60 bg-emerald-50/40 px-3.5 py-2 text-slate-700">
                   <span>Mechanics online</span>
-                  <span className="text-emerald-600 font-black">{stats?.activeMechanics ?? 0}</span>
-                </p>
-                <p className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-2.5 text-slate-700">
+                  <span className="text-emerald-700 font-black">{stats?.activeMechanics ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-[#FAF6EC]/60 px-3.5 py-2 text-slate-700">
                   <span>Registered drivers</span>
                   <span className="text-slate-900 font-bold">{stats?.totalDrivers ?? 0}</span>
-                </p>
+                </div>
               </div>
             </Card>
           </div>
@@ -301,21 +300,21 @@ export default function AdminDashboardPage() {
 
             return (
               <Link key={action.href} href={action.href} className="group">
-                <Card className="h-full rounded-2xl border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-slate-300 hover:-translate-y-0.5">
+                <Card className="h-full rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm transition-all hover:border-[#CDBD97] hover:-translate-y-0.5">
                   <div className="flex flex-col h-full justify-between gap-4">
                     <div className="space-y-1">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Visit</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-[#8A7A50]">Console Action</span>
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="text-base font-black text-slate-900 tracking-tight group-hover:text-slate-800 transition-colors">{action.label}</h3>
                         {badgeText && (
-                          <span className="rounded-full bg-red-50 border border-red-200/50 px-2 py-0.5 text-[9px] font-black text-red-600 tracking-wider shrink-0 animate-pulse">
+                          <span className="rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[9px] font-black text-red-600 tracking-wider shrink-0 animate-pulse">
                             {badgeText}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 font-medium leading-normal pt-1">{action.description}</p>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed pt-1">{action.description}</p>
                     </div>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-2 text-slate-600 shadow-xs self-start group-hover:bg-primary group-hover:text-slate-900 transition-all">
+                    <div className="rounded-xl border border-[#E8DFC6] bg-[#FAF6EC] p-2 text-slate-700 shadow-2xs self-start group-hover:bg-primary group-hover:text-slate-950 transition-all">
                       <Icon size={16} strokeWidth={2.2} />
                     </div>
                   </div>
@@ -328,10 +327,10 @@ export default function AdminDashboardPage() {
         {/* ================= INCIDENT ANALYTICS ================= */}
         {stats?.serviceTypeBreakdown && (
           <section className="grid gap-4 md:grid-cols-2">
-            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Service Type Breakdown</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3 mb-4">Most Common Requests</h3>
-              <div className="space-y-3.5">
+            <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50] block">Service Type Breakdown</span>
+              <h3 className="text-sm font-extrabold text-slate-900 mt-2 mb-4">Most Common Requests</h3>
+              <div className="space-y-3">
                 {(() => {
                   const total = stats.serviceTypeBreakdown.reduce((acc, curr) => acc + curr.count, 0) || 1
                   return stats.serviceTypeBreakdown.slice(0, 5).map((item) => {
@@ -339,10 +338,10 @@ export default function AdminDashboardPage() {
                     return (
                       <div key={item.service_type} className="space-y-1">
                         <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="capitalize text-slate-600">{item.service_type.replace('_', ' ')}</span>
+                          <span className="capitalize text-slate-700">{item.service_type.replace('_', ' ')}</span>
                           <span className="text-slate-950 font-mono text-[11px]">{item.count} ({pct}%)</span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-[#FAF6EC] rounded-full overflow-hidden border border-[#E8DFC6]/50">
                           <div className="h-full bg-slate-900 rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -352,10 +351,10 @@ export default function AdminDashboardPage() {
               </div>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Status Distribution</span>
-              <h3 className="text-sm font-extrabold text-slate-800 mt-3 mb-4">Request Lifecycle</h3>
-              <div className="space-y-3.5">
+            <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-5 shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#8A7A50] block">Status Distribution</span>
+              <h3 className="text-sm font-extrabold text-slate-900 mt-2 mb-4">Request Lifecycle</h3>
+              <div className="space-y-3">
                 {(() => {
                   const total = stats.statusBreakdown.reduce((acc, curr) => acc + curr.count, 0) || 1
                   return stats.statusBreakdown.slice(0, 5).map((item) => {
@@ -363,10 +362,10 @@ export default function AdminDashboardPage() {
                     return (
                       <div key={item.status} className="space-y-1">
                         <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="capitalize text-slate-600">{item.status.replace('_', ' ')}</span>
+                          <span className="capitalize text-slate-700">{item.status.replace('_', ' ')}</span>
                           <span className="text-slate-950 font-mono text-[11px]">{item.count} ({pct}%)</span>
                         </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-[#FAF6EC] rounded-full overflow-hidden border border-[#E8DFC6]/50">
                           <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -379,18 +378,18 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ================= ESCALATION GATEWAY ================= */}
-        <div className="rounded-2xl border border-amber-200/70 bg-amber-50/30 overflow-hidden shadow-xs">
+        <div className="rounded-2xl border border-[#DCCDA9]/80 bg-[#FAF6EC]/50 overflow-hidden shadow-2xs">
           <button 
             onClick={() => setEscalationExpanded(!escalationExpanded)}
-            className="w-full flex items-center justify-between p-5 text-left bg-white border-b border-slate-100 focus:outline-none"
+            className="w-full flex items-center justify-between p-4.5 text-left bg-white border-b border-slate-100 focus:outline-none cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-700 border border-amber-200/60">
+              <div className="h-8 w-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700 border border-amber-200/60 shadow-2xs">
                 <Radio size={16} className="animate-pulse" />
               </div>
               <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-amber-800">Admin Control Parameters</h4>
-                <p className="text-xs font-medium text-slate-400 mt-0.5">Expand to manage structural account authority and security access vector promotions.</p>
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#1E1B15]">Admin Control Parameters</h4>
+                <p className="text-xs font-medium text-slate-500 mt-0.5">Expand to manage structural account authority and security access vector promotions.</p>
               </div>
             </div>
             <div className="text-slate-400 pr-1">
@@ -399,7 +398,7 @@ export default function AdminDashboardPage() {
           </button>
           
           {escalationExpanded && (
-            <div className="p-6 bg-white/40 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="p-5 bg-white/60 animate-in fade-in slide-in-from-top-2 duration-200">
               <AdminEscalation />
             </div>
           )}
@@ -407,15 +406,15 @@ export default function AdminDashboardPage() {
 
         {/* ================= IDENTIFIED SESSION FOOTER ================= */}
         {profile?.role === 'admin' && (
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-medium text-slate-500 shadow-xs">
+          <div className="flex items-center gap-2 rounded-xl border border-[#DCCDA9]/70 bg-white px-4 py-2.5 text-xs font-medium text-slate-600 shadow-2xs">
             <Radio size={14} className="text-emerald-500 animate-pulse" />
             <span>Terminal Connected: Authenticated Session Node — </span>
-            <span className="font-bold text-slate-800">{profile?.full_name || 'System Administrator'}</span>
+            <span className="font-bold text-slate-900">{profile?.full_name || 'System Administrator'}</span>
           </div>
         )}
 
         {hasSearched && (
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white p-5 shadow-sm">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
               Incident search results for &quot;{searchQuery}&quot;
             </h3>
@@ -426,7 +425,7 @@ export default function AdminDashboardPage() {
             ) : (
               <div className="space-y-3">
                 {searchResults.map((req) => (
-                  <Link key={req.id} href={`/dashboard/admin/requests/${req.id}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 hover:border-slate-200 transition-all">
+                  <Link key={req.id} href={`/dashboard/admin/requests/${req.id}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-[#FAF6EC]/60 p-4 hover:border-slate-200 transition-all">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge label={req.status} variant={req.status} dot />

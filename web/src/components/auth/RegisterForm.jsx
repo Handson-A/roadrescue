@@ -7,9 +7,9 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
 import { signUp } from '@/lib/auth'
-import { USER_ROLE } from '@/lib/constants'
+import { USER_ROLE, MECHANIC_SPECIALTIES } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle, Info } from 'lucide-react'
+import { AlertTriangle, Info, Check, Wrench } from 'lucide-react'
 
 export default function RegisterForm() {
   const router = useRouter()
@@ -56,6 +56,7 @@ export default function RegisterForm() {
   }
 
   function parseSpecializations(value) {
+    if (Array.isArray(value)) return value.filter(Boolean)
     if (!value) return []
     return value
       .split(',')
@@ -63,8 +64,22 @@ export default function RegisterForm() {
       .filter(Boolean)
   }
 
+  function toggleSpecialty(specialty) {
+    const current = Array.isArray(formData.specializations) 
+      ? formData.specializations 
+      : parseSpecializations(formData.specializations)
+    
+    const exists = current.includes(specialty)
+    const updated = exists 
+      ? current.filter(s => s !== specialty)
+      : [...current, specialty]
+    
+    updateField('specializations', updated)
+  }
+
   async function saveMechanicProfile(userId) {
-    if (!formData.businessName && !formData.specializations && !formData.yearsExperience && !formData.serviceArea) {
+    const specs = parseSpecializations(formData.specializations)
+    if (!formData.businessName && specs.length === 0 && !formData.yearsExperience && !formData.serviceArea) {
       return
     }
 
@@ -72,7 +87,7 @@ export default function RegisterForm() {
     const mechanicPayload = {}
     
     if (formData.businessName.trim()) mechanicPayload.business_name = formData.businessName.trim()
-    if (formData.specializations.trim()) mechanicPayload.specializations = parseSpecializations(formData.specializations)
+    if (specs.length > 0) mechanicPayload.specializations = specs
     if (formData.yearsExperience) mechanicPayload.years_experience = parseInt(formData.yearsExperience, 10) || 0
     if (formData.serviceArea.trim()) mechanicPayload.location_label = formData.serviceArea.trim()
 
@@ -305,9 +320,36 @@ export default function RegisterForm() {
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">Specializations</label>
-                <Textarea rows={3} placeholder="Towing, battery jump-start, diagnostics, tyre repair" value={formData.specializations} onChange={(e) => updateField('specializations', e.target.value)} className="rounded-xl border-[#DDD0A8]" />
-                <p className="mt-1 text-[11px] text-[#6B5E3E]/70 italic">Separate spercializations with commas.</p>
+                <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">
+                  Specialties & Technical Capabilities
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {MECHANIC_SPECIALTIES.map((spec) => {
+                    const selected = Array.isArray(formData.specializations)
+                      ? formData.specializations.includes(spec)
+                      : parseSpecializations(formData.specializations).includes(spec)
+                    return (
+                      <button
+                        key={spec}
+                        type="button"
+                        onClick={() => toggleSpecialty(spec)}
+                        className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-all ${
+                          selected
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-950 font-bold shadow-xs ring-1 ring-amber-500/30'
+                            : 'border-[#DDD0A8] bg-[#FFFBF4] text-slate-700 hover:border-amber-400/80 hover:bg-[#FFF9ED]'
+                        }`}
+                      >
+                        <span className="truncate">{spec}</span>
+                        {selected ? (
+                          <Check size={14} className="text-amber-700 shrink-0" />
+                        ) : (
+                          <div className="h-3.5 w-3.5 rounded border border-[#DDD0A8] bg-white shrink-0" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-1.5 text-[11px] text-[#6B5E3E]/70 font-medium">Select all services your workshop or mobile unit is equipped to provide.</p>
               </div>
             </div>
           )}

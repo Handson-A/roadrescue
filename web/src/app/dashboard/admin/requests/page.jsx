@@ -41,66 +41,112 @@ export default function AdminRequestsPage() {
     }
   }, [filter])
 
-  // Helper mapping to generate color tokens for active status chips dynamically
-  const getFilterStyle = (status) => {
-    if (filter !== status) return 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800'
-    
+  // Grouped status categorization structure
+  const CATEGORIES = [
+    { id: 'all', label: 'All Incidents', filters: ['all'] },
+    { id: 'active', label: 'Active Pipeline', filters: ['pending', 'accepted', 'en_route', 'arrived', 'in_progress'] },
+    { id: 'resolved', label: 'Resolved / Cancelled', filters: ['completed', 'cancelled'] },
+    { id: 'flagged', label: 'Flagged', filters: ['flagged'] },
+  ]
+
+  const activeCategory = CATEGORIES.find(cat => cat.filters.includes(filter)) || CATEGORIES[0]
+
+  const getSubFilterLabel = (status) => {
     switch (status) {
-      case 'all': return 'bg-slate-900 text-white border-slate-900 shadow-sm'
-      case 'flagged': return 'bg-purple-600 text-white border-purple-600 shadow-sm shadow-purple-600/10'
-      case 'pending': return 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-500/10'
-      case 'accepted': case 'en_route': case 'arrived': case 'in_progress': 
-        return 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/10'
-      case 'completed': return 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/10'
-      case 'cancelled': return 'bg-rose-600 text-white border-rose-600 shadow-sm shadow-rose-600/10'
-      default: return 'bg-slate-900 text-white border-slate-900 shadow-sm'
+      case 'all': return 'All Records'
+      case 'pending': return 'Pending Dispatch'
+      case 'accepted': return 'Accepted'
+      case 'en_route': return 'En Route'
+      case 'arrived': return 'On Site'
+      case 'in_progress': return 'In Progress'
+      case 'completed': return 'Completed'
+      case 'cancelled': return 'Cancelled'
+      case 'flagged': return 'Flagged Only'
+      default: return status.replace('_', ' ')
     }
   }
 
   return (
     <PageWrapper 
       title="Global Incident Log" 
-      description="Monitor the full dispatch queue infrastructure, track breakdown timelines, and filter by live lifecycle status."
+      description="Monitor dispatch operations, track rescue lifecycle stages, and audit incident records across regions."
     >
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 pb-12">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 pb-12">
         
-        {/* ================= FILTER CHIPS BAR SCROLLER ================= */}
-        <div className="flex flex-wrap gap-2 border-b border-slate-200/60 pb-5">
-          {['all', 'flagged', 'pending', 'accepted', 'en_route', 'arrived', 'in_progress', 'completed', 'cancelled'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`rounded-xl border px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 duration-150 ${getFilterStyle(status)}`}
-            >
-              {status.replace('_', ' ')}
-            </button>
-          ))}
+        {/* ================= MODERN 2-TIER SEGMENTED FILTER BAR ================= */}
+        <div className="rounded-2xl border border-[#DCCDA9]/80 bg-white p-4 shadow-sm space-y-3.5">
+          {/* Tier 1: High-level Lifecycle Categories */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-[#FAF6EC] border border-[#E8DFC6]/70">
+            {CATEGORIES.map((cat) => {
+              const isSelected = activeCategory.id === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    if (cat.filters.length === 1) {
+                      setFilter(cat.filters[0])
+                    } else if (!cat.filters.includes(filter)) {
+                      setFilter(cat.filters[0])
+                    }
+                  }}
+                  className={`flex-1 min-w-[130px] rounded-lg px-3.5 py-2 text-xs font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+                    isSelected
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-[#6A6046] hover:text-[#1E1B15] hover:bg-white/60'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Tier 2: Granular Stage Filters (Shown when category has multiple statuses) */}
+          {activeCategory.filters.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Stage:</span>
+              {activeCategory.filters.map((st) => {
+                const isCurrent = filter === st
+                return (
+                  <button
+                    key={st}
+                    onClick={() => setFilter(st)}
+                    className={`rounded-lg border px-3 py-1 text-xs font-bold transition-all duration-150 cursor-pointer ${
+                      isCurrent
+                        ? 'bg-primary text-slate-950 border-primary shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    {getSubFilterLabel(st)}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-
-
         {/* ================= PRIMARY INCIDENTS LOG CONTAINER FEED ================= */}
-        <div className="w-full space-y-3.5">
+        <div className="w-full space-y-3">
           {loading ? (
-            <Card className="rounded-2xl border-slate-200 bg-white py-20 flex justify-center shadow-sm">
+            <Card className="rounded-2xl border-[#DCCDA9]/70 bg-white py-20 flex justify-center shadow-sm">
               <Spinner />
             </Card>
           ) : requests.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-16 px-4 text-center max-w-md mx-auto mt-10">
-              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400 mb-3.5 border border-slate-200/60 shadow-sm">
-                <Radar size={20} className="text-slate-400" />
+            <div className="rounded-2xl border border-dashed border-[#DCCDA9] bg-white/70 py-16 px-4 text-center max-w-md mx-auto mt-6">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[#FAF6EC] text-slate-400 mb-3.5 border border-[#E8DFC6] shadow-2xs">
+                <Radar size={20} className="text-slate-500" />
               </div>
               <h3 className="text-sm font-bold text-slate-900">No Incidents Documented</h3>
-              <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400 font-medium leading-relaxed">
+              <p className="mx-auto mt-1 max-w-xs text-xs text-slate-500 font-medium leading-relaxed">
                 There are currently no roadside breakdown tickets active under the selected status configuration criteria.
               </p>
             </div>
           ) : (
             requests.map((request) => (
-              <Card key={request.id} className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300 hover:shadow-md transition-all group">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <Card key={request.id} className="rounded-2xl border-[#DCCDA9]/70 bg-white p-4.5 shadow-sm hover:border-[#CDBD97] hover:shadow-md transition-all group">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   
-                  <div className="min-w-0 flex-1 space-y-3">
+                  <div className="min-w-0 flex-1 space-y-2.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge label={request.status} variant={request.status} dot />
                       <Badge label={request.service_type || 'Rescue Order'} variant="default" />
@@ -111,23 +157,23 @@ export default function AdminRequestsPage() {
                       <h4 className="text-base font-black text-slate-900 tracking-tight capitalize leading-snug">
                         {request.problem_description || 'Roadside Assistance Request'}
                       </h4>
-                      <p className="mt-1 text-xs font-medium text-slate-500 flex items-center gap-1">
+                      <p className="mt-1 text-xs font-medium text-slate-500 flex items-center gap-1.5">
                         <MapPin size={13} className="text-slate-400 shrink-0" />
-                        {request.incident_address || 'GPS Coordinates Pending'}
+                        <span className="truncate">{request.incident_address || 'GPS Coordinates Pending'}</span>
                       </p>
                     </div>
 
                     {/* Meta User Identity Badges */}
-                    <div className="pt-2 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-slate-50 text-xs font-semibold text-slate-500">
+                    <div className="pt-2 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-slate-100 text-xs font-semibold text-slate-500">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <User size={13} className="text-slate-400 shrink-0" />
-                        <span className="text-[11px] tracking-wide text-slate-400 uppercase font-bold">Driver:</span>
-                        <span className="text-slate-700 truncate">{request.driver?.full_name || 'Anonymous User'}</span>
+                        <span className="text-[10px] tracking-wider text-slate-400 uppercase font-black">Driver:</span>
+                        <span className="text-slate-800 font-medium truncate">{request.driver?.full_name || 'Anonymous User'}</span>
                       </div>
                       <div className="flex items-center gap-1.5 min-w-0">
                         <HardHat size={13} className="text-slate-400 shrink-0" />
-                        <span className="text-[11px] tracking-wide text-slate-400 uppercase font-bold">Mechanic:</span>
-                        <span className={`truncate ${request.mechanic?.full_name ? 'text-slate-700' : 'text-amber-600 italic font-medium'}`}>
+                        <span className="text-[10px] tracking-wider text-slate-400 uppercase font-black">Mechanic:</span>
+                        <span className={`truncate ${request.mechanic?.full_name ? 'text-slate-800 font-medium' : 'text-amber-700 italic font-medium'}`}>
                           {request.mechanic?.full_name || 'Awaiting Allocation'}
                         </span>
                       </div>
@@ -137,11 +183,11 @@ export default function AdminRequestsPage() {
                   {/* Operational Interaction Anchor Button */}
                   <Link 
                     href={`/dashboard/admin/requests/${request.id}`}
-                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50 transition-colors self-start lg:self-center w-full lg:w-auto"
+                    className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-[#FAF6EC] hover:bg-white hover:border-slate-300 px-4 text-xs font-black uppercase tracking-wider text-slate-800 shadow-2xs transition-all self-start lg:self-center w-full lg:w-auto cursor-pointer"
                   >
-                    <FileText size={13} />
+                    <FileText size={14} className="text-slate-500" />
                     <span>Open Record</span>
-                    <ArrowRight size={13} className="transform group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight size={13} className="transform group-hover:translate-x-0.5 transition-transform text-slate-400" />
                   </Link>
 
                 </div>

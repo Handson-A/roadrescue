@@ -132,10 +132,10 @@ function StatusTimeline({ currentStatus }) {
 /* ─── SectionCard ───────────────────────────────────────────────────────── */
 function SectionCard({ icon: Icon, title, children, className = '' }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden ${className}`}>
-      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-50">
-        <Icon size={15} className="text-slate-400 flex-shrink-0" />
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{title}</span>
+    <div className={`bg-white rounded-2xl border border-[#DCCDA9]/70 shadow-sm overflow-hidden ${className}`}>
+      <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 bg-[#FAF6EC]/50">
+        <Icon size={14} className="text-[#8A7A50] flex-shrink-0" />
+        <span className="text-[10px] font-black text-[#8A7A50] uppercase tracking-widest">{title}</span>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -144,14 +144,14 @@ function SectionCard({ icon: Icon, title, children, className = '' }) {
 
 /* ─── ActionButton ──────────────────────────────────────────────────────── */
 function ActionButton({ onClick, disabled, children, variant = 'primary', className = '' }) {
-  const base = 'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+  const base = 'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-150 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs'
   const variants = {
-    primary:  'bg-slate-900 hover:bg-slate-800 text-white focus:ring-slate-700',
-    success:  'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500',
-    warning:  'bg-amber-500 hover:bg-amber-600 text-white focus:ring-amber-400',
-    blue:     'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500',
-    danger:   'bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 focus:ring-red-400',
-    ghost:    'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 focus:ring-slate-300',
+    primary:  'bg-slate-900 hover:bg-slate-800 text-white shadow-xs',
+    success:  'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs',
+    warning:  'bg-primary hover:brightness-105 text-slate-950 shadow-xs',
+    blue:     'bg-blue-600 hover:bg-blue-700 text-white shadow-xs',
+    danger:   'bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300',
+    ghost:    'bg-[#FAF6EC] hover:bg-white text-slate-700 border border-slate-200',
   }
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`${base} ${variants[variant]} ${className}`}>

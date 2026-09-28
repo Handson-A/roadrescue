@@ -18,6 +18,16 @@ export const SERVICE_TYPE = {
   OTHER: 'other',
 }
 
+export const MECHANIC_SPECIALTIES = [
+  'Towing & Recovery',
+  'Tyre Change',
+  'Battery Jump',
+  'Fuel Delivery',
+  'Engine Diagnostics',
+  'Other Assistance e.g. Electrical, Transmission, Bodyworks, Suspension, car wash etc.',
+]
+
+
 export const USER_ROLE = {
   DRIVER: 'driver',
   MECHANIC: 'mechanic',

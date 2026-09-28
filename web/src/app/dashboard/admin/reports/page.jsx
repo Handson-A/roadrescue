@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
@@ -585,81 +585,60 @@ export default function AdminReportsPage() {
               </Card>
             </div>
 
-            {/* Donut & Diagnostics */}
+            {/* Ranked Category Distribution & Diagnostics */}
             <div className="grid gap-6 lg:grid-cols-[1.9fr_0.9fr]">
+              {/* Ranked Category Distribution Bar */}
               <Card className="rounded-2xl border border-slate-100 bg-white p-0 overflow-hidden shadow-sm flex flex-col justify-between">
                 <div className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 flex justify-between items-center">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                     <BarChart3 size={14} className="text-slate-400" /> Incident Categories Distribution
                   </h3>
-                  <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Live System Sync</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-500 font-mono">{totalChartCount} Total Logged</span>
+                    <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-0.5 rounded uppercase tracking-wider">Live Breakdown</span>
+                  </div>
                 </div>
                 
-                <div className="p-6 flex-1 flex flex-col md:flex-row items-center justify-center gap-8 min-h-[22rem]">
+                <div className="p-6 flex-1 flex flex-col justify-center">
                   {totalChartCount === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-center text-xs font-medium text-slate-400 py-12">
                       No active incidents recorded across service type categories.
                     </div>
                   ) : (
-                    <>
-                      <div className="relative w-48 h-48 shrink-0">
-                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                          <circle
-                            cx="100"
-                            cy="100"
-                            r={RADIUS}
-                            className="stroke-slate-100"
-                            strokeWidth="20"
-                            fill="transparent"
-                          />
-                          {chartData.map((segment, index) => {
-                            const percent = (segment.count / totalChartCount) * 100
-                            const strokeLength = (percent / 100) * CIRCUMFERENCE
-                            const strokeOffset = CIRCUMFERENCE - strokeLength + (accumulatedPercent / 100) * CIRCUMFERENCE
-                            accumulatedPercent -= percent
-
-                            return (
-                              <circle
-                                key={index}
-                                cx="100"
-                                cy="100"
-                                r={RADIUS}
-                                fill="transparent"
-                                stroke={segment.color}
-                                strokeWidth="22"
-                                strokeDasharray={CIRCUMFERENCE}
-                                strokeDashoffset={strokeOffset}
-                                strokeLinecap={chartData.length === 1 ? 'butt' : 'round'}
-                                className="transition-all duration-700 ease-in-out hover:brightness-95 cursor-pointer"
-                              />
-                            )
-                          })}
-                        </svg>
-
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                          <span className="text-2xl font-black text-slate-900 tracking-tight">{totalChartCount}</span>
-                          <span className="text-[9px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">Total Cases</span>
-                        </div>
-                      </div>
-
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 w-full">
-                        {chartData.map((item, idx) => {
-                          const sharePercent = Math.round((item.count / totalChartCount) * 100)
+                    <div className="space-y-4">
+                      {chartData
+                        .slice()
+                        .sort((a, b) => b.count - a.count)
+                        .map((item, idx) => {
+                          const percent = Math.round((item.count / totalChartCount) * 100)
                           return (
-                            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-50 bg-slate-50/30">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="h-3 w-3 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
-                                <span className="text-xs font-extrabold text-slate-700 truncate">{item.label}</span>
+                            <div key={idx} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs font-semibold">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span 
+                                    className="h-2.5 w-2.5 rounded-full shrink-0 shadow-2xs" 
+                                    style={{ backgroundColor: item.color }} 
+                                  />
+                                  <span className="text-slate-800 font-bold truncate">{item.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 pl-2 font-mono text-slate-900 font-bold">
+                                  <span>{item.count}</span>
+                                  <span className="text-slate-400 font-medium text-[11px]">({percent}%)</span>
+                                </div>
                               </div>
-                              <div className="flex items-baseline gap-1.5 pl-2">
-                                <span className="text-xs font-black text-slate-900 font-mono">{item.count}</span>
-                                <span className="text-[10px] text-slate-400 font-bold">({sharePercent}%)</span>
+                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-500 ease-out"
+                                  style={{ 
+                                    width: `${percent}%`, 
+                                    backgroundColor: item.color 
+                                  }} 
+                                />
                               </div>
                             </div>
                           )
                         })}
-                      </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </Card>
@@ -962,7 +941,7 @@ export default function AdminReportsPage() {
                         const isAllGroupSelected = groupSelectedCount === group.reports.length && reportCount > 0
 
                         return (
-                          <div key={group.pairKey} className="contents">
+                          <Fragment key={group.pairKey}>
                             {/* MASTER SUMMARY ROW */}
                             <tr
                               className={`transition-colors cursor-pointer ${
@@ -1128,7 +1107,7 @@ export default function AdminReportsPage() {
                                 </td>
                               </tr>
                             )}
-                          </div>
+                          </Fragment>
                         )
                       })}
                     </tbody>

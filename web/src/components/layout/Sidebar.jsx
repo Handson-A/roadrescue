@@ -106,12 +106,12 @@ export default function Sidebar({ initialRole = null }) {
     : 'bg-[#F1EAD6] text-[#2A261C] border-r border-[#D8CCAE]'
 
   const activeClass = isAdmin
-    ? 'bg-primary text-[#2A261C] shadow-[inset_0_-2px_0_rgba(0,0,0,0.1)]'
-    : 'bg-primary text-[#2A261C] shadow-sm'
+    ? 'bg-primary text-[#2A261C] font-black shadow-xs'
+    : 'bg-primary text-[#2A261C] font-black shadow-xs'
 
   const idleClass = isAdmin
-    ? 'text-[#E2D9C2] hover:bg-[#383223] hover:text-[#F5EED9]'
-    : 'text-[#433C2B] hover:bg-[#E8DFC6] hover:text-[#2A261C]'
+    ? 'text-[#E2D9C2] hover:bg-[#383223] hover:text-[#F5EED9] font-bold'
+    : 'text-[#433C2B] hover:bg-[#E8DFC6] hover:text-[#2A261C] font-bold'
 
   // Render a neutral loading skeleton while auth/profile is resolving to avoid flashing the wrong role
   if (loading || !role) {
@@ -124,15 +124,15 @@ export default function Sidebar({ initialRole = null }) {
         </div>
 
         {/* Navigation placeholder items */}
-        <div className="flex-1 space-y-2 px-3">
+        <div className="flex-1 space-y-1.5 px-3">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-11 rounded-xl bg-[#D8CCAE]/40" />
+            <div key={i} className="h-10 rounded-xl bg-[#D8CCAE]/40" />
           ))}
         </div>
 
         {/* Footer placeholder */}
         <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5">
-          <div className="h-11 rounded-xl bg-[#D8CCAE]/50" />
+          <div className="h-10 rounded-xl bg-[#D8CCAE]/50" />
           <div className="rounded-xl border border-[#D8CCAE]/60 bg-[#EAE0C7]/50 p-3 space-y-2">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-full bg-[#D8CCAE]/60" />
@@ -153,12 +153,12 @@ export default function Sidebar({ initialRole = null }) {
       <aside className={`hidden md:fixed md:left-0 md:top-0 md:z-40 md:flex md:h-screen md:w-64 md:flex-col ${sidebarClass}`}>
         
         {/* BRANDING LOGO BLOCK */}
-        <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-4">
+        <div className="px-5 pb-5 pt-6 text-center border-b border-black/5 mb-3">
           <Image
             src="/images/logo.png"
             alt="RoadRescue"
-            width={42}
-            height={42}
+            width={40}
+            height={40}
             className="mx-auto rounded-full h-auto w-auto shadow-sm"
           />
           <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.2em] ${isAdmin ? 'text-[#C1B596]' : 'text-[#786D53]'}`}>
@@ -184,10 +184,10 @@ export default function Sidebar({ initialRole = null }) {
                 <Link
                   key={`${link.href}-${link.label}`}
                   href={link.href}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-black uppercase tracking-wider transition ${isActive ? activeClass : idleClass}`}
+                  className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs uppercase tracking-wider transition-all duration-150 ${isActive ? activeClass : idleClass}`}
                 >
-                  <Icon size={16} strokeWidth={isActive ? 2.5 : 1.8} />
-                  <span>{link.label}</span>
+                  <Icon size={16} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                  <span className="truncate">{link.label}</span>
                 </Link>
               )
             })
@@ -195,18 +195,18 @@ export default function Sidebar({ initialRole = null }) {
         </nav>
 
         {/* FOOTER USER MANAGEMENT & CTA HUB */}
-        <div className="px-3 pb-4 pt-3 space-y-3 border-t border-black/5 bg-black/1">
+        <div className="px-3 pb-4 pt-3 space-y-2.5 border-t border-black/5 bg-black/5">
           {isAdmin ? (
             <Link
               href="/dashboard/admin/requests"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary text-xs font-black uppercase tracking-wider text-[#2A261C] shadow-sm hover:brightness-105 transition"
             >
               <ClipboardList size={14} /> Incident Log
             </Link>
           ) : isDriver ? (
             <Link
               href="/dashboard/driver/request/new"
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-slate-800 transition"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition"
             >
               <PlusCircle size={14} /> Request Aid
             </Link>
@@ -214,47 +214,46 @@ export default function Sidebar({ initialRole = null }) {
             <button
               type="button"
               onClick={handleAvailabilityToggle}
-              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
+              className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
                 isAvailable 
                   ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
                   : 'bg-primary text-[#2A261C] hover:bg-primary/90'
               }`}
             >
               <WifiSync size={14} className={isAvailable ? 'animate-pulse' : ''} />
-            
+              <span>{isAvailable ? 'Online (Duty)' : 'Go Online'}</span>
             </button>
           )}
 
           {/* ACCOUNT SNAPSHOT PROFILE BOX */}
-         
-          <div className={`rounded-xl border p-3 ${isAdmin ? 'border-[#4A4230] bg-[#2F2A20]' : 'border-[#D8CCAE]/60 bg-[#EAE0C7]/50'}`}>
-          {/* Profile section that navigates to the admin account route */}
-          <div 
-            onClick={() => router.push('/dashboard/admin/account')}
-            className="flex items-center gap-3 cursor-pointer group"
-          >
-            <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="md" />
-            <div className="min-w-0 flex-1">
-              <p className={`truncate text-xs font-black tracking-tight ${isAdmin ? 'text-[#F2EAD7]' : 'text-[#2A261C]'}`}>
-                {profile?.full_name || 'RoadRescue User'}
-              </p>
-              <p className={`text-[10px] uppercase font-black tracking-widest mt-0.5 ${isAdmin ? 'text-[#B6AA8D]' : 'text-[#6E644D]'}`}>
-                {role}
-              </p>
+          <div className={`rounded-xl border p-3 ${isAdmin ? 'border-[#4A4230] bg-[#2F2A20]' : 'border-[#D8CCAE]/70 bg-[#EAE0C7]/60'}`}>
+            {/* Profile section that navigates to the admin account route */}
+            <div 
+              onClick={() => router.push(isAdmin ? '/dashboard/admin/account' : isMechanic ? '/dashboard/mechanic/account' : '/dashboard/driver/account')}
+              className="flex items-center gap-2.5 cursor-pointer group"
+            >
+              <Avatar name={profile?.full_name || 'User'} src={profile?.avatar_url} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className={`truncate text-xs font-black tracking-tight ${isAdmin ? 'text-[#F2EAD7]' : 'text-[#2A261C]'}`}>
+                  {profile?.full_name || 'RoadRescue User'}
+                </p>
+                <p className={`text-[10px] uppercase font-bold tracking-wider mt-0.5 ${isAdmin ? 'text-[#B6AA8D]' : 'text-[#6E644D]'}`}>
+                  {role}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Sign out button with e.stopPropagation() to prevent triggering the div's router push */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSignOut();
-            }}
-            className={`mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded-lg border text-[11px] font-black uppercase tracking-wider transition ${isAdmin ? 'border-[#534B38] text-[#F2EAD7] hover:bg-[#3A3428]' : 'border-[#CDBD97] text-[#3D3627] hover:bg-[#E1D6BA]'}`}
-          >
-            <LogOut size={12} /> Sign out
-          </button>
-        </div>
+            {/* Sign out button with e.stopPropagation() to prevent triggering the div's router push */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSignOut();
+              }}
+              className={`mt-2.5 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition cursor-pointer ${isAdmin ? 'border-[#534B38] text-[#F2EAD7] hover:bg-[#3A3428]' : 'border-[#CDBD97] text-[#3D3627] hover:bg-[#E1D6BA]'}`}
+            >
+              <LogOut size={12} /> Sign out
+            </button>
+          </div>
         </div>
       </aside>
 
