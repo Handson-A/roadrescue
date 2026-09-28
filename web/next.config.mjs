@@ -13,7 +13,7 @@ const nextConfig = {
   },
   // next.config.js
 
-   allowedDevOrigins: ['172.20.10.2'],
+   // allowedDevOrigins: ['Add local IP for mobile testing'],
 
 
   reactCompiler: true,
