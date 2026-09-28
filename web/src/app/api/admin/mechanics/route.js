@@ -239,7 +239,7 @@ export async function PATCH(req) {
 
             if (result.error) {
               console.error('[EMAIL ERROR] Failed to send more_info email via Resend:', result.error)
-            } else {
+            } else if (process.env.NODE_ENV === 'development') {
               console.log('Verification update email sent successfully:', result.data.id)
             }
           }

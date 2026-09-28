@@ -30,13 +30,11 @@ export default function Navbar() {
 
   const visibleOnScroll = useHideOnScroll({ threshold: 10, initialVisible: true })
   const visible = isDashboardRoot ? visibleOnScroll : true
-  const [greeting, setGreeting] = useState('Welcome')
-  const router = useRouter()
-  
-  useEffect(() => {
+  const [greeting] = useState(() => {
     const hrs = new Date().getHours()
-    setGreeting(hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening')
-  }, [])
+    return hrs < 12 ? 'Good morning' : hrs < 17 ? 'Good afternoon' : 'Good evening'
+  })
+  const router = useRouter()
   
   const { notifications, unreadCount, markAsRead, markAllAsRead, getNotificationHref } = useNotifications(profile?.id || user?.id)
 

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -54,9 +55,17 @@ export default function LoginForm() {
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">
-          Password
-        </label>
+        <div className="mb-2 flex items-center justify-between">
+          <label className="block font-mono text-[10px] font-black uppercase tracking-wider text-slate-700">
+            Password
+          </label>
+          <Link
+            href="/auth/forgot-password"
+            className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <Input
           type="password"
           placeholder="••••••••"
@@ -65,7 +74,6 @@ export default function LoginForm() {
           className="w-full h-[48px] rounded-[12px] border-[#DDD0A8] bg-[#FFFBF4] text-[#1F1B10] placeholder-[#B8A880] focus:border-[#1A1609] focus:ring-[#1A1609]"
         />
       </div>
-
       <Button 
          type="submit" 
          className="w-full h-[50px] rounded-[12px] bg-[#1A1609] text-sm font-black uppercase tracking-wide text-white transition-all hover:bg-[#2A2211] hover:-translate-y-[1px] active:translate-y-0 disabled:opacity-50" 
@@ -73,7 +81,6 @@ export default function LoginForm() {
       >
         {loading ? 'Signing in...' : 'Sign In'}
       </Button>
-
       <div className="my-4 flex items-center justify-center gap-3">
         <div className="h-[1px] flex-1 bg-slate-200"></div>
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">or</span>

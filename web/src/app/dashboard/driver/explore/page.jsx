@@ -212,7 +212,7 @@ export default function DriverExploreMap() {
   // Recenter on user's current GPS location with error handling and live map flyTo
   const handleRecenter = useCallback(() => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      toast.error('Location unavailable — enable location access')
+      toast.error('Location unavailable - enable location access')
       return
     }
 
@@ -233,7 +233,7 @@ export default function DriverExploreMap() {
       (err) => {
         setIsRecentering(false)
         console.warn('[EXPLORE RECENTER ERROR]:', err)
-        toast.error('Location unavailable — enable location access')
+        toast.error('Location unavailable - enable location access')
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     )

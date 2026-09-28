@@ -28,6 +28,25 @@ export async function signIn({ email, password }) {
   return data
 }
 
+// FORGOT PASSWORD / RECOVERY
+export async function resetPasswordForEmail(email) {
+  const supabase = createClient()
+  const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://roadrescue-gh.vercel.app')
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/reset-password`,
+  })
+  if (error) throw error
+  return data
+}
+
+// UPDATE PASSWORD (AFTER RECOVERY LINK AUTH)
+export async function updatePassword(newPassword) {
+  const supabase = createClient()
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw error
+  return data
+}
+
 // LOGOUT
 export async function signOut() {
   const supabase = createClient()

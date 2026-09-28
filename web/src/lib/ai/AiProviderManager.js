@@ -37,13 +37,17 @@ export class AiProviderManager {
       }
 
       try {
-        console.log(`[AI DIAGNOSE] Attempting primary/fallback with [${provider.name}] (timeout: ${timeoutMs}ms)`)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[AI DIAGNOSE] Attempting primary/fallback with [${provider.name}] (timeout: ${timeoutMs}ms)`)
+        }
         const result = await provider.diagnose(input, timeoutMs)
 
         if (result && result.problem) {
           result.isFallback = false
           result.fallbackReason = null
-          console.log(`[AI DIAGNOSE SUCCESS] Resolved successfully via provider [${provider.name}]`)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[AI DIAGNOSE SUCCESS] Resolved successfully via provider [${provider.name}]`)
+          }
           return result
         }
       } catch (error) {
