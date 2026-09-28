@@ -33,7 +33,9 @@ import {
   Zap,
   ChevronRight,
   Flag,
+  MessageSquare,
 } from 'lucide-react'
+import RescueChatModal from '@/components/request/RescueChatModal'
 
 const RescueMap = dynamic(() => import('@/components/map/RescueMap'), {
   ssr: false,
@@ -174,6 +176,7 @@ export default function MechanicJobDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReasonCategory, setCancelReasonCategory] = useState('')
   const [cancelReason, setCancelReason] = useState('')
@@ -196,6 +199,15 @@ export default function MechanicJobDetailsPage() {
       const result = await res.json()
       if (res.ok && result.request) {
         setJob(result.request)
+      } else if (res.status === 409) {
+        // Explicit 409 Conflict handling for race conditions / double-claim attempts
+        alert(' Job Unavailable: ' + (result.error || 'This rescue request was already claimed by another mechanic or its status was changed.'))
+        // Re-fetch current state to update the UI
+        const refreshRes = await fetch(`/api/requests/${jobId}`)
+        const refreshData = await refreshRes.json()
+        if (refreshRes.ok && refreshData.request) {
+          setJob(refreshData.request)
+        }
       } else {
         alert(result.error || 'Could not update status.')
       }
@@ -518,6 +530,14 @@ export default function MechanicJobDetailsPage() {
             </div>
 
             <div className="space-y-2">
+              <ActionButton
+                variant="warning"
+                onClick={() => setIsChatOpen(true)}
+                className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold shadow-xs cursor-pointer"
+              >
+                <MessageSquare size={14} />
+                Chat with driver
+              </ActionButton>
               {job.driver?.phone && (
                 <a href={`tel:${job.driver.phone}`} className="block">
                   <ActionButton variant="primary">
@@ -692,6 +712,17 @@ export default function MechanicJobDetailsPage() {
           )}
         </div>
       </Modal>
+
+      {/* LIVE CHAT MODAL */}
+      <RescueChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        requestId={jobId}
+        contactName={job.driver?.full_name || 'Driver'}
+        contactRole="Driver"
+        statusText={`Job #${jobId.slice(0, 8).toUpperCase()} · ${job.status?.replace('_', ' ')}`}
+        initialStatus={job.status}
+      />
     </PageWrapper>
   )
 }

@@ -24,12 +24,19 @@ export async function PATCH(req, { params }) {
     // verify caller profile
     const { data: profile, error: profileError } = await serviceSupabase
       .from('profiles')
-      .select('role')
+      .select('role, is_suspended, suspension_reason')
       .eq('id', user.id)
       .maybeSingle()
 
     if (profileError || !profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+    }
+
+    if (profile?.is_suspended) {
+      return NextResponse.json(
+        { error: `Account suspended: ${profile.suspension_reason || 'Policy violations'}. Cannot perform rescue operations.` },
+        { status: 403 }
+      )
     }
 
     const rawBody = await req.json()

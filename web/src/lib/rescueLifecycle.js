@@ -1,5 +1,3 @@
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-
 export const REQUEST_STATUS_FLOW = {
   pending: ['accepted', 'cancelled'],
   offered: ['accepted', 'cancelled'],
@@ -45,20 +43,40 @@ export function buildGeoPoint(longitude, latitude) {
   return `SRID=4326;POINT(${longitude} ${latitude})`
 }
 
+export function decodeHtmlEntities(str) {
+  if (typeof str !== 'string') return str
+  return str
+    .replace(/&#x27;|&#39;|&apos;/g, "'")
+    .replace(/&quot;|&#34;/g, '"')
+    .replace(/&amp;|&#38;/g, '&')
+    .replace(/&lt;|&#60;/g, '<')
+    .replace(/&gt;|&#62;/g, '>')
+    .replace(/&nbsp;|&#160;/g, ' ')
+    .replace(/&#x2F;|&#47;/g, '/')
+    .replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/&lsquo;|&rsquo;/g, "'")
+}
+
 export function normalizeDiagnosticResult(value) {
   if (!value) return null
   if (typeof value !== 'object') return null
+
+  const rawProblem = Array.isArray(value.problems)
+    ? value.problems[0]
+    : value.problem || value.summary || ''
+
+  const rawRecommendations = Array.isArray(value.recommendations) ? value.recommendations : []
+  const rawCauses = Array.isArray(value.estimated_causes)
+    ? value.estimated_causes
+    : Array.isArray(value.estimatedCauses)
+      ? value.estimatedCauses
+      : []
+
   return {
-    problem: Array.isArray(value.problems)
-      ? value.problems[0]
-      : value.problem || value.summary || '',
+    problem: decodeHtmlEntities(rawProblem),
     severity: value.severity || 'low',
-    recommendations: Array.isArray(value.recommendations) ? value.recommendations : [],
-    estimated_causes: Array.isArray(value.estimated_causes)
-      ? value.estimated_causes
-      : Array.isArray(value.estimatedCauses)
-        ? value.estimatedCauses
-        : [],
+    recommendations: rawRecommendations.map(decodeHtmlEntities),
+    estimated_causes: rawCauses.map(decodeHtmlEntities),
   }
 }
 
@@ -97,6 +115,7 @@ export function isValidTransition(currentStatus, nextStatus) {
 }
 
 export async function getRequestContext() {
+  const { createClient, createServiceClient } = await import('./supabase/server.js')
   const userClient = await createClient()
   const serviceClient = await createServiceClient()
   const {

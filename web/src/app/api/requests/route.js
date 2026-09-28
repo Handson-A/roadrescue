@@ -4,6 +4,7 @@ import { requestLimiter } from '@/lib/rateLimit'
 import { sendNotificationEmail } from '@/lib/email'
 
 import { sanitizeInput } from '@/lib/validate'
+import { recordMatchMetric } from '@/lib/metrics'
 
 export async function POST(req) {
   try {
@@ -28,9 +29,16 @@ export async function POST(req) {
     // verify user is a driver
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, is_suspended, suspension_reason')
       .eq('id', user.id)
       .single()
+
+    if (profile?.is_suspended) {
+      return NextResponse.json(
+        { error: `Account suspended: ${profile.suspension_reason || 'Policy violations'}. Cannot create rescue requests.` },
+        { status: 403 }
+      )
+    }
 
     if (profile?.role !== 'driver') {
       return NextResponse.json({ error: 'You can only create a request if you signed up as a driver' }, { status: 403 })
@@ -211,6 +219,14 @@ export async function POST(req) {
             targetMechanics = nearbyMechanics
           }
         }
+
+        // Record performance metric for thesis evaluation
+        recordMatchMetric({
+          supabaseClient: serviceSupabase,
+          requestId: request.id,
+          candidateCount: targetMechanics.length,
+          matchedAt: new Date().toISOString(),
+        })
 
         if (targetMechanics.length > 0) {
           const notifications = targetMechanics.map((mechanic) => ({

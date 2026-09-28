@@ -209,28 +209,28 @@ const { data: active, error: activeErr } = await supabase
       title="Service Console" 
       description="Track active roadside service jobs, update job progress states, and accept incoming service requests nearby."
     >
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 md:gap-6 pb-12">
+      <div className="mx-auto flex w-full max-w-full md:max-w-7xl flex-col gap-4 md:gap-6 pb-12 box-border min-w-0 overflow-hidden">
         
         {/* ================= TOP DISPATCH POOL CONTROLLER ================= */}
-        <div className={`rounded-2xl border p-5 transition-all duration-300 ${isAvailable ? 'bg-emerald-50/60 border-emerald-200/80' : 'bg-slate-100 border-slate-200'}`}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3.5">
+        <div className={`rounded-2xl border p-4 sm:p-5 transition-all duration-300 w-full max-w-full min-w-0 box-border overflow-hidden ${isAvailable ? 'bg-emerald-50/60 border-emerald-200/80' : 'bg-slate-100 border-slate-200'}`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
+            <div className="flex items-start gap-3.5 min-w-0 flex-1">
               <div className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${isAvailable ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-200 text-slate-500 border-slate-300'}`}>
                 <Radio size={20} className={isAvailable ? 'animate-pulse' : ''} />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Duty Status</span>
-                <h2 className="text-xl font-extrabold text-[#111827] tracking-tight">
+                <h2 className="text-lg sm:text-xl font-extrabold text-[#111827] tracking-tight break-words">
                   {isAvailable ? 'Online & Receiving Requests' : 'Offline from Dispatch Pool'}
                 </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 font-medium">
-                  <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 capitalize">
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 capitalize shrink-0">
                     <ShieldCheck size={13} /> Console Stream Secure
                   </span>
                   <span>•</span>
-                  <span>Experience: {mechProfile?.years_experience ?? '0'} Years Vetted</span>
+                  <span className="shrink-0">Experience: {mechProfile?.years_experience ?? '0'} Years Vetted</span>
                   <span>•</span>
-                  <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
+                  <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60 shrink-0">
                     <Star size={12} className="text-amber-500 fill-amber-500" />
                     <span>{mechProfile?.rating_avg ? Number(mechProfile.rating_avg).toFixed(1) : '5.0'} ({mechProfile?.rating_count ?? 0} reviews)</span>
                   </span>
@@ -240,7 +240,7 @@ const { data: active, error: activeErr } = await supabase
             <Button 
               variant={isAvailable ? 'outline' : 'primary'} 
               onClick={handleAvailabilityToggle}
-              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all ${isAvailable ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-primary hover:bg-primary/90 text-slate-900'}`}
+              className={`h-11 px-6 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm active:scale-98 transition-all shrink-0 ${isAvailable ? 'border-slate-300 bg-white hover:bg-slate-50' : 'bg-primary hover:bg-primary/90 text-slate-900'}`}
             >
               {isAvailable ? 'Go Offline' : 'Go Online'}
             </Button>
@@ -248,8 +248,8 @@ const { data: active, error: activeErr } = await supabase
         </div>
 
         {/* ================= COUNTER GRID ================= */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3">
-          <Card className="rounded-xl border-slate-200 bg-white p-3.5 sm:p-4 md:p-5 shadow-sm">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 w-full max-w-full min-w-0 box-border">
+          <Card className="rounded-xl border-slate-200 bg-white p-3.5 sm:p-4 md:p-5 shadow-sm min-w-0 w-full max-w-full overflow-hidden box-border">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider md:tracking-widest text-slate-400 truncate">Active Jobs</span>
               <Wrench size={15} className="text-slate-400 shrink-0" />
@@ -261,7 +261,7 @@ const { data: active, error: activeErr } = await supabase
             </p>
           </Card>
           
-          <Card className={`rounded-xl p-3.5 sm:p-4 md:p-5 shadow-sm border transition-all duration-300 ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/30 border-t-4 border-t-primary border-x-[#DCCDA9] border-b-[#DCCDA9] shadow-md shadow-amber-400/5' : 'bg-white border-slate-200'}`}>
+          <Card className={`rounded-xl p-3.5 sm:p-4 md:p-5 shadow-sm border transition-all duration-300 min-w-0 w-full max-w-full overflow-hidden box-border ${incomingJobs.length > 0 && isAvailable ? 'bg-amber-50/30 border-t-4 border-t-primary border-x-[#DCCDA9] border-b-[#DCCDA9] shadow-md shadow-amber-400/5' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider md:tracking-widest text-slate-400 truncate">Incoming Requests</span>
               <AlertCircle size={15} className={`shrink-0 ${incomingJobs.length > 0 && isAvailable ? 'text-[#8A6B08]' : 'text-slate-400'}`} />
@@ -274,7 +274,7 @@ const { data: active, error: activeErr } = await supabase
           </Card>
 
           {/* Operation Center - Reference info hidden on mobile (below md / 768px) */}
-          <Card className="hidden md:block rounded-xl border-slate-200 bg-white p-5 shadow-sm">
+          <Card className="hidden md:block rounded-xl border-slate-200 bg-white p-5 shadow-sm min-w-0 w-full max-w-full overflow-hidden box-border">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Operation Center</span>
               <DollarSign size={16} className="text-slate-400" />
@@ -282,18 +282,18 @@ const { data: active, error: activeErr } = await supabase
             <p className="mt-2 text-xl font-black text-[#111827] truncate tracking-tight pt-1.5">
               {mechProfile?.business_name || 'Independent Specialist'}
             </p>
-            <p className="mt-2.5 text-xs text-slate-500 font-medium">Active terminal identity node</p>
+            <p className="mt-2.5 text-xs text-slate-500 font-medium truncate">Active terminal identity node</p>
           </Card>
         </div>
 
         {/* ================= PRIMARY CONSOLE WORKING INTERFACE ================= */}
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-12">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-12 w-full max-w-full min-w-0 box-border">
           
           {/* LEFT AREA: MAP MODULE (DESKTOP ONLY) & ACTIVE JOBS */}
-          <div className="space-y-4 lg:col-span-7 flex flex-col">
+          <div className="space-y-4 lg:col-span-7 flex flex-col w-full max-w-full min-w-0 box-border">
             
             {/* Desktop-only Map View: on mobile, map is exclusively accessed via Navigation tab */}
-            <div className="hidden lg:flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex-col">
+            <div className="hidden lg:flex overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex-col w-full max-w-full min-w-0 box-border">
               <div className="bg-slate-50 border-b border-slate-200/60 px-4 py-3.5 flex items-center justify-between z-20">
                 <div className="space-y-0.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Live Tracking</span>
@@ -320,7 +320,7 @@ const { data: active, error: activeErr } = await supabase
 
             {/* Active Jobs Card */}
             {activeJobs.length > 0 ? (
-              <Card className="rounded-2xl border-slate-200 bg-white shadow-sm p-5 flex-1">
+              <Card className="rounded-2xl border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex-1 w-full max-w-full min-w-0 box-border overflow-hidden">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -334,17 +334,17 @@ const { data: active, error: activeErr } = await supabase
                     <span>Open Navigation</span>
                   </Link>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 w-full min-w-0">
                   {activeJobs.map((job) => (
-                    <div key={job.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 hover:border-slate-300 transition-all shadow-xs">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div key={job.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 sm:p-4 hover:border-slate-300 transition-all shadow-xs w-full max-w-full min-w-0 box-border overflow-hidden">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between w-full min-w-0">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge label={job.status} variant={job.status} dot />
                             <Badge label={job.service_type} variant="default" />
                           </div>
                           <p className="mt-2 text-sm font-bold text-slate-900 leading-snug break-words">{job.problem_description}</p>
-                          <p className="mt-1 text-xs text-slate-500 font-medium flex items-center gap-1">
+                          <p className="mt-1 text-xs text-slate-500 font-medium flex items-center gap-1 min-w-0">
                             <MapPin size={12} className="text-slate-400 shrink-0" /> 
                             <span className="truncate">{job.incident_address || 'Location coordinates pending'}</span>
                           </p>
@@ -370,7 +370,7 @@ const { data: active, error: activeErr } = await supabase
                 </div>
               </Card>
             ) : (
-              <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center items-center py-8 text-center text-slate-400 lg:hidden">
+              <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center items-center py-8 text-center text-slate-400 lg:hidden w-full max-w-full min-w-0 box-border overflow-hidden">
                 <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-2 text-slate-400">
                   <Wrench size={18} />
                 </div>
@@ -383,22 +383,22 @@ const { data: active, error: activeErr } = await supabase
           </div>
 
           {/* RIGHT AREA: INCIDENT BROADCAST FEEDS */}
-          <div className="space-y-4 lg:col-span-5">
-            <Card className="p-0 overflow-hidden border-slate-200 bg-white shadow-sm rounded-2xl">
-              <div className="border-b border-slate-100 bg-slate-900 px-4 py-3.5 text-white flex justify-between items-center">
+          <div className="space-y-4 lg:col-span-5 w-full max-w-full min-w-0 box-border">
+            <Card className="p-0 overflow-hidden border-slate-200 bg-white shadow-sm rounded-2xl w-full max-w-full min-w-0 box-border">
+              <div className="border-b border-slate-100 bg-slate-900 px-4 py-3.5 text-white flex justify-between items-center w-full max-w-full min-w-0 box-border">
                 <h4 className="text-xs font-black uppercase tracking-wider text-primary">Urgent Broadcast Feed</h4>
-                {incomingJobs.length > 0 && <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />}
+                {incomingJobs.length > 0 && <span className="h-2 w-2 rounded-full bg-red-500 animate-ping shrink-0" />}
               </div>
-              <div className="p-4">
+              <div className="p-3.5 sm:p-4 w-full max-w-full min-w-0 box-border">
                 {incomingJobs.length === 0 ? (
                   <p className="py-8 text-center text-xs font-medium text-slate-400">No open corridor breakdown alerts right now.</p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 w-full min-w-0">
                     {incomingJobs.map((job) => (
-                      <div key={job.id} className="rounded-xl border border-slate-100 bg-slate-50/40 p-3.5 hover:border-slate-200 transition-colors">
-                        <div className="flex items-center justify-between gap-2">
+                      <div key={job.id} className="rounded-xl border border-slate-100 bg-slate-50/40 p-3 sm:p-3.5 hover:border-slate-200 transition-colors w-full max-w-full min-w-0 box-border overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 min-w-0">
                           <Badge label={job.service_type} variant="pending" dot />
-                          <span className="text-[11px] font-medium text-slate-400">{timeAgo(job.created_at)}</span>
+                          <span className="text-[11px] font-medium text-slate-400 shrink-0">{timeAgo(job.created_at)}</span>
                         </div>
                         <p className="mt-2 text-sm font-bold text-slate-900 break-words">{job.problem_description}</p>
                         <p className="mt-1 text-xs font-medium text-slate-500 truncate">{job.incident_address || 'Location pending'}</p>
@@ -412,7 +412,7 @@ const { data: active, error: activeErr } = await supabase
               </div>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center items-center py-6 text-center text-slate-400">
+            <Card className="rounded-2xl border-slate-200 bg-white p-4 sm:p-5 shadow-sm flex flex-col justify-center items-center py-6 text-center text-slate-400 w-full max-w-full min-w-0 box-border overflow-hidden">
               <div className="h-9 w-9 rounded-xl bg-slate-50 border flex items-center justify-center mb-2 text-slate-400 shadow-2xs">
                 <AlertCircle size={16} />
               </div>
@@ -464,7 +464,7 @@ const { data: active, error: activeErr } = await supabase
       </Modal>
 
       {hasSearched && (
-        <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
+        <Card className="rounded-2xl border-slate-200 bg-white p-4 sm:p-5 shadow-sm w-full max-w-full min-w-0 box-border overflow-hidden">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4">
             Job search results for &quot;{searchQuery}&quot;
           </h3>
@@ -473,9 +473,9 @@ const { data: active, error: activeErr } = await supabase
           ) : jobSearchResults.length === 0 ? (
             <p className="text-xs font-medium text-slate-400 text-center py-6">No matching jobs found.</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 w-full min-w-0">
               {jobSearchResults.map((job) => (
-                <Link key={job.id} href={`/dashboard/mechanic/job/${job.id}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-4 hover:border-slate-200 transition-all">
+                <Link key={job.id} href={`/dashboard/mechanic/job/${job.id}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-4 hover:border-slate-200 transition-all w-full max-w-full min-w-0 box-border overflow-hidden">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge label={job.status} variant={job.status} dot />

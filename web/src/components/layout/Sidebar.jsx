@@ -47,12 +47,21 @@ const navByRole = {
   ],
 }
 
-export default function Sidebar() {
+export default function Sidebar({ initialRole = null }) {
   const router = useRouter()
   const pathname = usePathname()
   const { profile, user, loading } = useAuth()
 
-  const role = profile?.role || null
+  // Derive role with progressive fallbacks to prevent blank screen / hydration flash
+  const urlRole = pathname?.startsWith('/dashboard/admin')
+    ? 'admin'
+    : pathname?.startsWith('/dashboard/mechanic')
+      ? 'mechanic'
+      : pathname?.startsWith('/dashboard/driver')
+        ? 'driver'
+        : null
+
+  const role = profile?.role || user?.user_metadata?.role || initialRole || urlRole || null
   const links = role ? navByRole[role] || [] : []
   
   const isAdmin = role === 'admin'

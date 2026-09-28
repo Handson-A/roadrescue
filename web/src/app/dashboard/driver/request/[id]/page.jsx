@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Clock3, MapPin, PhoneCall, BusFront, ExternalLink, Shield, Compass, 
   CheckCircle2, Radio, AlertTriangle, XCircle, Zap, Wrench, Star, X, 
-  ChevronUp, ChevronDown, Sparkles
+  ChevronUp, ChevronDown, Sparkles, MessageSquare
 } from 'lucide-react'
 import PageWrapper from '@/components/layout/PageWrapper'
 import Card from '@/components/ui/Card'
@@ -20,6 +20,7 @@ import Button from '@/components/ui/Button'
 import Textarea from '@/components/ui/Textarea'
 import DiagnosticResult from '@/components/ai/DiagnosticResult'
 import Modal from '@/components/ui/Modal'
+import RescueChatModal from '@/components/request/RescueChatModal'
 import { useRequestStatus } from '@/hooks/useRequestStatus'
 import { useWatchMechanicLocation } from '@/hooks/useMechanicLocation'
 import { useAuth } from '@/hooks/useAuth'
@@ -71,6 +72,7 @@ export default function DriverRequestTrackingPage() {
   const { user } = useAuth()
   
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [canceling, setCanceling] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
@@ -572,12 +574,20 @@ export default function DriverRequestTrackingPage() {
                       </a>
                       <button
                         type="button"
-                        onClick={() => setIsReportModalOpen(true)}
-                        className="h-9 text-xs font-bold uppercase tracking-wider border border-[#DCCDA9] bg-[#FFF9EF] rounded-xl text-[#7C6B44] hover:text-red-600 transition-colors cursor-pointer"
+                        onClick={() => setIsChatOpen(true)}
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-3 text-xs font-bold uppercase tracking-wider text-slate-950 active:scale-95 transition-transform cursor-pointer hover:bg-amber-300 shadow-xs"
                       >
-                        Flag Incident
+                        <MessageSquare size={12} />
+                        Chat
                       </button>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsReportModalOpen(true)}
+                      className="w-full mt-2 h-8 text-xs font-bold uppercase tracking-wider border border-[#DCCDA9] bg-[#FFF9EF] rounded-xl text-[#7C6B44] hover:text-red-600 transition-colors cursor-pointer"
+                    >
+                      Flag Incident
+                    </button>
 
                     {reviews.length > 0 && (
                       <div className="mt-3.5 pt-3 border-t border-[#DCCDA9]/50 space-y-2 text-left">
@@ -672,7 +682,7 @@ export default function DriverRequestTrackingPage() {
               </div>
 
               {request.ai_diagnostic_result && (
-                <div className="pt-1">
+                <div className="rounded-2xl bg-[#FFFBF4] p-4 border border-[#DCCDA9] shadow-xs">
                   <DiagnosticResult diagnosis={request.ai_diagnostic_result} />
                 </div>
               )}
@@ -727,13 +737,23 @@ export default function DriverRequestTrackingPage() {
             </div>
             
             <div className="grid grid-cols-1 gap-2 mt-4 relative z-10">
-              <a
-                href={mechanic?.phone ? `tel:${mechanic.phone}` : undefined}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition-transform active:scale-95"
-              >
-                <PhoneCall size={12} />
-                Call {mechanic?.phone || 'Emergency Line'}
-              </a>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={mechanic?.phone ? `tel:${mechanic.phone}` : undefined}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2.5 text-xs font-black uppercase tracking-wider text-slate-950 hover:bg-slate-100 transition-transform active:scale-95 text-center"
+                >
+                  <PhoneCall size={12} />
+                  Call
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 px-3 py-2.5 text-xs font-black uppercase tracking-wider text-slate-950 hover:bg-amber-300 transition-transform active:scale-95 cursor-pointer text-center shadow-xs"
+                >
+                  <MessageSquare size={12} />
+                  Live Chat
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsReportModalOpen(true)}
@@ -790,7 +810,9 @@ export default function DriverRequestTrackingPage() {
         </Card>
 
         {request.ai_diagnostic_result && (
-          <DiagnosticResult diagnosis={request.ai_diagnostic_result} />
+          <Card className="rounded-2xl border-slate-200 bg-white/95 backdrop-blur-md shadow-lg p-5">
+            <DiagnosticResult diagnosis={request.ai_diagnostic_result} />
+          </Card>
         )}
       </div>
 
@@ -938,6 +960,17 @@ export default function DriverRequestTrackingPage() {
           />
         </div>
       </Modal>
+
+      {/* LIVE CHAT MODAL */}
+      <RescueChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        requestId={id}
+        contactName={mechanic?.full_name || 'Assigned Mechanic'}
+        contactRole="Mechanic"
+        statusText={`${currentStage.label} · Step ${currentStage.step} of 6`}
+        initialStatus={request?.status}
+      />
     </div>
   )
 }

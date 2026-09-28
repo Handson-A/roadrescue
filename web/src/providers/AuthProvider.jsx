@@ -179,20 +179,34 @@ if (profile?.role === 'driver') {
   const setSession = useCallback(async (session) => {
     try {
       if (session?.user) {
+        // Fast optimistic sync to unblock rendering
+        const optimisticProfile = {
+          id: session.user.id,
+          email: session.user.email || null,
+          full_name: session.user.user_metadata?.full_name || null,
+          role: session.user.user_metadata?.role || null,
+        }
+
+        setUser(session.user)
+        if (!useAuthStore.getState().profile) {
+          setProfile(optimisticProfile)
+        }
+        setLoading(false)
+
+        // Enrich full profile in background
         const profile = await fetchUserProfile(session.user)
 
         setAuthState({
           user: session.user,
-          profile,
+          profile: profile || optimisticProfile,
         })
 
         setUser(session.user)
-        setProfile(profile)
+        setProfile(profile || optimisticProfile)
       } else {
         resetAuth()
+        setLoading(false)
       }
-
-      setLoading(false)
     } catch (err) {
       console.error('Error in setSession:', err)
       setError('Failed to initialize auth session')

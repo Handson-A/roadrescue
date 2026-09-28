@@ -255,7 +255,7 @@ export default function RescueMap({
           <Marker position={[driver.lat, driver.lng]} icon={driverIcon}>
             <Popup>
               <div className="p-1 min-w-[120px]">
-                <p className="font-bold text-red-600 text-xs uppercase tracking-wider">My Position</p>
+                <p className="font-bold text-red-600 text-xs uppercase tracking-wider">Driver Position</p>
                 <p className="font-semibold text-sm mt-1">{request?.vehicle_make || 'Vehicle Breakdown'}</p>
                 <p className="text-[10px] font-mono text-gray-500 mt-0.5">{driver.lat.toFixed(4)}, {driver.lng.toFixed(4)}</p>
               </div>
@@ -268,7 +268,7 @@ export default function RescueMap({
             <Popup>
               <div className="p-1 min-w-[120px]">
                 <p className="font-bold text-blue-600 text-xs uppercase tracking-wider">
-                  {isFixed ? 'Workshop Base' : 'My Location'}
+                  {isFixed ? 'Workshop Base' : 'Mechanic Location'}
                 </p>
                 <p className="font-semibold text-sm mt-1">
                   {isFixed ? 'Fixed Location' : 'Active'}

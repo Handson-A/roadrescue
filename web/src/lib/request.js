@@ -13,6 +13,7 @@
 import { DEFAULT_SEARCH_RADIUS_KM, NOTIFICATION_TYPE, REQUEST_STATUS } from '@/lib/constants'
 import { formatRequestRow, insertNotifications, isValidTransition, normalizeStatus } from '@/lib/rescueLifecycle'
 import { sendNotificationEmail } from '@/lib/email'
+import { recordMatchMetric } from '@/lib/metrics'
 
 // ============================================================================
 // CREATE RESCUE REQUEST
@@ -104,6 +105,14 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
       if (matchError) throw matchError
       targetMechanics = nearbyMechanics || []
     }
+
+    // Record performance metric for thesis evaluation
+    recordMatchMetric({
+      supabaseClient: serviceSupabase || supabase,
+      requestId: request.id,
+      candidateCount: targetMechanics.length,
+      matchedAt: new Date().toISOString(),
+    })
 
     // 3. If no mechanics found, still return request (driver sees "searching" state)
     if (!targetMechanics || targetMechanics.length === 0) {
@@ -417,13 +426,14 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       updatePayload.cancellation_reason = cancellationReason || null
     }
 
-    // Use .select() so Supabase returns the updated rows.
-    // If RLS or a trigger silently blocks the write, `updatedRows` will be an
-    // empty array instead of throwing — we catch that explicitly below.
+    // Use .select() with atomic precondition matching the pre-fetched request.status.
+    // If another actor or process changed the state in the database between the read and write,
+    // updatedRows will return empty (0 rows affected), preventing lost updates / double-acceptance.
     const { data: updatedRows, error: updateError } = await serviceSupabase
       .from('rescue_requests')
       .update(updatePayload)
       .eq('id', requestId)
+      .eq('status', request.status)
       .select('id, status, mechanic_id')
 
     if (updateError) {
@@ -431,23 +441,26 @@ export async function updateRequestStatus(serviceSupabase, payload) {
       throw updateError
     }
 
-    // 0 rows updated = RLS blocked the write or wrong requestId
+    // 0 rows updated = State was mutated concurrently by another actor or RLS blocked
     if (!updatedRows || updatedRows.length === 0) {
-      // Diagnose: re-fetch to see the current state
       const { data: currentRow } = await serviceSupabase
         .from('rescue_requests')
         .select('id, status, mechanic_id')
         .eq('id', requestId)
         .maybeSingle()
 
-      console.error('[updateRequestStatus] 0 rows affected. Current row:', currentRow)
+      console.warn('[updateRequestStatus] 0 rows affected (concurrent modification). Current row:', currentRow)
 
-      if (!currentRow) throw new Error(`Request ${requestId} not found — cannot update status`)
+      if (!currentRow) {
+        throw new Error(`Request ${requestId} not found — cannot update status`)
+      }
+
+      if (newStatus === REQUEST_STATUS.ACCEPTED && currentRow.status !== REQUEST_STATUS.PENDING) {
+        throw new Error('This rescue request was already accepted by another mechanic or is no longer available.')
+      }
+
       throw new Error(
-        `Status update blocked (0 rows affected). ` +
-        `Current status: "${currentRow.status}", attempted: "${newStatus}". ` +
-        `This is usually an RLS policy blocking the service-role write — ` +
-        `check that createServiceClient() uses SUPABASE_SERVICE_ROLE_KEY and not the anon key.`
+        `Status transition conflict: request status changed before this update could be applied (current: "${currentRow.status}", attempted: "${newStatus}").`
       )
     }
 

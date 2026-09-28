@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
     // Verify user is a participant
     const { data: rescueRequest, error: requestError } = await supabase
       .from('rescue_requests')
-      .select('id, driver_id, mechanic_id')
+      .select('id, driver_id, mechanic_id, status')
       .eq('id', requestId)
       .single()
 
@@ -41,7 +41,12 @@ export async function GET(request, { params }) {
 
     if (messagesError) throw messagesError
 
-    return NextResponse.json({ messages }, { status: 200 })
+    return NextResponse.json({ 
+      messages, 
+      requestStatus: rescueRequest.status,
+      driverId: rescueRequest.driver_id,
+      mechanicId: rescueRequest.mechanic_id,
+    }, { status: 200 })
   } catch (error) {
     console.error('Get messages error:', error)
     return NextResponse.json({ error: 'Failed to load messages' }, { status: 500 })
@@ -75,12 +80,19 @@ export async function POST(request, { params }) {
     // Verify user is a participant and get their role
     const { data: rescueRequest, error: requestError } = await supabase
       .from('rescue_requests')
-      .select('id, driver_id, mechanic_id')
+      .select('id, driver_id, mechanic_id, status')
       .eq('id', requestId)
       .single()
 
     if (requestError || !rescueRequest) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+    }
+
+    if (rescueRequest.status === 'completed' || rescueRequest.status === 'cancelled') {
+      return NextResponse.json(
+        { error: `Cannot send messages on a ${rescueRequest.status} rescue request.` },
+        { status: 400 }
+      )
     }
 
     let senderRole = null
@@ -106,6 +118,23 @@ export async function POST(request, { params }) {
       .single()
 
     if (insertError) throw insertError
+
+    // Trigger real-time notification for the assigned participant
+    const recipientId = senderRole === 'driver' ? rescueRequest.mechanic_id : rescueRequest.driver_id
+    if (recipientId) {
+      try {
+        await serviceSupabase.from('notifications').insert({
+          profile_id: recipientId,
+          request_id: requestId,
+          title: senderRole === 'driver' ? 'New Message from Driver' : 'New Message from Mechanic',
+          body: `${message} [req_id: ${requestId}]`,
+          type: 'chat',
+          is_read: false,
+        })
+      } catch (notifError) {
+        console.error('Failed to dispatch chat notification:', notifError)
+      }
+    }
 
     return NextResponse.json({ message: newMessage }, { status: 201 })
   } catch (error) {

@@ -18,11 +18,13 @@ export async function GET() {
       id,
       request_id,
       reporter_id,
+      reported_user_id,
       reason_header,
       comment,
       created_at,
-      reporter:profiles!issue_reports_reporter_id_fkey (full_name, role),
-      request:request_id (id, service_type, problem_description, incident_address, status)
+      reporter:profiles!issue_reports_reporter_id_fkey (id, full_name, role),
+      reported_user:profiles!issue_reports_reported_user_id_fkey (id, full_name, role),
+      request:rescue_requests!issue_reports_request_id_fkey (id, service_type, problem_description, incident_address, status)
     `)
 
   let { data, error } = await query
@@ -85,6 +87,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Forbidden: reporter ID mismatch.' }, { status: 403 })
     }
 
+    // Anti-spam guard: Check if reporter has already filed a report for this request with the same reason
+    const { data: existingReport, error: checkError } = await supabase
+      .from('issue_reports')
+      .select('id')
+      .eq('request_id', requestId)
+      .eq('reporter_id', user.id)
+      .eq('reason_header', reasonHeader)
+      .maybeSingle()
+
+    if (existingReport) {
+      return NextResponse.json(
+        { error: 'You have already submitted an incident report for this issue on this rescue request.' },
+        { status: 409 }
+      )
+    }
+
     const insertPayload = {
       request_id: requestId,
       reporter_id: user.id,
@@ -115,6 +133,12 @@ export async function POST(request) {
 
     if (error) {
       console.error('[REPORTS INSERT]:', error)
+      if (error.code === '23505' || error.message.toLowerCase().includes('duplicate') || error.message.toLowerCase().includes('unique')) {
+        return NextResponse.json(
+          { error: 'You have already submitted an incident report for this issue on this rescue request.' },
+          { status: 409 }
+        )
+      }
       return NextResponse.json(
         { error: error.message || 'Failed to create report.' },
         { status: 500 }
@@ -150,3 +174,36 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 })
   }
 }
+
+export async function DELETE(request) {
+  try {
+    const adminCheck = await requireAdmin()
+    if (adminCheck.error) {
+      return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
+    }
+
+    const rawBody = await request.json()
+    const { ids } = rawBody
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'Missing or invalid report IDs array' }, { status: 400 })
+    }
+
+    const serviceSupabase = await createServiceClient()
+    const { error } = await serviceSupabase
+      .from('issue_reports')
+      .delete()
+      .in('id', ids)
+
+    if (error) {
+      console.error('[REPORTS DELETE ERROR]:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, count: ids.length })
+  } catch (err) {
+    console.error('[REPORTS DELETE FAULT]:', err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
