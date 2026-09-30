@@ -117,27 +117,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     // 3. If no mechanics found, still return request (driver sees "searching" state)
     if (!targetMechanics || targetMechanics.length === 0) {
       return { request, notifiedCount: 0 }
-    }
-
-    // 4. Create notifications for target mechanics
-    // Use service role because RLS blocks inserts from client
-    const notifications = targetMechanics.map((mechanic) => ({
-      profile_id: mechanic.user_id,
-      type: NOTIFICATION_TYPE.NEW_REQUEST,
-      title: targetMechanicId ? 'Direct rescue request' : 'New rescue request',
-      body: targetMechanicId
-        ? `Direct ${serviceType} request dispatched to you — ${incidentAddress || 'location pinned'}`
-        : `New ${serviceType} request ${mechanic.distance_km}km away — ${incidentAddress || 'location pinned'}`,
-      request_id: request.id,
-    }))
-
-    try {
-      await insertNotifications(serviceSupabase || supabase, notifications)
-    } catch (notifError) {
-      console.error('[BACKGROUND NOTIFICATIONS INSERT ERROR]:', notifError.message)
-    }
-
-    // 5. Send email notifications (non-blocking, best-effort)
+    // 4. Send email notifications (non-blocking, best-effort)
     targetMechanics.forEach((mechanic) => {
       sendNotificationEmail({
         to: mechanic.email || `mechanic-${mechanic.user_id}@roadrescue.com`,
@@ -182,30 +162,6 @@ export async function updateRequestStatus(serviceSupabase, payload) {
 
   const newStatus = normalizeStatus(rawNewStatus)
   const knownStatuses = new Set(Object.values(REQUEST_STATUS))
-
-  const statusNotificationMap = {
-    [REQUEST_STATUS.ACCEPTED]: {
-      type: NOTIFICATION_TYPE.MECHANIC_ACCEPTED,
-      message: 'A mechanic accepted your rescue request.',
-    },
-    [REQUEST_STATUS.EN_ROUTE]: {
-      type: NOTIFICATION_TYPE.MECHANIC_EN_ROUTE,
-      message: 'Your mechanic is on the way — track them on the map',
-    },
-    [REQUEST_STATUS.ARRIVED]: {
-      type: NOTIFICATION_TYPE.MECHANIC_ARRIVED,
-      message: 'Your mechanic has arrived at your location',
-    },
-    [REQUEST_STATUS.IN_PROGRESS]: { type: null, message: null },
-    [REQUEST_STATUS.COMPLETED]: {
-      type: NOTIFICATION_TYPE.JOB_COMPLETED,
-      message: 'Job completed — please rate your mechanic',
-    },
-    [REQUEST_STATUS.CANCELLED]: {
-      type: NOTIFICATION_TYPE.REQUEST_CANCELLED,
-      message: 'This rescue request was cancelled.',
-    },
-  }
 
   async function fetchRequestDetails(requestIdToFetch) {
     const { data: request, error: requestError } = await serviceSupabase
@@ -496,107 +452,9 @@ export async function updateRequestStatus(serviceSupabase, payload) {
         })
     }
 
-    // ── FIX 2: notifications — were unreachable (after early return) ──
-    const notification = statusNotificationMap[newStatus]
-    const notifications = []
+    // Notifications are handled automatically by database trigger trg_rescue_request_lifecycle_notifications
 
-    if (notification?.type) {
-      if (newStatus === REQUEST_STATUS.CANCELLED) {
-        if (request.mechanic_id && request.driver_id === actorId) {
-          notifications.push({
-            profile_id: request.mechanic_id,
-            type: notification.type,
-            title: 'Request cancelled',
-            body: 'The driver cancelled this rescue request.',
-            request_id: request.id,
-          })
-        } else if (request.driver_id && request.mechanic_id === actorId) {
-          notifications.push({
-            profile_id: request.driver_id,
-            type: notification.type,
-            title: 'Request cancelled',
-            body: 'The assigned mechanic cancelled this rescue request.',
-            request_id: request.id,
-          })
-        } else if (actorRole === 'system') {
-          if (request.driver_id) {
-            notifications.push({
-              profile_id: request.driver_id,
-              type: notification.type,
-              title: 'Request cancelled',
-              body: 'The rescue request was automatically cancelled due to mechanic inactivity (system timeout).',
-              request_id: request.id,
-            })
-          }
-          if (request.mechanic_id) {
-            notifications.push({
-              profile_id: request.mechanic_id,
-              type: notification.type,
-              title: 'Request cancelled',
-              body: 'The rescue request was automatically cancelled due to inactivity timeout.',
-              request_id: request.id,
-            })
-          }
-        } else if (actorRole === 'admin') {
-          if (request.driver_id) {
-            notifications.push({
-              profile_id: request.driver_id,
-              type: notification.type,
-              title: 'Request cancelled',
-              body: 'An admin cancelled this rescue request.',
-              request_id: request.id,
-            })
-          }
-          if (request.mechanic_id) {
-            notifications.push({
-              profile_id: request.mechanic_id,
-              type: notification.type,
-              title: 'Request cancelled',
-              body: 'An admin cancelled this rescue request.',
-              request_id: request.id,
-            })
-          }
-        }
-      } else {
-        notifications.push({
-          profile_id: request.driver_id,
-          type: notification.type,
-          title: 'Request update',
-          body: notification.message,
-          request_id: request.id,
-        })
-      }
-    }
-
-    if (newStatus === REQUEST_STATUS.COMPLETED) {
-      try {
-        const { data: admins } = await serviceSupabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'admin')
-        if (admins && admins.length > 0) {
-          admins.forEach(adm => {
-            notifications.push({
-              profile_id: adm.id,
-              type: NOTIFICATION_TYPE.SYSTEM,
-              title: 'Request Completed',
-              body: `Rescue request #${request.id.slice(0, 8)} was successfully completed by mechanic.`,
-              request_id: request.id,
-            })
-          })
-        }
-      } catch (adminFetchErr) {
-        console.warn('Failed to fetch admins for request completed notification:', adminFetchErr)
-      }
-    }
-
-    try {
-      await insertNotifications(serviceSupabase, notifications)
-    } catch (notificationError) {
-      console.warn('Notification insert failed:', notificationError)
-    }
-
-    // ── FIX 3: email sends — were unreachable (after early return) ──
+    // ── Email sends — non-blocking best-effort ──
     if (newStatus === REQUEST_STATUS.ACCEPTED) {
       const { data: driver } = await serviceSupabase
         .from('profiles')
