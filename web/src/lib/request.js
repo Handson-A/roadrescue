@@ -117,6 +117,8 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     // 3. If no mechanics found, still return request (driver sees "searching" state)
     if (!targetMechanics || targetMechanics.length === 0) {
       return { request, notifiedCount: 0 }
+    }
+
     // 4. Send email notifications (non-blocking, best-effort)
     targetMechanics.forEach((mechanic) => {
       sendNotificationEmail({
