@@ -52,7 +52,7 @@ export default function MechanicTour() {
         </span>
       )
       welcomeMessage =
-        'Welcome to RoadRescue. Your verification is under review. Our team is reviewing your credentials. You cannot receive rescue requests until approved.'
+        'Welcome to RoadRescue. Your verification is under review. Our team is reviewing your credentials. You cannot accept rescue requests until approved.'
     } else if (isRejected) {
       welcomeBadge = (
         <span className="rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">
