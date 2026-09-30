@@ -81,25 +81,6 @@ export default function RescueChatPanel({
       {/* ── HEADER ── */}
       <div className="flex items-center justify-between gap-3 border-b border-[#DCCDA9] bg-[#FFFBF4]/95 backdrop-blur-md px-4 py-3.5 shrink-0 shadow-xs">
         <div className="flex items-center gap-3 min-w-0">
-          {onClose ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E1B15] border border-[#DCCDA9] shadow-xs hover:bg-[#F5EED9] active:scale-95 transition-all cursor-pointer"
-              aria-label="Close chat"
-            >
-              <X size={17} />
-            </button>
-          ) : (
-            <Link
-              href=".."
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#1E1B15] border border-[#DCCDA9] shadow-xs hover:bg-[#F5EED9] active:scale-95 transition-all"
-              aria-label="Go back"
-            >
-              <ArrowLeft size={17} />
-            </Link>
-          )}
-
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h2 className="truncate text-sm font-black text-[#1E1B15]">
@@ -130,7 +111,7 @@ export default function RescueChatPanel({
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 border border-emerald-200">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Sync
+             Online 
             </span>
           )}
         </div>

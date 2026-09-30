@@ -73,8 +73,12 @@ export async function POST(request, { params }) {
     const body = sanitizeInput(rawBody)
     const message = body.message?.trim()
 
-    if (!message) {
+    if (!message || message.length === 0) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+    }
+
+    if (message.length > 1000) {
+      return NextResponse.json({ error: 'Message cannot exceed 1000 characters' }, { status: 400 })
     }
 
     // Verify user is a participant and get their role

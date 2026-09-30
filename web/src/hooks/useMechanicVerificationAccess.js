@@ -1,65 +1,32 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useContext } from 'react'
+import { MechanicVerificationContext } from '@/providers/MechanicVerificationProvider'
 
-export function useMechanicVerificationAccess(mechanicId) {
-  const [verificationStatus, setVerificationStatus] = useState('pending')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    let mounted = true
-
-    async function load() {
-      if (!mechanicId) {
-        if (!mounted) return
-        setVerificationStatus('pending')
-        setLoading(false)
-        return
-      }
-
-      try {
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from('mechanic_profiles')
-          .select('verification_status')
-          .eq('user_id', mechanicId)
-          .maybeSingle()
-
-        if (!mounted) return
-
-        if (error) throw error
-
-        setVerificationStatus(data?.verification_status || 'pending')
-        setError(null)
-      } catch (e) {
-        if (!mounted) return
-        setVerificationStatus('pending')
-        setError(e)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-
-    load()
-
-    return () => {
-      mounted = false
-    }
-  }, [mechanicId])
-
-  const isApproved = useMemo(() => verificationStatus === 'approved', [verificationStatus])
-  const isRejected = useMemo(() => verificationStatus === 'rejected', [verificationStatus])
-  const isPendingOrMoreInfo = useMemo(() => !isApproved && !isRejected, [isApproved, isRejected])
-
-  return {
-    verificationStatus,
-    isApproved,
-    isRejected,
-    isPendingOrMoreInfo,
-    loading,
-    error,
-  }
+const DEFAULT_VERIFICATION_STATE = {
+  verificationStatus: 'unverified',
+  rejectionReason: null,
+  isSuspended: false,
+  suspensionReason: null,
+  isApproved: false,
+  isRejected: false,
+  isPending: false,
+  isUnverified: true,
+  loading: false,
+  error: null,
+  refetch: async () => {},
 }
 
+/**
+ * useMechanicVerificationAccess
+ * 
+ * Consumer hook that reads from the single MechanicVerificationProvider.
+ * Never creates duplicate realtime channels or triggers subscription race conditions.
+ */
+export function useMechanicVerificationAccess() {
+  const context = useContext(MechanicVerificationContext)
+  if (!context) {
+    return DEFAULT_VERIFICATION_STATE
+  }
+  return context
+}

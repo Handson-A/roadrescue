@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation'
 import { 
   ChartColumn, Gauge, History, Home, LifeBuoy, LogOut, Radar, Settings, 
   ShieldCheck, User, ClipboardList, WifiSync, Brain, PlusCircle, MapPin, 
-  X, AlertTriangle 
+  X, AlertTriangle, HelpCircle 
 } from 'lucide-react'
 
 import Avatar from '@/components/ui/Avatar'
@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { signOut } from '@/lib/auth'
 import toast from 'react-hot-toast'
 import { useMechanicStatus } from '@/hooks/useMechanicStatus'
+import { useOnboarding } from '@/hooks/useOnboarding'
 
 const navByRole = {
   driver: [
@@ -34,7 +35,7 @@ const navByRole = {
     { href: '/dashboard/mechanic/history', label: 'Job History', icon: History },
     { href: '/dashboard/mechanic/navigation', label: 'Navigation', icon: MapPin },
     { href: '/dashboard/mechanic/support', label: 'Support', icon: LifeBuoy },
-    { href: '/dashboard/mechanic/account', label: 'Profile', icon: User },
+    { href: '/dashboard/mechanic/account', label: 'Profile', icon: User, tourId: 'mechanic-nav-profile' },
   ],
   admin: [
     { href: '/dashboard/admin', label: 'Dashboard', icon: Gauge },
@@ -71,6 +72,7 @@ export default function Sidebar({ initialRole = null }) {
   // Hook state tracking declarations
   const [showOfflineModal, setShowOfflineModal] = useState(false)
   const { isAvailable, updateStatus } = useMechanicStatus(isMechanic ? user?.id : null)
+  const { resetTour } = useOnboarding('driver_skip_hint_v1')
 
   const handleAvailabilityToggle = async () => {
     if (isAvailable) {
@@ -184,6 +186,7 @@ export default function Sidebar({ initialRole = null }) {
                 <Link
                   key={`${link.href}-${link.label}`}
                   href={link.href}
+                  data-tour={link.tourId}
                   className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs uppercase tracking-wider transition-all duration-150 ${isActive ? activeClass : idleClass}`}
                 >
                   <Icon size={16} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
@@ -204,26 +207,50 @@ export default function Sidebar({ initialRole = null }) {
               <ClipboardList size={14} /> Incident Log
             </Link>
           ) : isDriver ? (
-            <Link
-              href="/dashboard/driver/request/new"
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition"
-            >
-              <PlusCircle size={14} /> Request Aid
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={handleAvailabilityToggle}
-              className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
-                isAvailable 
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
-                  : 'bg-primary text-[#2A261C] hover:bg-primary/90'
-              }`}
-            >
-              <WifiSync size={14} className={isAvailable ? 'animate-pulse' : ''} />
-              <span>{isAvailable ? 'Online (Duty)' : 'Go Online'}</span>
-            </button>
-          )}
+            <div className="space-y-1.5">
+              <Link
+                href="/dashboard/driver/request/new"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:bg-slate-800 transition"
+              >
+                <PlusCircle size={14} /> Request Aid
+              </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  await resetTour('driver_skip_hint_v1')
+                  toast.success('Walkthrough reset! Next time you tap SOS, the guide will appear.')
+                }}
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border border-[#D8CCAE]/70 bg-[#EAE0C7]/40 text-[10px] font-black uppercase tracking-wider text-[#6E644D] hover:bg-[#EAE0C7] transition cursor-pointer"
+              >
+                <HelpCircle size={12} /> Reactivate Hints
+              </button>
+            </div>
+          ) : isMechanic ? (
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={handleAvailabilityToggle}
+                className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-[0.98] cursor-pointer ${
+                  isAvailable 
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                    : 'bg-primary text-[#2A261C] hover:bg-primary/90'
+                }`}
+              >
+                <WifiSync size={14} className={isAvailable ? 'animate-pulse' : ''} />
+                <span>{isAvailable ? 'Online (Duty)' : 'Go Online'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await resetTour('mechanic_v1')
+                  toast.success('Tour reset! The mechanic walkthrough will appear.')
+                }}
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border border-[#D8CCAE]/70 bg-[#EAE0C7]/40 text-[10px] font-black uppercase tracking-wider text-[#6E644D] hover:bg-[#EAE0C7] transition cursor-pointer"
+              >
+                <HelpCircle size={12} /> Take the tour again
+              </button>
+            </div>
+          ) : null}
 
           {/* ACCOUNT SNAPSHOT PROFILE BOX */}
           <div className={`rounded-xl border p-3 ${isAdmin ? 'border-[#4A4230] bg-[#2F2A20]' : 'border-[#D8CCAE]/70 bg-[#EAE0C7]/60'}`}>

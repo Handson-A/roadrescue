@@ -43,8 +43,15 @@ export function useRescueChat(requestId, initialStatus = null) {
         setCurrentUserId(user.id)
       }
 
-      const response = await fetch(`/api/requests/${requestId}/messages`)
-      const data = await response.json()
+      let response = await fetch(`/api/requests/${requestId}/messages`)
+      let data = await response.json()
+
+      // Retry once after 500ms if initial fetch encounters a 403 race condition right after request acceptance
+      if (response.status === 403) {
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        response = await fetch(`/api/requests/${requestId}/messages`)
+        data = await response.json()
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to load messages')

@@ -13,11 +13,13 @@ import { createClient } from '@/lib/supabase/client'
 import { 
   Building2, MapPin, Wrench, ShieldAlert, Award, Clock, 
   Phone, Mail, FileText, CheckCircle2, MessageSquare, Camera, Loader2,
-  AlertTriangle, Star, Check
+  AlertTriangle, Star, Check, HelpCircle
 } from 'lucide-react'
 import Select from '@/components/ui/Select'
 import { normalizeGeoPoint } from '@/lib/utils'
 import { MECHANIC_SPECIALTIES } from '@/lib/constants'
+import { useOnboarding } from '@/hooks/useOnboarding'
+import MechanicTour from '@/components/onboarding/mechanic-tour'
 
 export default function MechanicAccountPage() {
   const { user, profile, setProfile } = useAuth()
@@ -34,6 +36,7 @@ export default function MechanicAccountPage() {
   const [pinningLocation, setPinningLocation] = useState(false)
   const [reviews, setReviews] = useState([])
   const [pendingChangeRequests, setPendingChangeRequests] = useState([])
+  const { resetTour } = useOnboarding('mechanic_v1')
 
   // Unified application form schema state instance
   const [formData, setFormData] = useState({
@@ -608,6 +611,7 @@ export default function MechanicAccountPage() {
 
   return (
     <PageWrapper title="Profile Settings" description="Configure active workplace criteria, review verified deployment metrics, and manage system environment options.">
+      <MechanicTour />
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
 
         {/* ================= HERO IDENTITY INTERFACE ================= */}
@@ -661,11 +665,24 @@ export default function MechanicAccountPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-center shrink-0 pt-1 sm:pt-0">
               {!isEditing ? (
-                <button onClick={() => setIsEditing(true)} className="rounded-xl border border-slate-200 bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black uppercase tracking-wider text-slate-800 shadow-xs hover:bg-slate-50 transition-all active:scale-98">
-                  Edit Parameters
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await resetTour('mechanic_v1')
+                      toast.success('Tour reset! The mechanic walkthrough will appear.')
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 sm:py-2.5 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-100 transition-all cursor-pointer active:scale-98"
+                  >
+                    <HelpCircle size={14} className="text-amber-500" />
+                    <span>Take Tour Again</span>
+                  </button>
+                  <button onClick={() => setIsEditing(true)} className="rounded-xl border border-slate-200 bg-white px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-black uppercase tracking-wider text-slate-800 shadow-xs hover:bg-slate-50 transition-all active:scale-98 cursor-pointer">
+                    Edit Parameters
+                  </button>
+                </>
               ) : (
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setIsEditing(false)} className="rounded-xl px-3.5 sm:px-4 py-2 text-xs font-bold uppercase tracking-wider border-slate-200">Cancel</Button>
@@ -915,7 +932,10 @@ export default function MechanicAccountPage() {
 
 
         {/* ================= IDENTITY & CLEARANCE CREDENTIALS ================= */}
-        <Card className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+        <Card 
+          data-tour="mechanic-credentials-section"
+          className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+        >
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
               <FileText size={15} className="text-amber-500" /> Identity & Clearance Credentials

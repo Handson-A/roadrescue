@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export function useRequestStatus(requestId) {
   const [request, setRequest] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const channelRef = useRef(null)
 
-  useEffect(() => {
+  const fetchRequest = useCallback(async () => {
     if (!requestId) return
 
-    const supabase = createClient()
-
-    async function fetchRequest() {
-      const { data, error } = await supabase
+    try {
+      const supabase = createClient()
+      const { data, error: fetchError } = await supabase
         .from('rescue_requests')
         .select(`
           *,
@@ -35,11 +36,23 @@ export function useRequestStatus(requestId) {
         .eq('id', requestId)
         .single()
 
-      if (!error) setRequest(data)
+      if (fetchError) throw fetchError
+      if (data) setRequest(data)
+      setError(null)
+    } catch (err) {
+      console.warn('[useRequestStatus] fetchRequest error:', err.message)
+      setError(err.message)
+    } finally {
       setLoading(false)
     }
+  }, [requestId])
+
+  useEffect(() => {
+    if (!requestId) return
 
     fetchRequest()
+
+    const supabase = createClient()
 
     const channel = supabase
       .channel(`request-status-${requestId}`)
@@ -51,15 +64,42 @@ export function useRequestStatus(requestId) {
           table: 'rescue_requests',
           filter: `id=eq.${requestId}`,
         },
-        (payload) => {
+        () => {
           // Trigger a full fetch to resolve nested relationships in real-time
           fetchRequest()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) {
+          console.warn(`[useRequestStatus] channel status: ${status}, reconciling...`)
+          fetchRequest()
+        }
+      })
 
-    return () => supabase.removeChannel(channel)
-  }, [requestId])
+    channelRef.current = channel
 
-  return { request, loading }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchRequest()
+      }
+    }
+
+    const handleOnline = () => {
+      fetchRequest()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('online', handleOnline)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('online', handleOnline)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, [requestId, fetchRequest])
+
+  return { request, loading, error, refetch: fetchRequest }
 }
