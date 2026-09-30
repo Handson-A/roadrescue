@@ -435,7 +435,7 @@ export default function DriverAccountPage() {
             }}
             className="px-3.5 py-2 rounded-xl border border-[#DCCDA9] bg-[#FFF9EF] hover:bg-[#F5ECD5] text-[#7C6B44] text-xs font-bold transition cursor-pointer active:scale-95"
           >
-            Take the tour again
+            Reactivate
           </button>
         </div>
 

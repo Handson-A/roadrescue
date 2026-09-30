@@ -80,25 +80,20 @@ export function sanitizeInput(val) {
   if (typeof val === 'string') {
     let str = val
 
-    // 1. Strip script tags case-insensitively
+    // 1. Strip null bytes and control characters (except newline \n, carriage return \r, tab \t)
+    str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+
+    // 2. Strip script tags case-insensitively
     str = str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
 
-    // 2. Strip general HTML tags
+    // 3. Strip general HTML tags
     str = str.replace(/<[^>]*>/g, '')
 
-    // 3. Strip javascript: URI protocol
+    // 4. Strip javascript: URI protocol
     str = str.replace(/javascript:/gi, '')
 
-    // 4. Strip inline event handlers: e.g. onload=, onclick=, onerror=
+    // 5. Strip inline event handlers: e.g. onload=, onclick=, onerror=
     str = str.replace(/\bon\w+\s*=\s*(['"][^'"]*['"]|[^\s>]+(?=\s|>))/gi, '')
-
-    // 5. Escape dangerous HTML characters (preserving safe formatting)
-    str = str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;')
 
     // 6. Trim whitespace
     return str.trim()

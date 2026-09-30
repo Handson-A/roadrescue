@@ -221,7 +221,7 @@ export default function Sidebar({ initialRole = null }) {
                 }}
                 className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border border-[#D8CCAE]/70 bg-[#EAE0C7]/40 text-[10px] font-black uppercase tracking-wider text-[#6E644D] hover:bg-[#EAE0C7] transition cursor-pointer"
               >
-                <HelpCircle size={12} /> Take the tour again
+                <HelpCircle size={12} /> Reactivate Hints
               </button>
             </div>
           ) : (
