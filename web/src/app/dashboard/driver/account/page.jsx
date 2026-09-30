@@ -6,10 +6,12 @@ import Input from '@/components/ui/Input'
 import Spinner from '@/components/ui/Spinner'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity, AlertTriangle } from 'lucide-react'
+import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity, AlertTriangle, HelpCircle } from 'lucide-react'
+import { useOnboarding } from '@/hooks/useOnboarding'
 
 export default function DriverAccountPage() {
   const { user, profile, setProfile } = useAuth()
+  const { resetTour } = useOnboarding('driver_skip_hint_v1')
   const [driverProfile, setDriverProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -412,6 +414,29 @@ export default function DriverAccountPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Section 4: App Walkthrough & Guide */}
+        <div className="overflow-hidden rounded-2xl border border-[#DCCDA9] bg-white p-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF9EF] border border-[#DCCDA9] text-[#7C6B44]">
+              <HelpCircle size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#1F1B10]">App Walkthrough</p>
+              <p className="text-[11px] text-slate-500">Reset guides and hints for emergency requests.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              await resetTour('driver_skip_hint_v1')
+              toast.success('Walkthrough reset! Next time you tap SOS, the guide will appear.')
+            }}
+            className="px-3.5 py-2 rounded-xl border border-[#DCCDA9] bg-[#FFF9EF] hover:bg-[#F5ECD5] text-[#7C6B44] text-xs font-bold transition cursor-pointer active:scale-95"
+          >
+            Take the tour again
+          </button>
         </div>
 
       </div>
