@@ -18,6 +18,8 @@ import MechanicClusterLayer from '@/components/map/MechanicClusterLayer'
 import { useFuelLayer } from '@/hooks/useFuelLayer'
 
 import FullBleedMapShell from '@/components/map/FullBleedMapShell'
+import CoachMark from '@/components/onboarding/coach-mark'
+import { useOnboarding } from '@/hooks/useOnboarding'
 
 // Dynamic imports for Leaflet components (SSR-safe)
 const MapContainer = dynamic(
@@ -126,6 +128,7 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 
 export default function DriverExploreMap() {
   const router = useRouter()
+  const { shouldShow: showSkipCoachMark, dismiss: dismissSkipCoachMark } = useOnboarding('driver_skip_hint_v1')
   const mapContainerRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const [mechanics, setMechanics] = useState([])
@@ -501,6 +504,7 @@ export default function DriverExploreMap() {
       {/* Skip to Request Button (Pill Action) */}
       <button
         type="button"
+        data-tour="driver-skip-btn"
         onClick={() => router.push('/dashboard/driver/request')}
         className="h-11 px-4 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-bold uppercase tracking-wider shadow-xl flex items-center justify-center gap-1.5 hover:bg-black/75 hover:border-white/30 active:scale-95 transition-all cursor-pointer"
         aria-label="Skip to request assistance"
@@ -685,6 +689,14 @@ export default function DriverExploreMap() {
         <OverpassFuelLayer isActive={isHydrated && showFuelStations} />
       </MapContainer>
       </div>
+
+      <CoachMark
+        targetSelector='[data-tour="driver-skip-btn"]'
+        title="Quick Skip"
+        message="In a hurry? Tap 'Skip' to go straight to the request form without waiting for the map."
+        isOpen={showSkipCoachMark}
+        onDismiss={() => dismissSkipCoachMark('driver_skip_hint_v1')}
+      />
     </FullBleedMapShell>
   )
 }

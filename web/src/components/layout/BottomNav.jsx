@@ -20,7 +20,7 @@ const mechanicNav = [
   { href: '/dashboard/mechanic/requests', label: 'Requests', icon: ClipboardList, isActive: (p) => p.startsWith('/dashboard/mechanic/requests') },
   { href: '/dashboard/mechanic/navigation', label: 'Navigation', icon: MapPin, isActive: (p) => p.startsWith('/dashboard/mechanic/navigation') || p.startsWith('/dashboard/mechanic/track') },
   { href: '/dashboard/mechanic/history', label: 'Activity', icon: History, isActive: (p) => p.startsWith('/dashboard/mechanic/history') || p.startsWith('/dashboard/mechanic/activity') },
-  { href: '/dashboard/mechanic/account', label: 'Profile', icon: User, isActive: (p) => p.startsWith('/dashboard/mechanic/account') },
+  { href: '/dashboard/mechanic/account', label: 'Profile', icon: User, isActive: (p) => p.startsWith('/dashboard/mechanic/account'), tourId: 'mechanic-nav-profile' },
 ]
 
 export default function BottomNav() {
@@ -46,6 +46,7 @@ export default function BottomNav() {
       <Link
         key={item.href}
         href={item.href}
+        data-tour={item.tourId}
         className="flex flex-col items-center justify-center pt-2.5 pb-2 px-1 transition-all duration-200 ease-in-out group min-w-15 active:scale-95"
         aria-current={isActive ? 'page' : undefined}
       >

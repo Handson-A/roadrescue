@@ -18,6 +18,7 @@ let sharedPresenceRefCount = 0
 export function useMechanicStatus(mechanicId) {
   const supabaseRef = useRef(null)
   const channelRef = useRef(null)
+  const inlineOnlineChannelRef = useRef(null)
 
   const [status, setStatus] = useState('offline')
   const [loading, setLoading] = useState(!!mechanicId)
@@ -231,7 +232,12 @@ export function useMechanicStatus(mechanicId) {
             setLocalCoords(currentNow)
 
             // Broadcast coordinates to 'online-mechanics' channel
+            if (inlineOnlineChannelRef.current) {
+              supabase.removeChannel(inlineOnlineChannelRef.current)
+              inlineOnlineChannelRef.current = null
+            }
             const channel = supabase.channel('online-mechanics')
+            inlineOnlineChannelRef.current = channel
             channel.subscribe((status) => {
               if (status === 'SUBSCRIBED') {
                 channel.send({
@@ -263,6 +269,16 @@ export function useMechanicStatus(mechanicId) {
     },
     [mechanicId]
   )
+
+  useEffect(() => {
+    return () => {
+      if (inlineOnlineChannelRef.current) {
+        const supabase = supabaseRef.current || createClient()
+        supabase.removeChannel(inlineOnlineChannelRef.current)
+        inlineOnlineChannelRef.current = null
+      }
+    }
+  }, [])
 
   return {
     status,
