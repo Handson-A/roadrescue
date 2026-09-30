@@ -36,11 +36,11 @@ export function useOnboarding(tourKey = 'driver_skip_hint_v1') {
         setOnboardingState(prefData.onboarding_state)
       }
 
-      // 2. Check for active non-terminal rescue requests (suppress tour if emergency active)
+      // 2. Check for active non-terminal rescue requests (suppress tour if emergency/job active)
       const { data: activeRequests, error: reqError } = await supabase
         .from('rescue_requests')
         .select('id, status')
-        .eq('driver_id', user.id)
+        .or(`driver_id.eq.${user.id},mechanic_id.eq.${user.id}`)
         .not('status', 'in', `(${TERMINAL_STATUSES.join(',')})`)
         .limit(1)
 

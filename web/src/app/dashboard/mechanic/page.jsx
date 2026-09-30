@@ -16,6 +16,8 @@ import { timeAgo } from '@/lib/utils'
 import { Radio, AlertCircle, Wrench, DollarSign, ShieldCheck, X, AlertTriangle, MapPin, Star, Navigation } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useMechanicStatus } from '@/hooks/useMechanicStatus'
+import { useMechanicVerificationAccess } from '@/hooks/useMechanicVerificationAccess'
+import MechanicTour from '@/components/onboarding/mechanic-tour'
 
 const RescueMap = dynamic(
   () => import('@/components/map/RescueMap'),
@@ -44,6 +46,7 @@ export default function MechanicPage() {
   const userIdRef = useRef(user?.id)
   const searchParams = useSearchParams()
   const { isAvailable, updateStatus, localCoords } = useMechanicStatus(user?.id)
+  const { isApproved, isRejected, isUnverified, rejectionReason } = useMechanicVerificationAccess(user?.id)
 
   useEffect(() => {
     const q = searchParams.get('search') || ''
@@ -209,10 +212,52 @@ const { data: active, error: activeErr } = await supabase
       title="Service Console" 
       description="Track active roadside service jobs, update job progress states, and accept incoming service requests nearby."
     >
+      <MechanicTour />
       <div className="mx-auto flex w-full max-w-full md:max-w-7xl flex-col gap-4 md:gap-6 pb-12 box-border min-w-0 overflow-hidden">
         
+        {/* ================= PERSISTENT VERIFICATION BANNER (UNVERIFIED & REJECTED ONLY) ================= */}
+        {!isApproved && (isUnverified || isRejected) && (
+          <div
+            role={isRejected ? 'alert' : 'status'}
+            aria-live={isRejected ? 'assertive' : 'polite'}
+            className={`rounded-2xl border p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs transition-all ${
+              isRejected
+                ? 'bg-red-50/90 border-red-200 text-red-950'
+                : 'bg-amber-50/90 border-amber-200 text-amber-950'
+            }`}
+          >
+            <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+              {isRejected ? (
+                <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5 sm:mt-0" />
+              ) : (
+                <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold leading-snug">
+                  {isRejected
+                    ? `Verification not approved${rejectionReason ? `: "${rejectionReason}"` : ''}. Please update your credentials.`
+                    : 'Your workshop profile is unverified. Submit your credentials to start receiving emergency requests.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/mechanic/account"
+              className={`shrink-0 inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-xs font-black uppercase tracking-wider text-white transition-all shadow-xs cursor-pointer ${
+                isRejected
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-amber-600 hover:bg-amber-700'
+              }`}
+            >
+              {isRejected ? 'Update Credentials' : 'Submit Credentials'}
+            </Link>
+          </div>
+        )}
+
         {/* ================= TOP DISPATCH POOL CONTROLLER ================= */}
-        <div className={`rounded-2xl border p-4 sm:p-5 transition-all duration-300 w-full max-w-full min-w-0 box-border overflow-hidden ${isAvailable ? 'bg-emerald-50/70 border-emerald-200 shadow-2xs' : 'bg-[#FAF6EC] border-[#DCCDA9]'}`}>
+        <div 
+          data-tour="mechanic-welcome"
+          className={`rounded-2xl border p-4 sm:p-5 transition-all duration-300 w-full max-w-full min-w-0 box-border overflow-hidden ${isAvailable ? 'bg-emerald-50/70 border-emerald-200 shadow-2xs' : 'bg-[#FAF6EC] border-[#DCCDA9]'}`}
+        >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
             <div className="flex items-start gap-3.5 min-w-0 flex-1">
               <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${isAvailable ? 'bg-emerald-500 text-white border-emerald-400 shadow-2xs' : 'bg-[#EAE0C7] text-slate-600 border-[#D8CCAE]'}`}>
