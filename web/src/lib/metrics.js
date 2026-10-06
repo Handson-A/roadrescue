@@ -7,6 +7,7 @@ export async function recordMatchMetric({
   supabaseClient,
   requestId,
   candidateCount = 0,
+  radiusUsedKm = null,
   matchedAt = null,
 }) {
   if (!supabaseClient || !requestId) return

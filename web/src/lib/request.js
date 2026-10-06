@@ -10,8 +10,14 @@
  * - Driver ratings with dynamic mechanic average calculation
  */
 
-import { DEFAULT_SEARCH_RADIUS_KM, NOTIFICATION_TYPE, REQUEST_STATUS } from '@/lib/constants'
-import { formatRequestRow, insertNotifications, isValidTransition, normalizeStatus } from '@/lib/rescueLifecycle'
+import { DEFAULT_SEARCH_RADIUS_KM, NOTIFICATION_TYPE, RADIUS_STEPS_KM, REQUEST_STATUS } from '@/lib/constants'
+import {
+  findNearbyMechanicsWithFallback,
+  formatRequestRow,
+  insertNotifications,
+  isValidTransition,
+  normalizeStatus,
+} from '@/lib/rescueLifecycle'
 import { sendNotificationEmail } from '@/lib/email'
 import { recordMatchMetric } from '@/lib/metrics'
 
@@ -77,6 +83,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
     }
 
     let targetMechanics = []
+    let radiusUsedKm = null
 
     // 2. Dispatch routing
     if (targetMechanicId) {
@@ -93,17 +100,18 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
           email: preferredMech.email,
           distance_km: 'Direct',
         }]
+        radiusUsedKm = 'Direct'
       }
     } else {
-      // Find nearby mechanics using PostGIS geospatial function
-      const { data: nearbyMechanics, error: matchError } = await supabase.rpc('get_nearby_verified_mechanics', {
-        lat: incidentLat,
-        lng: incidentLng,
-        radius_km: DEFAULT_SEARCH_RADIUS_KM,
-      })
-
-      if (matchError) throw matchError
-      targetMechanics = nearbyMechanics || []
+      // Find nearby mechanics using expanding radial fallback PostGIS function
+      const matchResult = await findNearbyMechanicsWithFallback(
+        supabase,
+        incidentLat,
+        incidentLng,
+        RADIUS_STEPS_KM
+      )
+      targetMechanics = matchResult.mechanics || []
+      radiusUsedKm = matchResult.radiusUsedKm
     }
 
     // Record performance metric for thesis evaluation
@@ -111,12 +119,13 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
       supabaseClient: serviceSupabase || supabase,
       requestId: request.id,
       candidateCount: targetMechanics.length,
+      radiusUsedKm,
       matchedAt: new Date().toISOString(),
     })
 
     // 3. If no mechanics found, still return request (driver sees "searching" state)
     if (!targetMechanics || targetMechanics.length === 0) {
-      return { request, notifiedCount: 0 }
+      return { request, notifiedCount: 0, radiusUsedKm }
     }
 
     // 4. Send email notifications (non-blocking, best-effort)
@@ -139,7 +148,7 @@ export async function createRescueRequest(supabase, serviceSupabase, payload) {
       })
     })
 
-    return { request, notifiedCount: targetMechanics.length }
+    return { request, notifiedCount: targetMechanics.length, radiusUsedKm }
   } catch (error) {
     console.error('Error creating rescue request:', error)
     throw error

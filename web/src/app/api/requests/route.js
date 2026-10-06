@@ -5,6 +5,8 @@ import { sendNotificationEmail } from '@/lib/email'
 
 import { sanitizeInput } from '@/lib/validate'
 import { recordMatchMetric } from '@/lib/metrics'
+import { RADIUS_STEPS_KM } from '@/lib/constants'
+import { findNearbyMechanicsWithFallback } from '@/lib/rescueLifecycle'
 
 export async function POST(req) {
   try {
@@ -185,6 +187,7 @@ export async function POST(req) {
     Promise.resolve().then(async () => {
       try {
         let targetMechanics = []
+        let radiusUsedKm = null
 
         // BRANCH A: Targeted dispatch directly and exclusively to the chosen mechanic
         if (targetMechanicId) {
@@ -201,22 +204,22 @@ export async function POST(req) {
               email: preferredMech.email,
               distance_km: 'Direct',
             }]
+            radiusUsedKm = 'Direct'
           }
         } else {
-          // BRANCH B: Standard geospatial broadcast matching (bypassed for targeted dispatch)
-          const { data: nearbyMechanics, error: matchError } = await serviceSupabase.rpc('get_nearby_verified_mechanics', {
-            lat: Number(incidentLat),
-            lng: Number(incidentLng),
-            radius_km: 10.0,
-          })
-
-          if (matchError) {
+          // BRANCH B: Expanding radial fallback geospatial broadcast matching
+          try {
+            const matchResult = await findNearbyMechanicsWithFallback(
+              serviceSupabase,
+              Number(incidentLat),
+              Number(incidentLng),
+              RADIUS_STEPS_KM
+            )
+            targetMechanics = matchResult.mechanics || []
+            radiusUsedKm = matchResult.radiusUsedKm
+          } catch (matchError) {
             console.error('[BACKGROUND MATCH ERROR]:', matchError.message)
             return
-          }
-
-          if (nearbyMechanics && nearbyMechanics.length > 0) {
-            targetMechanics = nearbyMechanics
           }
         }
 
@@ -225,6 +228,7 @@ export async function POST(req) {
           supabaseClient: serviceSupabase,
           requestId: request.id,
           candidateCount: targetMechanics.length,
+          radiusUsedKm,
           matchedAt: new Date().toISOString(),
         })
 
