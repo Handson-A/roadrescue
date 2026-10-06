@@ -56,5 +56,6 @@ export const NOTIFICATION_TYPE = {
 
 // how far we search for mechanics by default
 export const DEFAULT_SEARCH_RADIUS_KM = 10
+export const RADIUS_STEPS_KM = [10, 20, 30]
 
 // how many minutes before a mechanic location is
