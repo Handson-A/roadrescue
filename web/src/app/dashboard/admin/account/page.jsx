@@ -11,6 +11,7 @@ import Badge from '@/components/ui/Badge'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { User, Mail, Phone, Shield, Lock, ShieldCheck, KeyRound, CheckCircle2 } from 'lucide-react'
+import PwaInstallToast from '@/components/ui/PwaInstallToast'
 
 export default function AdminAccountPage() {
   const { user, profile } = useAuth()
@@ -216,6 +217,8 @@ export default function AdminAccountPage() {
             Modify Password Matrix
           </Button>
         </Card>
+
+        <PwaInstallToast />
       </div>
     </PageWrapper>
   )

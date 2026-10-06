@@ -1,3 +1,5 @@
+import { RADIUS_STEPS_KM } from './constants.js'
+
 export const REQUEST_STATUS_FLOW = {
   pending: ['accepted', 'cancelled'],
   offered: ['accepted', 'cancelled'],
@@ -188,6 +190,32 @@ export async function insertNotifications(serviceClient, notifications) {
     }
     throw error
   }
+}
+
+export async function findNearbyMechanicsWithFallback(
+  serviceClient,
+  latitude,
+  longitude,
+  radiusSteps = RADIUS_STEPS_KM
+) {
+  for (const radius_km of radiusSteps) {
+    const { data, error } = await serviceClient.rpc('get_nearby_verified_mechanics', {
+      lat: latitude,
+      lng: longitude,
+      radius_km,
+    })
+
+    if (error) {
+      console.error(`[findNearbyMechanicsWithFallback] RPC error at radius ${radius_km}km:`, error)
+      throw error
+    }
+
+    if (data && data.length > 0) {
+      return { mechanics: data, radiusUsedKm: radius_km }
+    }
+  }
+
+  return { mechanics: [], radiusUsedKm: radiusSteps[radiusSteps.length - 1] ?? 10 }
 }
 
 export async function getNearbyMechanics(serviceClient, latitude, longitude, searchRadiusKm = 10) {

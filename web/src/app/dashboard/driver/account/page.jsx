@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { User, Mail, Phone, CarFront, BadgeCheck, Shield, Camera, Loader2, Activity, AlertTriangle, HelpCircle } from 'lucide-react'
 import { useOnboarding } from '@/hooks/useOnboarding'
+import PwaInstallToast from '@/components/ui/PwaInstallToast'
 
 export default function DriverAccountPage() {
   const { user, profile, setProfile } = useAuth()
@@ -439,6 +440,7 @@ export default function DriverAccountPage() {
           </button>
         </div>
 
+        <PwaInstallToast />
       </div>
     </div>
   )

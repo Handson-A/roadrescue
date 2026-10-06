@@ -20,6 +20,7 @@ import { normalizeGeoPoint } from '@/lib/utils'
 import { MECHANIC_SPECIALTIES } from '@/lib/constants'
 import { useOnboarding } from '@/hooks/useOnboarding'
 import MechanicTour from '@/components/onboarding/mechanic-tour'
+import PwaInstallToast from '@/components/ui/PwaInstallToast'
 
 export default function MechanicAccountPage() {
   const { user, profile, setProfile } = useAuth()
@@ -1125,6 +1126,8 @@ export default function MechanicAccountPage() {
             </div>
           </div>
         </Card>
+
+        <PwaInstallToast />
       </div>
     </PageWrapper>
   )

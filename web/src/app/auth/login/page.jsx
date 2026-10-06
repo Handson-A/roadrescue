@@ -1,9 +1,9 @@
 "use client"
 
 import Link from 'next/link'
-import { Smartphone } from 'lucide-react'
 
 import LoginForm from '@/components/auth/LoginForm'
+import PwaInstallToast from '@/components/ui/PwaInstallToast'
 
 export default function LoginPage() {
   return (
@@ -22,15 +22,7 @@ export default function LoginPage() {
         Don’t have an account? <Link href="/auth/register" className="font-bold text-amber-600">Register</Link>
       </p>
 
-      <div className="pt-4 text-center lg:hidden">
-        <Link 
-          href="/install" 
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#DCCDA9] bg-[#FFF9EF] px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-[#7C6B44] transition-all hover:bg-[#F5EDD0] shadow-xs"
-        >
-          <Smartphone size={14} className="text-[#7C6B44]" />
-          <span>Use as an App(PWA)</span>
-        </Link>
-      </div>
+      <PwaInstallToast />
     </div>
   )
 }
