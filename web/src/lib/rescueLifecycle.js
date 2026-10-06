@@ -1,4 +1,4 @@
-import { RADIUS_STEPS_KM } from '@/lib/constants'
+import { RADIUS_STEPS_KM } from './constants.js'
 
 export const REQUEST_STATUS_FLOW = {
   pending: ['accepted', 'cancelled'],
